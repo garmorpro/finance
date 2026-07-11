@@ -10,6 +10,7 @@ use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AccountBalanceHistoryRepository;
 use App\Repositories\AccountRepository;
+use App\Repositories\AttachmentRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\TagRepository;
@@ -43,11 +44,14 @@ final class TransactionController
         $transactionRepo = new TransactionRepository();
         $result = $transactionRepo->listForHousehold($householdId, $filters, $page);
         $accountRepo = new AccountRepository();
-        $tagsByTransaction = (new TagRepository())->listForTransactions(array_column($result['rows'], 'id'));
+        $transactionIds = array_column($result['rows'], 'id');
+        $tagsByTransaction = (new TagRepository())->listForTransactions($transactionIds);
+        $attachmentsByTransaction = (new AttachmentRepository())->listForTransactions($transactionIds);
 
         Response::html(View::render('transactions/index', [
             'transactions' => $result['rows'],
             'tagsByTransaction' => $tagsByTransaction,
+            'attachmentsByTransaction' => $attachmentsByTransaction,
             'total' => $result['total'],
             'page' => $result['page'],
             'perPage' => $result['perPage'],
@@ -332,10 +336,12 @@ final class TransactionController
             'transaction' => $transaction,
             'selectedTagIds' => array_column((new TagRepository())->listForTransaction($transactionId), 'id'),
             'existingSplits' => (new TransactionSplitRepository())->listForTransaction($transactionId),
+            'attachments' => (new AttachmentRepository())->listForTransaction($transactionId),
             'error' => $_SESSION['_flash_error'] ?? null,
+            'notice' => $_SESSION['_flash_notice'] ?? null,
         ]);
 
-        unset($_SESSION['_flash_error']);
+        unset($_SESSION['_flash_error'], $_SESSION['_flash_notice']);
     }
 
     public function update(Request $request): void

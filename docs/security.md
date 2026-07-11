@@ -136,6 +136,31 @@ this reconsidered.
   automatic cleanup. A periodic `find storage/imports -mtime +1 -delete`
   cron (or equivalent TTL sweep) would close this; not implemented yet.
 
+## File uploads (transaction attachments)
+
+- Same random-token storage-path pattern as CSV import (`storage/attachments/`,
+  outside the web root), but a tighter whitelist since a receipt is only
+  ever an image or a PDF: `image/jpeg`, `image/png`, `image/webp`,
+  `application/pdf` — checked via `mime_content_type()`, not the
+  client-supplied extension.
+- The stored file's extension is chosen by the server from that
+  whitelist (`AttachmentController::ALLOWED_MIME_TYPES`), never taken
+  from the client's filename — an upload named `receipt.jpg.php`
+  detected as `image/jpeg` is stored as `<random>.jpg`, full stop.
+- Size is capped at 10MB, enforced server-side independent of
+  `upload_max_filesize`/`post_max_size`.
+- Every read (`download`, `destroy`) re-verifies the parent transaction
+  belongs to the authenticated user's household before touching the
+  attachment row or the file on disk — the attachments table has no
+  `household_id` of its own (it's a pure child of a household-scoped
+  transaction, like `transaction_splits`), so this check is the actual
+  authorization boundary, not a nice-to-have.
+- Downloads are served through `AttachmentController::download()` with
+  `Content-Disposition: inline` and the *original* (user-supplied,
+  HTML-escaped in the header via `rawurlencode()`) filename — the file
+  itself is never reachable by a guessable or direct URL, since
+  `storage/attachments/` sits outside `public/`.
+
 ## Currency and financial calculations
 
 All monetary columns are `DECIMAL`, never `FLOAT`/`DOUBLE`. All

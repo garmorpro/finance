@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AccountController;
+use App\Controllers\AttachmentController;
 use App\Controllers\AuthController;
 use App\Controllers\BudgetController;
 use App\Controllers\CashFlowController;
@@ -99,6 +100,11 @@ $router->get('/transactions/{id}/edit', fn (Request $r): mixed => $transactionCo
 $router->post('/transactions/{id}', fn (Request $r): mixed => $transactionController->update($r));
 $router->post('/transactions/{id}/delete', fn (Request $r): mixed => $transactionController->destroy($r));
 $router->post('/transactions/{id}/review', fn (Request $r): mixed => $transactionController->markReviewed($r));
+
+$attachmentController = new AttachmentController();
+$router->post('/transactions/{id}/attachments', fn (Request $r): mixed => $attachmentController->upload($r));
+$router->get('/transactions/{id}/attachments/{attachmentId}', fn (Request $r): mixed => $attachmentController->download($r));
+$router->post('/transactions/{id}/attachments/{attachmentId}/delete', fn (Request $r): mixed => $attachmentController->destroy($r));
 
 $importController = new ImportController();
 $router->get('/transactions/import', fn (): mixed => $importController->showUploadForm());

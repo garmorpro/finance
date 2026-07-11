@@ -88,7 +88,7 @@ Set in `php.ini` (or an Apache-scoped override) for the production vhost:
 | `display_errors` | `Off` | Never show stack traces/DB errors to visitors. `App\Support\ErrorHandler` only reveals detail when `APP_DEBUG=true`, which itself must be `false` in production `.env`. |
 | `log_errors` | `On` | Errors go to the PHP error log, not the browser. |
 | `expose_php` | `Off` | Don't advertise the PHP version in response headers. |
-| `upload_max_filesize` / `post_max_size` | `6M` / `8M` | Slightly above the app's own 5MB CSV import cap (`ImportController::MAX_FILE_SIZE`) — the app's own check is the real limit; these just need to not reject a valid upload before the app ever sees it. |
+| `upload_max_filesize` / `post_max_size` | `11M` / `13M` | Slightly above the app's own largest upload cap — 10MB for transaction attachments (`AttachmentController::MAX_FILE_SIZE`), 5MB for CSV import (`ImportController::MAX_FILE_SIZE`). The app's own check is the real limit; these just need to not reject a valid upload before the app ever sees it. |
 | `session.cookie_httponly` | already enforced in code | `public/index.php` sets this explicitly regardless of `php.ini`, but setting it here too is harmless defense-in-depth. |
 
 Confirm `APP_DEBUG=false` and `APP_ENV=production` in the production

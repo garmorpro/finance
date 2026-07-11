@@ -6,8 +6,10 @@
 /** @var array $tags */
 /** @var list<int> $selectedTagIds */
 /** @var array $existingSplits */
+/** @var array $attachments */
 /** @var string $csrfToken */
 /** @var string|null $error */
+/** @var string|null $notice */
 
 use App\Support\View;
 
@@ -17,6 +19,13 @@ $splitRows = array_map(fn (array $split): array => [
     'category_id' => (string) $split['category_id'],
     'amount' => ltrim($split['amount'], '-'),
 ], $existingSplits);
+
+$formatFileSize = function (int $bytes): string {
+    if ($bytes >= 1024 * 1024) {
+        return round($bytes / (1024 * 1024), 1) . ' MB';
+    }
+    return round($bytes / 1024) . ' KB';
+};
 
 ?>
 <!DOCTYPE html>
@@ -40,6 +49,9 @@ $splitRows = array_map(fn (array $split): array => [
 
                 <?php if (!empty($error)): ?>
                     <div class="alert-error"><?= View::e($error) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($notice)): ?>
+                    <div class="alert-success"><?= View::e($notice) ?></div>
                 <?php endif; ?>
 
                 <form method="POST" action="/transactions/<?= (int) $transaction['id'] ?>" class="card space-y-4">
@@ -141,6 +153,38 @@ $splitRows = array_map(fn (array $split): array => [
 
                     <button type="submit" class="btn-primary">Save changes</button>
                 </form>
+
+                <div class="card">
+                    <h2 class="font-medium text-stone-900 dark:text-white mb-4">Attachments</h2>
+
+                    <?php if ($attachments === []): ?>
+                        <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">No receipts or files attached yet.</p>
+                    <?php else: ?>
+                        <ul class="divide-y divide-stone-100 dark:divide-stone-800 mb-4">
+                            <?php foreach ($attachments as $attachment): ?>
+                                <li class="flex items-center justify-between gap-4 py-2.5">
+                                    <a href="/transactions/<?= (int) $transaction['id'] ?>/attachments/<?= (int) $attachment['id'] ?>" target="_blank" rel="noopener" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline truncate">
+                                        <?= View::e($attachment['original_filename']) ?>
+                                    </a>
+                                    <div class="flex items-center gap-3 shrink-0">
+                                        <span class="text-xs text-stone-400 dark:text-stone-600"><?= $formatFileSize((int) $attachment['file_size']) ?></span>
+                                        <form method="POST" action="/transactions/<?= (int) $transaction['id'] ?>/attachments/<?= (int) $attachment['id'] ?>/delete" onsubmit="return confirm('Remove this attachment?');">
+                                            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                                            <button type="submit" class="text-xs font-medium text-stone-400 dark:text-stone-600 hover:text-red-600 dark:hover:text-red-400">Remove</button>
+                                        </form>
+                                    </div>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+
+                    <form method="POST" action="/transactions/<?= (int) $transaction['id'] ?>/attachments" enctype="multipart/form-data" class="flex items-center gap-3">
+                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                        <input type="file" name="attachment" accept="image/jpeg,image/png,image/webp,application/pdf" required class="field-input">
+                        <button type="submit" class="btn-secondary shrink-0">Upload</button>
+                    </form>
+                    <p class="field-help">JPG, PNG, WEBP, or PDF, up to 10MB.</p>
+                </div>
 
                 <div class="card">
                     <h2 class="font-medium text-stone-900 dark:text-white mb-2">Delete transaction</h2>
