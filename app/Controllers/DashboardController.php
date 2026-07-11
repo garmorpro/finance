@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Http\Response;
 use App\Middleware\AuthMiddleware;
+use App\Repositories\AccountRepository;
 use App\Repositories\HouseholdRepository;
 use App\Repositories\UserRepository;
 use App\Support\Csrf;
@@ -21,11 +22,13 @@ final class DashboardController
 
         $householdId = AuthMiddleware::householdId();
         $household = $householdId !== null ? (new HouseholdRepository())->findById($householdId) : null;
+        $netWorth = $householdId !== null ? (new AccountRepository())->netWorthSummary($householdId) : null;
 
         Response::html(View::render('dashboard/index', [
             'user' => $user,
             'household' => $household,
             'role' => $_SESSION['role'] ?? null,
+            'netWorth' => $netWorth,
             'csrfToken' => Csrf::token(),
         ]));
     }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Controllers\AccountController;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\HouseholdController;
@@ -55,6 +56,16 @@ $profileController = new ProfileController();
 $router->get('/profile', fn (): mixed => $profileController->show());
 $router->post('/profile', fn (Request $r): mixed => $profileController->updateProfile($r));
 $router->post('/profile/password', fn (Request $r): mixed => $profileController->updatePassword($r));
+
+$accountController = new AccountController();
+$router->get('/accounts', fn (): mixed => $accountController->index());
+$router->get('/accounts/create', fn (): mixed => $accountController->showCreateForm());
+$router->post('/accounts', fn (Request $r): mixed => $accountController->store($r));
+$router->get('/accounts/{id}/edit', fn (Request $r): mixed => $accountController->showEditForm($r));
+$router->post('/accounts/{id}', fn (Request $r): mixed => $accountController->update($r));
+$router->post('/accounts/{id}/balance', fn (Request $r): mixed => $accountController->updateBalance($r));
+$router->post('/accounts/{id}/archive', fn (Request $r): mixed => $accountController->archive($r));
+$router->post('/accounts/{id}/restore', fn (Request $r): mixed => $accountController->restore($r));
 
 $dashboardController = new DashboardController();
 

@@ -9,6 +9,9 @@ final class Request
     public readonly string $method;
     public readonly string $path;
 
+    /** @var array<string, string> */
+    private array $params = [];
+
     public function __construct()
     {
         $this->method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
@@ -26,5 +29,18 @@ final class Request
     public function ip(): string
     {
         return is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+    }
+
+    /**
+     * @param array<string, string> $params
+     */
+    public function setParams(array $params): void
+    {
+        $this->params = $params;
+    }
+
+    public function param(string $key): ?string
+    {
+        return $this->params[$key] ?? null;
     }
 }

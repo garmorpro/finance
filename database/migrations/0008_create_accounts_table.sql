@@ -1,0 +1,31 @@
+CREATE TABLE accounts (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    household_id BIGINT UNSIGNED NOT NULL,
+    created_by_user_id BIGINT UNSIGNED NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    institution_name VARCHAR(255) NULL,
+    account_type ENUM(
+        'checking', 'savings', 'cash', 'credit_card', 'mortgage', 'auto_loan',
+        'student_loan', 'personal_loan', 'investment', 'retirement',
+        'property', 'vehicle', 'other_asset', 'other_liability'
+    ) NOT NULL,
+    current_balance DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+    available_balance DECIMAL(14,2) NULL,
+    credit_limit DECIMAL(14,2) NULL,
+    interest_rate DECIMAL(6,3) NULL,
+    minimum_payment DECIMAL(14,2) NULL,
+    payment_due_day TINYINT UNSIGNED NULL,
+    original_balance DECIMAL(14,2) NULL,
+    color VARCHAR(7) NULL,
+    include_in_net_worth TINYINT(1) NOT NULL DEFAULT 1,
+    include_in_budget TINYINT(1) NOT NULL DEFAULT 1,
+    status ENUM('active', 'hidden', 'archived') NOT NULL DEFAULT 'active',
+    notes TEXT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    deleted_at DATETIME NULL,
+    KEY idx_accounts_household (household_id),
+    KEY idx_accounts_household_status (household_id, status),
+    CONSTRAINT fk_accounts_household FOREIGN KEY (household_id) REFERENCES households (id),
+    CONSTRAINT fk_accounts_created_by FOREIGN KEY (created_by_user_id) REFERENCES users (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
