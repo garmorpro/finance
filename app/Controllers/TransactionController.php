@@ -12,6 +12,7 @@ use App\Repositories\AccountBalanceHistoryRepository;
 use App\Repositories\AccountRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\CategoryRepository;
+use App\Repositories\TagRepository;
 use App\Repositories\TransactionRepository;
 use App\Support\Csrf;
 use App\Support\View;
@@ -40,9 +41,11 @@ final class TransactionController
         $transactionRepo = new TransactionRepository();
         $result = $transactionRepo->listForHousehold($householdId, $filters, $page);
         $accountRepo = new AccountRepository();
+        $tagsByTransaction = (new TagRepository())->listForTransactions(array_column($result['rows'], 'id'));
 
         Response::html(View::render('transactions/index', [
             'transactions' => $result['rows'],
+            'tagsByTransaction' => $tagsByTransaction,
             'total' => $result['total'],
             'page' => $result['page'],
             'perPage' => $result['perPage'],
@@ -220,6 +223,8 @@ final class TransactionController
                 'signed_amount' => $signedAmount,
             ]);
 
+            (new TagRepository())->setTagsForTransaction($transactionId, $input['tag_ids']);
+
             $newBalance = bcadd($account['current_balance'], $signedAmount, 2);
 
             (new AccountBalanceHistoryRepository())->record(
@@ -290,6 +295,7 @@ final class TransactionController
 
         $this->renderForm('transactions/edit', [
             'transaction' => $transaction,
+            'selectedTagIds' => array_column((new TagRepository())->listForTransaction($transactionId), 'id'),
             'error' => $_SESSION['_flash_error'] ?? null,
         ]);
 
@@ -349,6 +355,8 @@ final class TransactionController
                 ...$input,
                 'signed_amount' => $newSignedAmount,
             ]);
+
+            (new TagRepository())->setTagsForTransaction($transactionId, $input['tag_ids']);
 
             $historyRepo = new AccountBalanceHistoryRepository();
 
@@ -641,6 +649,7 @@ final class TransactionController
             // silently reassign it to whatever option happens to be first.
             'accounts' => (new AccountRepository())->listForHousehold($householdId, true),
             'categories' => (new CategoryRepository())->listForHousehold($householdId),
+            'tags' => (new TagRepository())->listForHousehold($householdId),
             'csrfToken' => Csrf::token(),
         ]));
     }
@@ -666,6 +675,7 @@ final class TransactionController
             'is_reviewed' => $request->post('is_reviewed') === '1',
             'exclude_from_budget' => $request->post('exclude_from_budget') === '1',
             'exclude_from_reports' => $request->post('exclude_from_reports') === '1',
+            'tag_ids' => $request->postIntList('tag_ids'),
         ];
     }
 
@@ -697,6 +707,15 @@ final class TransactionController
 
         if ($input['category_id'] !== null && (new CategoryRepository())->findById((int) $input['category_id'], $householdId) === null) {
             return 'Please choose a valid category.';
+        }
+
+        if ($input['tag_ids'] !== []) {
+            $tagRepo = new TagRepository();
+            foreach ($input['tag_ids'] as $tagId) {
+                if ($tagRepo->findById($tagId, $householdId) === null) {
+                    return 'Please choose valid tags.';
+                }
+            }
         }
 
         return null;

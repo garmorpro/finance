@@ -10,6 +10,7 @@ use App\Middleware\AuthMiddleware;
 use App\Repositories\AccountRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\HouseholdRepository;
+use App\Repositories\TagRepository;
 use App\Services\ReportingService;
 use App\Support\Csrf;
 use App\Support\View;
@@ -37,6 +38,7 @@ final class ReportController
             'accounts' => (new AccountRepository())->listForHousehold($householdId, true),
             'categories' => (new CategoryRepository())->listForHousehold($householdId, true),
             'members' => (new HouseholdRepository())->listMembers($householdId),
+            'tags' => (new TagRepository())->listForHousehold($householdId),
             'csrfToken' => Csrf::token(),
         ]));
     }
@@ -67,7 +69,7 @@ final class ReportController
     }
 
     /**
-     * @return array{date_from: string, date_to: string, account_ids: list<int>, category_ids: list<int>, type: string, user_id: int|null}
+     * @return array{date_from: string, date_to: string, account_ids: list<int>, category_ids: list<int>, tag_ids: list<int>, type: string, user_id: int|null}
      */
     private function readFilters(Request $request): array
     {
@@ -92,20 +94,12 @@ final class ReportController
         return [
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
-            'account_ids' => $this->toIntList($request->queryArray('account_ids')),
-            'category_ids' => $this->toIntList($request->queryArray('category_ids')),
+            'account_ids' => $request->queryIntList('account_ids'),
+            'category_ids' => $request->queryIntList('category_ids'),
+            'tag_ids' => $request->queryIntList('tag_ids'),
             'type' => $type,
             'user_id' => $userId !== '' ? (int) $userId : null,
         ];
-    }
-
-    /**
-     * @param list<string> $values
-     * @return list<int>
-     */
-    private function toIntList(array $values): array
-    {
-        return array_values(array_unique(array_map('intval', array_filter($values, 'is_numeric'))));
     }
 
     private function resolveGroupBy(string $value): string

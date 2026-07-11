@@ -1,0 +1,2 @@
+ALTER TABLE tags
+    ADD COLUMN color VARCHAR(7) NULL AFTER name;

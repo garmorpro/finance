@@ -15,6 +15,7 @@ $navLink = function (string $key, string $href, string $label) use ($active): st
         <h2 class="settings-nav-heading">Account</h2>
         <nav class="space-y-0.5">
             <?= $navLink('profile', '/settings/profile', 'Profile') ?>
+            <?= $navLink('notifications', '/settings/notifications', 'Notifications') ?>
             <?= $navLink('security', '/settings/security', 'Security') ?>
         </nav>
     </div>
@@ -23,6 +24,8 @@ $navLink = function (string $key, string $href, string $label) use ($active): st
         <nav class="space-y-0.5">
             <?= $navLink('household', '/settings/household', 'Members') ?>
             <?= $navLink('categories', '/settings/categories', 'Categories') ?>
+            <?= $navLink('rules', '/settings/rules', 'Rules') ?>
+            <?= $navLink('tags', '/settings/tags', 'Tags') ?>
         </nav>
     </div>
 </div>

@@ -224,7 +224,7 @@ final class ReportingService
      * CLAUDE.md's rule that transfers are never household income or
      * spending — they get their own column instead.
      *
-     * @param array{date_from: string, date_to: string, account_ids: list<int>, category_ids: list<int>, type: string, user_id: int|null} $filters
+     * @param array{date_from: string, date_to: string, account_ids: list<int>, category_ids: list<int>, tag_ids: list<int>, type: string, user_id: int|null} $filters
      * @return array{rows: list<array{label: string, income: string, expense: string, transfer: string, net: string, count: int}>, totals: array{income: string, expense: string, transfer: string, net: string, count: int}}
      */
     public function transactionsReport(int $householdId, array $filters, string $groupBy): array
@@ -251,6 +251,12 @@ final class ReportingService
         if ($filters['category_ids'] !== []) {
             [$inClause, $inParams] = $this->buildInClause('category_id', $filters['category_ids']);
             $clauses[] = "t.category_id {$inClause}";
+            $params += $inParams;
+        }
+
+        if ($filters['tag_ids'] !== []) {
+            [$inClause, $inParams] = $this->buildInClause('tag_id', $filters['tag_ids']);
+            $clauses[] = "t.id IN (SELECT tt.transaction_id FROM transaction_tags tt WHERE tt.tag_id {$inClause})";
             $params += $inParams;
         }
 

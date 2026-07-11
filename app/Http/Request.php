@@ -44,6 +44,44 @@ final class Request
         return is_array($value) ? array_values(array_filter($value, 'is_string')) : [];
     }
 
+    /**
+     * For multi-select form inputs (e.g. "tag_ids[]"). Non-array or
+     * non-string entries are dropped rather than trusted.
+     *
+     * @return list<string>
+     */
+    public function postArray(string $key): array
+    {
+        $value = $_POST[$key] ?? null;
+
+        return is_array($value) ? array_values(array_filter($value, 'is_string')) : [];
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function queryIntList(string $key): array
+    {
+        return self::toIntList($this->queryArray($key));
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function postIntList(string $key): array
+    {
+        return self::toIntList($this->postArray($key));
+    }
+
+    /**
+     * @param list<string> $values
+     * @return list<int>
+     */
+    private static function toIntList(array $values): array
+    {
+        return array_values(array_unique(array_map('intval', array_filter($values, 'is_numeric'))));
+    }
+
     public function ip(): string
     {
         return is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';

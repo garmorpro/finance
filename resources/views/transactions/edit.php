@@ -3,6 +3,8 @@
 /** @var array $transaction */
 /** @var array $accounts */
 /** @var array $categories */
+/** @var array $tags */
+/** @var list<int> $selectedTagIds */
 /** @var string $csrfToken */
 /** @var string|null $error */
 
@@ -80,6 +82,18 @@ $absoluteAmount = ltrim($transaction['amount'], '-');
                         <label for="notes" class="field-label">Notes (optional)</label>
                         <textarea id="notes" name="notes" rows="2" class="field-input"><?= View::e($transaction['notes'] ?? '') ?></textarea>
                     </div>
+
+                    <?php if ($tags !== []): ?>
+                        <div>
+                            <label for="tag_ids" class="field-label">Tags (optional)</label>
+                            <select id="tag_ids" name="tag_ids[]" multiple class="field-input" size="4">
+                                <?php foreach ($tags as $tag): ?>
+                                    <option value="<?= (int) $tag['id'] ?>" <?= in_array((int) $tag['id'], $selectedTagIds, true) ? 'selected' : '' ?>><?= View::e($tag['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="field-help">Hold Cmd/Ctrl to select more than one.</p>
+                        </div>
+                    <?php endif; ?>
 
                     <div class="flex items-center gap-6">
                         <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">

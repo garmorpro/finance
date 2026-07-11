@@ -3,10 +3,11 @@
 /** @var list<array{label: string, income: string, expense: string, transfer: string, net: string, count: int}> $rows */
 /** @var array{income: string, expense: string, transfer: string, net: string, count: int} $totals */
 /** @var string $groupBy */
-/** @var array{date_from: string, date_to: string, account_ids: list<int>, category_ids: list<int>, type: string, user_id: int|null} $filters */
+/** @var array{date_from: string, date_to: string, account_ids: list<int>, category_ids: list<int>, tag_ids: list<int>, type: string, user_id: int|null} $filters */
 /** @var array $accounts */
 /** @var array $categories */
 /** @var array $members */
+/** @var array $tags */
 /** @var string $csrfToken */
 
 use App\Support\Money;
@@ -25,6 +26,7 @@ $exportQuery = http_build_query([
     'date_to' => $filters['date_to'],
     'account_ids' => $filters['account_ids'],
     'category_ids' => $filters['category_ids'],
+    'tag_ids' => $filters['tag_ids'],
     'type' => $filters['type'],
     'user_id' => $filters['user_id'] ?? '',
     'group_by' => $groupBy,
@@ -94,7 +96,7 @@ $exportQuery = http_build_query([
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label for="account_ids" class="field-label">Accounts (leave empty for all)</label>
                             <select id="account_ids" name="account_ids[]" multiple class="field-input" size="4">
@@ -110,6 +112,18 @@ $exportQuery = http_build_query([
                                     <option value="<?= (int) $category['id'] ?>" <?= in_array((int) $category['id'], $filters['category_ids'], true) ? 'selected' : '' ?>><?= View::e($category['name']) ?> (<?= View::e(ucfirst($category['type'])) ?>)</option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                        <div>
+                            <label for="tag_ids" class="field-label">Tags (leave empty for all)</label>
+                            <?php if ($tags === []): ?>
+                                <p class="text-sm text-stone-400 dark:text-stone-600 mt-2">No tags yet — <a href="/settings/tags" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">create one</a>.</p>
+                            <?php else: ?>
+                                <select id="tag_ids" name="tag_ids[]" multiple class="field-input" size="4">
+                                    <?php foreach ($tags as $tag): ?>
+                                        <option value="<?= (int) $tag['id'] ?>" <?= in_array((int) $tag['id'], $filters['tag_ids'], true) ? 'selected' : '' ?>><?= View::e($tag['name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </form>

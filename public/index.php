@@ -17,6 +17,7 @@ use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
 use App\Controllers\RecurringController;
 use App\Controllers\ReportController;
+use App\Controllers\TagController;
 use App\Controllers\TransactionController;
 use App\Database\Connection;
 use App\Http\Request;
@@ -151,6 +152,12 @@ $categoryGroupController = new CategoryGroupController();
 $router->post('/settings/category-groups', fn (Request $r): mixed => $categoryGroupController->store($r));
 $router->post('/settings/category-groups/{id}', fn (Request $r): mixed => $categoryGroupController->update($r));
 $router->post('/settings/category-groups/{id}/delete', fn (Request $r): mixed => $categoryGroupController->destroy($r));
+
+$tagController = new TagController();
+$router->get('/settings/tags', fn (): mixed => $tagController->index());
+$router->post('/settings/tags', fn (Request $r): mixed => $tagController->store($r));
+$router->post('/settings/tags/{id}', fn (Request $r): mixed => $tagController->update($r));
+$router->post('/settings/tags/{id}/delete', fn (Request $r): mixed => $tagController->destroy($r));
 
 $dashboardController = new DashboardController();
 $router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardController->saveLayout($r));

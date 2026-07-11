@@ -24,11 +24,16 @@ final class CategoryController
         $all = $categoryRepo->listForHousehold($householdId, true);
         $groupRepo = new CategoryGroupRepository();
 
+        $expenseGroups = $groupRepo->listForHousehold($householdId, 'expense');
+        $incomeGroups = $groupRepo->listForHousehold($householdId, 'income');
+        $expenseCategories = array_values(array_filter($all, fn (array $c): bool => $c['type'] === 'expense'));
+        $incomeCategories = array_values(array_filter($all, fn (array $c): bool => $c['type'] === 'income'));
+
         Response::html(View::render('settings/categories', [
-            'expenseCategories' => array_values(array_filter($all, fn (array $c): bool => $c['type'] === 'expense')),
-            'incomeCategories' => array_values(array_filter($all, fn (array $c): bool => $c['type'] === 'income')),
-            'expenseGroups' => $groupRepo->listForHousehold($householdId, 'expense'),
-            'incomeGroups' => $groupRepo->listForHousehold($householdId, 'income'),
+            'expenseSections' => $this->buildSections($expenseCategories, $expenseGroups),
+            'incomeSections' => $this->buildSections($incomeCategories, $incomeGroups),
+            'expenseGroups' => $expenseGroups,
+            'incomeGroups' => $incomeGroups,
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,
@@ -36,6 +41,38 @@ final class CategoryController
         ]));
 
         unset($_SESSION['_flash_error'], $_SESSION['_flash_notice'], $_SESSION['_flash_old']);
+    }
+
+    /**
+     * Groups a flat category list under their category_groups, with an
+     * "ungrouped" bucket (group: null) appended last only if it has members.
+     *
+     * @param array $categories
+     * @param array $groups
+     * @return list<array{group: array|null, categories: array}>
+     */
+    private function buildSections(array $categories, array $groups): array
+    {
+        $sections = [];
+
+        foreach ($groups as $group) {
+            $sections[(int) $group['id']] = ['group' => $group, 'categories' => []];
+        }
+        $sections[0] = ['group' => null, 'categories' => []];
+
+        foreach ($categories as $category) {
+            $groupId = $category['group_id'] !== null ? (int) $category['group_id'] : 0;
+            if (!isset($sections[$groupId])) {
+                $groupId = 0;
+            }
+            $sections[$groupId]['categories'][] = $category;
+        }
+
+        return array_values(array_filter(
+            $sections,
+            fn (array $section, int $key): bool => $key !== 0 || $section['categories'] !== [],
+            ARRAY_FILTER_USE_BOTH
+        ));
     }
 
     public function store(Request $request): void
@@ -63,7 +100,7 @@ final class CategoryController
         }
 
         $categoryRepo = new CategoryRepository();
-        $categoryId = $categoryRepo->create($householdId, $input['name'], $input['type'], $input['color']);
+        $categoryId = $categoryRepo->create($householdId, $input['name'], $input['type']);
 
         (new AuditLogRepository())->log(
             (int) AuthMiddleware::userId(),
@@ -122,7 +159,7 @@ final class CategoryController
             }
         }
 
-        $categoryRepo->update($categoryId, $householdId, $input['name'], $input['type'], $input['color'], $groupId);
+        $categoryRepo->update($categoryId, $householdId, $input['name'], $input['type'], $category['color'], $groupId);
 
         (new AuditLogRepository())->log(
             (int) AuthMiddleware::userId(),
@@ -196,7 +233,6 @@ final class CategoryController
             'id' => $request->post('id') !== '' ? $request->post('id') : null,
             'name' => trim($request->post('name')),
             'type' => $request->post('type'),
-            'color' => trim($request->post('color')) !== '' ? trim($request->post('color')) : null,
             'group_id' => $request->post('group_id') !== '' ? $request->post('group_id') : null,
         ];
     }
@@ -209,10 +245,6 @@ final class CategoryController
 
         if (!in_array($input['type'], ['income', 'expense'], true)) {
             return 'Please choose a valid category type.';
-        }
-
-        if ($input['color'] !== null && !preg_match('/^#[0-9a-fA-F]{6}$/', $input['color'])) {
-            return 'Color must be a hex value like #e2694b.';
         }
 
         return null;

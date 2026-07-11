@@ -7,6 +7,7 @@
 /** @var array $accounts */
 /** @var array $categories */
 /** @var array $filters */
+/** @var array $tagsByTransaction */
 /** @var int $unreviewedCount */
 /** @var string $csrfToken */
 /** @var string|null $notice */
@@ -129,6 +130,9 @@ $totalPages = max(1, (int) ceil($total / $perPage));
                                             <?php if ((int) $transaction['is_reviewed'] === 0): ?>
                                                 <span class="badge ml-2">Unreviewed</span>
                                             <?php endif; ?>
+                                            <?php foreach ($tagsByTransaction[(int) $transaction['id']] ?? [] as $tag): ?>
+                                                <span class="badge ml-2"><?= View::e($tag['name']) ?></span>
+                                            <?php endforeach; ?>
                                         </td>
                                         <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['transaction_type'] === 'transfer' ? 'Transfer' : ($transaction['category_name'] ?? '—')) ?></td>
                                         <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['account_name']) ?></td>
