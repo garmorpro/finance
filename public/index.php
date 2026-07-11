@@ -6,6 +6,7 @@ use App\Controllers\AccountController;
 use App\Controllers\AuthController;
 use App\Controllers\BudgetController;
 use App\Controllers\CategoryController;
+use App\Controllers\CategoryGroupController;
 use App\Controllers\DashboardController;
 use App\Controllers\HouseholdController;
 use App\Controllers\ImportController;
@@ -102,6 +103,11 @@ $router->post('/settings/categories', fn (Request $r): mixed => $categoryControl
 $router->post('/settings/categories/{id}', fn (Request $r): mixed => $categoryController->update($r));
 $router->post('/settings/categories/{id}/archive', fn (Request $r): mixed => $categoryController->archive($r));
 $router->post('/settings/categories/{id}/restore', fn (Request $r): mixed => $categoryController->restore($r));
+
+$categoryGroupController = new CategoryGroupController();
+$router->post('/settings/category-groups', fn (Request $r): mixed => $categoryGroupController->store($r));
+$router->post('/settings/category-groups/{id}', fn (Request $r): mixed => $categoryGroupController->update($r));
+$router->post('/settings/category-groups/{id}/delete', fn (Request $r): mixed => $categoryGroupController->destroy($r));
 
 $dashboardController = new DashboardController();
 $router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardController->saveLayout($r));

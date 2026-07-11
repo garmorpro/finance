@@ -60,17 +60,20 @@ final class BudgetRepository
     }
 
     /**
-     * Planned amounts for a budget, joined with category display info.
-     * Only expense categories are ever budgeted, per the MVP scope.
+     * Planned amounts for a budget, joined with category display info
+     * (including type and group, so callers can split/bucket items
+     * without a second categories lookup). Covers both income and
+     * expense categories — a single budget can plan both.
      */
     public function listItemsForBudget(int $budgetId): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT bi.*, c.name AS category_name, c.color AS category_color
+            'SELECT bi.*, c.name AS category_name, c.color AS category_color,
+                    c.type AS category_type, c.group_id AS category_group_id
              FROM budget_items bi
              INNER JOIN categories c ON c.id = bi.category_id
              WHERE bi.budget_id = :budget_id
-             ORDER BY c.sort_order, c.name'
+             ORDER BY c.type, c.sort_order, c.name'
         );
 
         $stmt->execute(['budget_id' => $budgetId]);
@@ -135,27 +138,29 @@ final class BudgetRepository
     }
 
     /**
-     * Actual spending per expense category for the given month, keyed by
-     * category_id, as a positive decimal string (transactions store
-     * expenses as negative amounts). Excludes transfers, soft-deleted
-     * transactions, and anything explicitly marked exclude_from_budget —
-     * matching how the rest of the app treats those transactions. Includes
-     * every expense category with activity, not just budgeted ones, so the
-     * caller can surface unbudgeted spending.
+     * Actual activity per category of the given type for the given month,
+     * keyed by category_id, as a positive decimal string — expense
+     * transactions are stored negative and get flipped, income
+     * transactions are already positive. Excludes transfers, soft-deleted
+     * transactions, and anything explicitly marked exclude_from_budget,
+     * matching how the rest of the app treats those. Includes every
+     * category with activity, not just budgeted ones, so the caller can
+     * surface unbudgeted amounts.
      *
      * @return array<int, string>
      */
-    public function actualSpendingByCategory(int $householdId, string $monthStart, string $monthEndExclusive): array
+    public function actualByCategory(int $householdId, string $transactionType, string $monthStart, string $monthEndExclusive): array
     {
         $stmt = Connection::get()->prepare(
             'SELECT category_id, amount FROM transactions
              WHERE household_id = :household_id AND deleted_at IS NULL AND exclude_from_budget = 0
-               AND transaction_type = "expense" AND category_id IS NOT NULL
+               AND transaction_type = :transaction_type AND category_id IS NOT NULL
                AND transaction_date >= :month_start AND transaction_date < :month_end'
         );
 
         $stmt->execute([
             'household_id' => $householdId,
+            'transaction_type' => $transactionType,
             'month_start' => $monthStart,
             'month_end' => $monthEndExclusive,
         ]);
@@ -163,16 +168,17 @@ final class BudgetRepository
         $totals = [];
         foreach ($stmt->fetchAll() as $row) {
             $categoryId = (int) $row['category_id'];
-            $spent = bcmul($row['amount'], '-1', 2);
-            $totals[$categoryId] = bcadd($totals[$categoryId] ?? '0.00', $spent, 2);
+            $amount = $transactionType === 'expense' ? bcmul($row['amount'], '-1', 2) : $row['amount'];
+            $totals[$categoryId] = bcadd($totals[$categoryId] ?? '0.00', $amount, 2);
         }
 
         return $totals;
     }
 
     /**
-     * Aggregate planned/spent/remaining for a month, for callers (like the
-     * dashboard tile) that only need the totals, not the per-category
+     * Aggregate planned/spent/remaining for a month's expense budget only
+     * (income isn't part of this "remaining" framing), for callers like
+     * the dashboard tile that only need the totals, not the per-category
      * breakdown that index() builds for the full budget page.
      *
      * @return array{planned: string, spent: string, remaining: string, has_items: bool}
@@ -181,17 +187,18 @@ final class BudgetRepository
     {
         $budget = $this->findForMonth($householdId, $periodMonth);
         $items = $budget !== null ? $this->listItemsForBudget((int) $budget['id']) : [];
+        $expenseItems = array_values(array_filter($items, fn (array $i): bool => $i['category_type'] === 'expense'));
 
-        if ($items === []) {
+        if ($expenseItems === []) {
             return ['planned' => '0.00', 'spent' => '0.00', 'remaining' => '0.00', 'has_items' => false];
         }
 
         $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
-        $actualByCategory = $this->actualSpendingByCategory($householdId, $periodMonth, $monthEnd);
+        $actualByCategory = $this->actualByCategory($householdId, 'expense', $periodMonth, $monthEnd);
 
         $planned = '0.00';
         $spent = '0.00';
-        foreach ($items as $item) {
+        foreach ($expenseItems as $item) {
             $planned = bcadd($planned, $item['planned_amount'], 2);
             $spent = bcadd($spent, $actualByCategory[(int) $item['category_id']] ?? '0.00', 2);
         }

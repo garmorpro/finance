@@ -9,6 +9,7 @@ use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\BudgetRepository;
+use App\Repositories\CategoryGroupRepository;
 use App\Repositories\CategoryRepository;
 use App\Support\Csrf;
 use App\Support\View;
@@ -26,62 +27,51 @@ final class BudgetController
 
         $householdId = (int) AuthMiddleware::householdId();
         $periodMonth = $this->resolveMonth($request->query('month'));
+        $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
 
         $budgetRepo = new BudgetRepository();
         $budget = $budgetRepo->findForMonth($householdId, $periodMonth);
         $items = $budget !== null ? $budgetRepo->listItemsForBudget((int) $budget['id']) : [];
+
         $itemsByCategory = [];
         foreach ($items as $item) {
             $itemsByCategory[(int) $item['category_id']] = $item;
         }
 
-        $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
-        $actualByCategory = $budgetRepo->actualSpendingByCategory($householdId, $periodMonth, $monthEnd);
+        $actualExpenseByCategory = $budgetRepo->actualByCategory($householdId, 'expense', $periodMonth, $monthEnd);
+        $actualIncomeByCategory = $budgetRepo->actualByCategory($householdId, 'income', $periodMonth, $monthEnd);
 
-        // Includes archived categories so a category archived mid-month
-        // still resolves to its real name in the "unbudgeted spending"
-        // list below, instead of transactions tagged to it before it was
-        // archived falling back to "Unknown category".
+        // Non-archived categories only, but every category of the type
+        // shows up here (not just budgeted ones) — the budget page doubles
+        // as a full view of how income/expenses are organized into sections.
         $allCategories = (new CategoryRepository())->listForHousehold($householdId, true);
-        $expenseCategories = array_values(array_filter(
-            $allCategories,
-            fn (array $c): bool => $c['type'] === 'expense' && $c['archived_at'] === null
-        ));
+        $activeCategories = array_values(array_filter($allCategories, fn (array $c): bool => $c['archived_at'] === null));
+        $expenseCategories = array_values(array_filter($activeCategories, fn (array $c): bool => $c['type'] === 'expense'));
+        $incomeCategories = array_values(array_filter($activeCategories, fn (array $c): bool => $c['type'] === 'income'));
 
-        $totalPlanned = '0.00';
-        $totalSpent = '0.00';
-        foreach ($expenseCategories as $category) {
-            $categoryId = (int) $category['id'];
-            if (isset($itemsByCategory[$categoryId])) {
-                $totalPlanned = bcadd($totalPlanned, $itemsByCategory[$categoryId]['planned_amount'], 2);
-                $totalSpent = bcadd($totalSpent, $actualByCategory[$categoryId] ?? '0.00', 2);
-            }
-        }
+        $groupRepo = new CategoryGroupRepository();
+        $expenseGroups = $groupRepo->listForHousehold($householdId, 'expense');
+        $incomeGroups = $groupRepo->listForHousehold($householdId, 'income');
 
-        $budgetedCategoryIds = array_keys($itemsByCategory);
-        $unbudgetedSpending = [];
-        foreach ($actualByCategory as $categoryId => $amount) {
-            if (!in_array($categoryId, $budgetedCategoryIds, true) && bccomp($amount, '0.00', 2) > 0) {
-                $unbudgetedSpending[] = [
-                    'category_id' => $categoryId,
-                    'category_name' => $this->categoryName($allCategories, $categoryId),
-                    'amount' => $amount,
-                ];
-            }
-        }
+        $expenseSections = $this->buildSections($expenseCategories, $expenseGroups, $itemsByCategory, $actualExpenseByCategory);
+        $incomeSections = $this->buildSections($incomeCategories, $incomeGroups, $itemsByCategory, $actualIncomeByCategory);
+
+        $expenseTotals = $this->sectionTotals($expenseSections);
+        $incomeTotals = $this->sectionTotals($incomeSections);
 
         Response::html(View::render('budgets/index', [
             'periodMonth' => $periodMonth,
             'monthLabel' => date('F Y', strtotime($periodMonth)),
             'prevMonth' => date('Y-m', strtotime($periodMonth . ' -1 month')),
             'nextMonth' => date('Y-m', strtotime($periodMonth . ' +1 month')),
-            'expenseCategories' => $expenseCategories,
-            'itemsByCategory' => $itemsByCategory,
-            'actualByCategory' => $actualByCategory,
-            'unbudgetedSpending' => $unbudgetedSpending,
-            'totalPlanned' => $totalPlanned,
-            'totalSpent' => $totalSpent,
-            'totalRemaining' => bcsub($totalPlanned, $totalSpent, 2),
+            'expenseSections' => $expenseSections,
+            'incomeSections' => $incomeSections,
+            'totalPlannedExpense' => $expenseTotals['planned'],
+            'totalActualExpense' => $expenseTotals['actual'],
+            'totalPlannedIncome' => $incomeTotals['planned'],
+            'totalActualIncome' => $incomeTotals['actual'],
+            'plannedSurplus' => bcsub($incomeTotals['planned'], $expenseTotals['planned'], 2),
+            'actualSurplus' => bcsub($incomeTotals['actual'], $expenseTotals['actual'], 2),
             'canManage' => in_array(AuthMiddleware::role(), self::MANAGE_ROLES, true),
             'hasPreviousBudget' => $budgetRepo->findForMonth($householdId, date('Y-m-d', strtotime($periodMonth . ' -1 month'))) !== null,
             'csrfToken' => Csrf::token(),
@@ -112,8 +102,8 @@ final class BudgetController
         }
 
         $category = (new CategoryRepository())->findById($categoryId, $householdId);
-        if ($category === null || $category['type'] !== 'expense') {
-            $redirectBack('Please choose a valid expense category.');
+        if ($category === null || $category['archived_at'] !== null) {
+            $redirectBack('Please choose a valid category.');
             return;
         }
 
@@ -198,6 +188,75 @@ final class BudgetController
     }
 
     /**
+     * Buckets categories of one type into their sections (in group sort
+     * order), with an "Ungrouped" bucket last for anything with no group
+     * (or whose group was deleted/mismatched — categories.group_id is
+     * kept in sync at the DB level via ON DELETE SET NULL, so this is
+     * just a defensive fallback, not a real-world path).
+     *
+     * @param array<int, array> $itemsByCategory
+     * @param array<int, string> $actualByCategory
+     * @return list<array{group: array|null, rows: list<array>}>
+     */
+    private function buildSections(array $categories, array $groups, array $itemsByCategory, array $actualByCategory): array
+    {
+        $sections = [];
+        foreach ($groups as $group) {
+            $sections[(int) $group['id']] = ['group' => $group, 'rows' => []];
+        }
+        $sections[0] = ['group' => null, 'rows' => []];
+
+        foreach ($categories as $category) {
+            $categoryId = (int) $category['id'];
+            $groupId = $category['group_id'] !== null ? (int) $category['group_id'] : 0;
+            if (!isset($sections[$groupId])) {
+                $groupId = 0;
+            }
+
+            $planned = $itemsByCategory[$categoryId]['planned_amount'] ?? null;
+            $actual = $actualByCategory[$categoryId] ?? '0.00';
+
+            $sections[$groupId]['rows'][] = [
+                'category' => $category,
+                'planned' => $planned,
+                'actual' => $actual,
+                'remaining' => $planned !== null ? bcsub($planned, $actual, 2) : null,
+            ];
+        }
+
+        // The synthetic "Ungrouped" bucket (key 0) only shows up if it
+        // actually has categories in it; real sections stay visible even
+        // empty, so a freshly created section isn't invisible until
+        // something gets assigned to it.
+        return array_values(array_filter(
+            $sections,
+            fn (array $section, int $key): bool => $key !== 0 || $section['rows'] !== [],
+            ARRAY_FILTER_USE_BOTH
+        ));
+    }
+
+    /**
+     * @param list<array{group: array|null, rows: list<array>}> $sections
+     * @return array{planned: string, actual: string}
+     */
+    private function sectionTotals(array $sections): array
+    {
+        $planned = '0.00';
+        $actual = '0.00';
+
+        foreach ($sections as $section) {
+            foreach ($section['rows'] as $row) {
+                if ($row['planned'] !== null) {
+                    $planned = bcadd($planned, $row['planned'], 2);
+                    $actual = bcadd($actual, $row['actual'], 2);
+                }
+            }
+        }
+
+        return ['planned' => $planned, 'actual' => $actual];
+    }
+
+    /**
      * Normalizes a "YYYY-MM" query/post value to a "YYYY-MM-01" DATE
      * string, defaulting to the current month for anything missing or
      * malformed rather than trusting client-supplied dates outright.
@@ -213,16 +272,5 @@ final class BudgetController
         }
 
         return gmdate('Y-m-01');
-    }
-
-    private function categoryName(array $categories, int $categoryId): string
-    {
-        foreach ($categories as $category) {
-            if ((int) $category['id'] === $categoryId) {
-                return $category['name'];
-            }
-        }
-
-        return 'Unknown category';
     }
 }

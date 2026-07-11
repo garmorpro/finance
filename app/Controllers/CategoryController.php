@@ -8,6 +8,7 @@ use App\Http\Request;
 use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AuditLogRepository;
+use App\Repositories\CategoryGroupRepository;
 use App\Repositories\CategoryRepository;
 use App\Support\Csrf;
 use App\Support\View;
@@ -21,10 +22,13 @@ final class CategoryController
         $householdId = (int) AuthMiddleware::householdId();
         $categoryRepo = new CategoryRepository();
         $all = $categoryRepo->listForHousehold($householdId, true);
+        $groupRepo = new CategoryGroupRepository();
 
         Response::html(View::render('settings/categories', [
             'expenseCategories' => array_values(array_filter($all, fn (array $c): bool => $c['type'] === 'expense')),
             'incomeCategories' => array_values(array_filter($all, fn (array $c): bool => $c['type'] === 'income')),
+            'expenseGroups' => $groupRepo->listForHousehold($householdId, 'expense'),
+            'incomeGroups' => $groupRepo->listForHousehold($householdId, 'income'),
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,
@@ -109,7 +113,16 @@ final class CategoryController
             return;
         }
 
-        $categoryRepo->update($categoryId, $householdId, $input['name'], $input['type'], $input['color']);
+        $groupId = $input['group_id'] !== null ? (int) $input['group_id'] : null;
+        if ($groupId !== null) {
+            $group = (new CategoryGroupRepository())->findById($groupId, $householdId);
+            if ($group === null || $group['type'] !== $input['type']) {
+                $redirectBack('Please choose a valid section for this category type.');
+                return;
+            }
+        }
+
+        $categoryRepo->update($categoryId, $householdId, $input['name'], $input['type'], $input['color'], $groupId);
 
         (new AuditLogRepository())->log(
             (int) AuthMiddleware::userId(),
@@ -184,6 +197,7 @@ final class CategoryController
             'name' => trim($request->post('name')),
             'type' => $request->post('type'),
             'color' => trim($request->post('color')) !== '' ? trim($request->post('color')) : null,
+            'group_id' => $request->post('group_id') !== '' ? $request->post('group_id') : null,
         ];
     }
 

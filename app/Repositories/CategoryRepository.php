@@ -86,10 +86,10 @@ final class CategoryRepository
         return $stmt->fetchAll();
     }
 
-    public function update(int $categoryId, int $householdId, string $name, string $type, ?string $color): void
+    public function update(int $categoryId, int $householdId, string $name, string $type, ?string $color, ?int $groupId = null): void
     {
         $stmt = Connection::get()->prepare(
-            'UPDATE categories SET name = :name, type = :type, color = :color, updated_at = :updated_at
+            'UPDATE categories SET name = :name, type = :type, color = :color, group_id = :group_id, updated_at = :updated_at
              WHERE id = :id AND household_id = :household_id'
         );
 
@@ -97,6 +97,7 @@ final class CategoryRepository
             'name' => $name,
             'type' => $type,
             'color' => $color,
+            'group_id' => $groupId,
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $categoryId,
             'household_id' => $householdId,

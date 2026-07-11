@@ -2,6 +2,8 @@
 
 /** @var array $expenseCategories */
 /** @var array $incomeCategories */
+/** @var array $expenseGroups */
+/** @var array $incomeGroups */
 /** @var string $csrfToken */
 /** @var string|null $error */
 /** @var string|null $notice */
@@ -11,19 +13,27 @@ use App\Support\View;
 
 $editingId = $old['id'] ?? null;
 
-$renderCategoryRow = function (array $category) use ($csrfToken, $editingId, $old): void {
+$renderCategoryRow = function (array $category) use ($csrfToken, $editingId, $old, $expenseGroups, $incomeGroups): void {
     $isEditing = $editingId !== null && (string) $category['id'] === (string) $editingId;
     $name = $isEditing ? ($old['name'] ?? $category['name']) : $category['name'];
     $color = $isEditing ? ($old['color'] ?? $category['color']) : $category['color'];
     $isArchived = $category['archived_at'] !== null;
+    $groups = $category['type'] === 'expense' ? $expenseGroups : $incomeGroups;
+    $currentGroupId = $isEditing ? ($old['group_id'] ?? $category['group_id']) : $category['group_id'];
     ?>
     <tr class="<?= $isArchived ? 'opacity-50' : '' ?>">
         <td>
-            <form method="POST" action="/settings/categories/<?= (int) $category['id'] ?>" class="flex items-center gap-2">
+            <form method="POST" action="/settings/categories/<?= (int) $category['id'] ?>" class="flex items-center gap-2 flex-wrap">
                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                 <input type="hidden" name="type" value="<?= View::e($category['type']) ?>">
                 <input type="color" name="color" value="<?= View::e($color ?? '#e2694b') ?>" class="field-input h-8 w-10 p-0.5">
-                <input type="text" name="name" value="<?= View::e($name) ?>" class="field-input" style="max-width: 14rem;">
+                <input type="text" name="name" value="<?= View::e($name) ?>" class="field-input" style="max-width: 12rem;">
+                <select name="group_id" class="field-input" style="max-width: 10rem;">
+                    <option value="">Ungrouped</option>
+                    <?php foreach ($groups as $group): ?>
+                        <option value="<?= (int) $group['id'] ?>" <?= (string) $group['id'] === (string) $currentGroupId ? 'selected' : '' ?>><?= View::e($group['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
                 <button type="submit" class="btn-secondary">Save</button>
             </form>
         </td>
@@ -34,6 +44,22 @@ $renderCategoryRow = function (array $category) use ($csrfToken, $editingId, $ol
             </form>
         </td>
     </tr>
+    <?php
+};
+
+$renderGroupRow = function (array $group) use ($csrfToken): void {
+    ?>
+    <div class="flex items-center gap-2 py-1.5">
+        <form method="POST" action="/settings/category-groups/<?= (int) $group['id'] ?>" class="flex items-center gap-2 flex-1">
+            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+            <input type="text" name="name" value="<?= View::e($group['name']) ?>" class="field-input">
+            <button type="submit" class="btn-secondary">Save</button>
+        </form>
+        <form method="POST" action="/settings/category-groups/<?= (int) $group['id'] ?>/delete" onsubmit="return confirm('Delete the \'<?= View::e($group['name']) ?>\' section? Its categories become ungrouped.');">
+            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+            <button type="submit" class="btn-secondary">Delete</button>
+        </form>
+    </div>
     <?php
 };
 
@@ -54,7 +80,7 @@ $renderCategoryRow = function (array $category) use ($csrfToken, $editingId, $ol
             <main class="page-main">
                 <div>
                     <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Categories</h1>
-                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Manage the categories used for transactions.</p>
+                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Manage the categories used for transactions, and the sections that organize them on the Budgets page.</p>
                 </div>
 
                 <?php if (!empty($error)): ?>
@@ -85,6 +111,40 @@ $renderCategoryRow = function (array $category) use ($csrfToken, $editingId, $ol
                         </div>
                         <button type="submit" class="btn-primary">Add</button>
                     </form>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="card">
+                        <h2 class="font-medium text-stone-900 dark:text-white mb-1">Expense sections</h2>
+                        <p class="text-sm text-stone-500 dark:text-stone-400 mb-3">Group expense categories on the Budgets page.</p>
+                        <div class="divide-y divide-stone-100 dark:divide-stone-800 mb-3">
+                            <?php foreach ($expenseGroups as $group): ?>
+                                <?php $renderGroupRow($group); ?>
+                            <?php endforeach; ?>
+                        </div>
+                        <form method="POST" action="/settings/category-groups" class="flex items-center gap-2">
+                            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                            <input type="hidden" name="type" value="expense">
+                            <input type="text" name="name" placeholder="New section name" required class="field-input flex-1">
+                            <button type="submit" class="btn-secondary">Add section</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="font-medium text-stone-900 dark:text-white mb-1">Income sections</h2>
+                        <p class="text-sm text-stone-500 dark:text-stone-400 mb-3">Group income categories on the Budgets page.</p>
+                        <div class="divide-y divide-stone-100 dark:divide-stone-800 mb-3">
+                            <?php foreach ($incomeGroups as $group): ?>
+                                <?php $renderGroupRow($group); ?>
+                            <?php endforeach; ?>
+                        </div>
+                        <form method="POST" action="/settings/category-groups" class="flex items-center gap-2">
+                            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                            <input type="hidden" name="type" value="income">
+                            <input type="text" name="name" placeholder="New section name" required class="field-input flex-1">
+                            <button type="submit" class="btn-secondary">Add section</button>
+                        </form>
+                    </div>
                 </div>
 
                 <div class="card">
