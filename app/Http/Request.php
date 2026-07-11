@@ -37,6 +37,20 @@ final class Request
     }
 
     /**
+     * @return array{name: string, type: string, tmp_name: string, error: int, size: int}|null
+     */
+    public function file(string $key): ?array
+    {
+        $file = $_FILES[$key] ?? null;
+
+        if (!is_array($file) || !isset($file['tmp_name'], $file['error'])) {
+            return null;
+        }
+
+        return $file;
+    }
+
+    /**
      * @param array<string, string> $params
      */
     public function setParams(array $params): void

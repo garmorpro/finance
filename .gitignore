@@ -12,6 +12,8 @@
 !/storage/logs/.gitkeep
 /storage/attachments/*
 !/storage/attachments/.gitkeep
+/storage/imports/*
+!/storage/imports/.gitkeep
 
 # IDE / OS
 .DS_Store

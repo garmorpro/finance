@@ -7,6 +7,7 @@ use App\Controllers\AuthController;
 use App\Controllers\CategoryController;
 use App\Controllers\DashboardController;
 use App\Controllers\HouseholdController;
+use App\Controllers\ImportController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
 use App\Controllers\TransactionController;
@@ -72,6 +73,7 @@ $router->post('/accounts/{id}/restore', fn (Request $r): mixed => $accountContro
 
 $transactionController = new TransactionController();
 $router->get('/transactions', fn (Request $r): mixed => $transactionController->index($r));
+$router->get('/transactions/export', fn (Request $r): mixed => $transactionController->export($r));
 $router->get('/transactions/create', fn (): mixed => $transactionController->showCreateForm());
 $router->post('/transactions', fn (Request $r): mixed => $transactionController->store($r));
 $router->get('/transactions/transfer', fn (): mixed => $transactionController->showTransferForm());
@@ -79,6 +81,11 @@ $router->post('/transactions/transfer', fn (Request $r): mixed => $transactionCo
 $router->get('/transactions/{id}/edit', fn (Request $r): mixed => $transactionController->showEditForm($r));
 $router->post('/transactions/{id}', fn (Request $r): mixed => $transactionController->update($r));
 $router->post('/transactions/{id}/delete', fn (Request $r): mixed => $transactionController->destroy($r));
+
+$importController = new ImportController();
+$router->get('/transactions/import', fn (): mixed => $importController->showUploadForm());
+$router->post('/transactions/import', fn (Request $r): mixed => $importController->upload($r));
+$router->post('/transactions/import/confirm', fn (Request $r): mixed => $importController->confirm($r));
 
 $categoryController = new CategoryController();
 $router->get('/settings/categories', fn (): mixed => $categoryController->index());

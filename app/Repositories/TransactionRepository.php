@@ -83,6 +83,34 @@ final class TransactionRepository
     }
 
     /**
+     * Heuristic duplicate check for CSV import: same account, date, amount,
+     * and payee already exists. Not foolproof (a household could
+     * legitimately buy coffee at the same place twice in one day for the
+     * same price), but catches the overwhelmingly common case of
+     * re-importing an overlapping date range from a bank export.
+     */
+    public function existsSimilar(int $householdId, int $accountId, string $date, string $signedAmount, string $payee): bool
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT 1 FROM transactions
+             WHERE household_id = :household_id AND account_id = :account_id
+               AND transaction_date = :date AND amount = :amount AND payee = :payee
+               AND deleted_at IS NULL
+             LIMIT 1'
+        );
+
+        $stmt->execute([
+            'household_id' => $householdId,
+            'account_id' => $accountId,
+            'date' => $date,
+            'amount' => $signedAmount,
+            'payee' => $payee,
+        ]);
+
+        return $stmt->fetchColumn() !== false;
+    }
+
+    /**
      * @param array<string, mixed> $data
      */
     public function update(int $transactionId, int $householdId, int $userId, array $data): void
@@ -194,6 +222,31 @@ final class TransactionRepository
             'page' => $page,
             'perPage' => self::PER_PAGE,
         ];
+    }
+
+    /**
+     * Unpaginated variant for CSV export — same filters as the list view,
+     * but every matching row, capped at a hard ceiling so an export can't
+     * be used to pull an unbounded result set.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function exportForHousehold(int $householdId, array $filters): array
+    {
+        [$where, $params] = $this->buildWhere($householdId, $filters);
+
+        $sql = "SELECT t.*, a.name AS account_name, c.name AS category_name
+                FROM transactions t
+                INNER JOIN accounts a ON a.id = t.account_id
+                LEFT JOIN categories c ON c.id = t.category_id
+                {$where}
+                ORDER BY t.transaction_date DESC, t.id DESC
+                LIMIT 20000";
+
+        $stmt = Connection::get()->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
     }
 
     public function recentForHousehold(int $householdId, int $limit = 5): array

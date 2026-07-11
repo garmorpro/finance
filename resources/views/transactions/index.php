@@ -36,6 +36,8 @@ $totalPages = max(1, (int) ceil($total / $perPage));
                         <p class="text-sm text-stone-500 dark:text-stone-400 mt-1"><?= $total ?> total</p>
                     </div>
                     <div class="flex gap-3">
+                        <a href="/transactions/export<?= $filters !== [] ? '?' . http_build_query($filters) : '' ?>" class="btn-secondary">Export</a>
+                        <a href="/transactions/import" class="btn-secondary">Import</a>
                         <a href="/transactions/transfer" class="btn-secondary">Transfer</a>
                         <a href="/transactions/create" class="btn-primary">Add transaction</a>
                     </div>

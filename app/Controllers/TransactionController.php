@@ -55,6 +55,46 @@ final class TransactionController
         unset($_SESSION['_flash_notice']);
     }
 
+    public function export(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $householdId = (int) AuthMiddleware::householdId();
+
+        $filters = [
+            'account_id' => $request->query('account_id'),
+            'category_id' => $request->query('category_id'),
+            'type' => $request->query('type'),
+            'date_from' => $request->query('date_from'),
+            'date_to' => $request->query('date_to'),
+            'reviewed' => $request->query('reviewed'),
+            'search' => $request->query('search'),
+        ];
+
+        $rows = (new TransactionRepository())->exportForHousehold($householdId, $filters);
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="transactions-' . gmdate('Y-m-d') . '.csv"');
+
+        $out = fopen('php://output', 'w');
+        fputcsv($out, ['Date', 'Payee', 'Category', 'Account', 'Type', 'Amount', 'Reviewed', 'Notes']);
+
+        foreach ($rows as $row) {
+            fputcsv($out, [
+                $row['transaction_date'],
+                $row['payee'],
+                $row['category_name'] ?? '',
+                $row['account_name'],
+                $row['transaction_type'],
+                $row['amount'],
+                (int) $row['is_reviewed'] === 1 ? 'yes' : 'no',
+                $row['notes'] ?? '',
+            ]);
+        }
+
+        fclose($out);
+    }
+
     public function showCreateForm(): void
     {
         AuthMiddleware::requireAuth();
