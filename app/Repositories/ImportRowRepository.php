@@ -17,14 +17,14 @@ final class ImportRowRepository
         ?string $message
     ): void {
         $stmt = Connection::get()->prepare(
-            'INSERT INTO import_rows (import_id, transaction_id, row_number, raw_data, status, message, created_at)
-             VALUES (:import_id, :transaction_id, :row_number, :raw_data, :status, :message, :created_at)'
+            'INSERT INTO import_rows (import_id, transaction_id, row_index, raw_data, status, message, created_at)
+             VALUES (:import_id, :transaction_id, :row_index, :raw_data, :status, :message, :created_at)'
         );
 
         $stmt->execute([
             'import_id' => $importId,
             'transaction_id' => $transactionId,
-            'row_number' => $rowNumber,
+            'row_index' => $rowNumber,
             'raw_data' => $rawData,
             'status' => $status,
             'message' => $message,
@@ -35,7 +35,7 @@ final class ImportRowRepository
     public function listRejectedForImport(int $importId): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT * FROM import_rows WHERE import_id = :import_id AND status = "rejected" ORDER BY row_number'
+            'SELECT * FROM import_rows WHERE import_id = :import_id AND status = "rejected" ORDER BY row_index'
         );
 
         $stmt->execute(['import_id' => $importId]);

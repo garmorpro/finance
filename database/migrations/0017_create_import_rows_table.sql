@@ -2,7 +2,7 @@ CREATE TABLE import_rows (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     import_id BIGINT UNSIGNED NOT NULL,
     transaction_id BIGINT UNSIGNED NULL,
-    row_number INT UNSIGNED NOT NULL,
+    row_index INT UNSIGNED NOT NULL,
     raw_data TEXT NOT NULL,
     status ENUM('imported', 'skipped', 'rejected') NOT NULL,
     message VARCHAR(255) NULL,
