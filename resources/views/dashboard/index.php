@@ -6,6 +6,7 @@
 /** @var array|null $netWorth */
 /** @var array $accounts */
 /** @var array $recentTransactions */
+/** @var array{total: int, before_today: int} $reviewCounts */
 /** @var list<string> $widgetOrder */
 /** @var list<string> $hiddenWidgets */
 /** @var string $csrfToken */
@@ -44,6 +45,7 @@ use App\Support\View;
                                     'netWorth' => $netWorth,
                                     'accounts' => $accounts,
                                     'recentTransactions' => $recentTransactions,
+                                    'reviewCounts' => $reviewCounts,
                                 ]); ?>
                             <?php else: ?>
                                 <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>

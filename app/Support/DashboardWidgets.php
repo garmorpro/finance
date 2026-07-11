@@ -17,6 +17,7 @@ final class DashboardWidgets
         'spending' => ['title' => 'Spending', 'available' => false],
         'budget' => ['title' => 'Budget', 'available' => false],
         'transactions' => ['title' => 'Recent Transactions', 'available' => true],
+        'review' => ['title' => 'Needs Review', 'available' => true],
         'recurring' => ['title' => 'Recurring Bills', 'available' => false],
         'goals' => ['title' => 'Goals', 'available' => false],
         'investments' => ['title' => 'Investments', 'available' => false],
@@ -25,7 +26,7 @@ final class DashboardWidgets
     /** @var list<string> */
     private const DEFAULT_ORDER = [
         'net_worth', 'accounts', 'spending', 'budget',
-        'transactions', 'recurring', 'goals', 'investments',
+        'transactions', 'review', 'recurring', 'goals', 'investments',
     ];
 
     public static function title(string $key): string

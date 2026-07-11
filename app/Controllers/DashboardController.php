@@ -30,7 +30,9 @@ final class DashboardController
         $accountRepo = new AccountRepository();
         $netWorth = $householdId !== null ? $accountRepo->netWorthSummary($householdId) : null;
         $accounts = $householdId !== null ? $accountRepo->listForHousehold($householdId) : [];
-        $recentTransactions = $householdId !== null ? (new TransactionRepository())->recentForHousehold($householdId, 5) : [];
+        $transactionRepo = new TransactionRepository();
+        $recentTransactions = $householdId !== null ? $transactionRepo->recentForHousehold($householdId, 5) : [];
+        $reviewCounts = $householdId !== null ? $transactionRepo->unreviewedCounts($householdId) : ['total' => 0, 'before_today' => 0];
 
         $layout = $userRepo->getDashboardLayout($userId);
         $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
@@ -43,6 +45,7 @@ final class DashboardController
             'netWorth' => $netWorth,
             'accounts' => $accounts,
             'recentTransactions' => $recentTransactions,
+            'reviewCounts' => $reviewCounts,
             'widgetOrder' => $widgetOrder,
             'hiddenWidgets' => $hiddenWidgets,
             'csrfToken' => Csrf::token(),

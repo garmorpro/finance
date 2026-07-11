@@ -267,6 +267,90 @@ final class TransactionRepository
     }
 
     /**
+     * Every unreviewed transaction for the household, most recent first —
+     * the review queue. Capped so a household that never reviews anything
+     * can't load an unbounded result set; unreviewedCounts() reports the
+     * true total so the UI can note when the cap was hit.
+     */
+    public function unreviewedForHousehold(int $householdId, int $limit = 500): array
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT t.*, a.name AS account_name, c.name AS category_name
+             FROM transactions t
+             INNER JOIN accounts a ON a.id = t.account_id
+             LEFT JOIN categories c ON c.id = t.category_id
+             WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.is_reviewed = 0
+             ORDER BY t.transaction_date DESC, t.id DESC
+             LIMIT ' . max(1, $limit)
+        );
+
+        $stmt->execute(['household_id' => $householdId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * @return array{total: int, before_today: int}
+     */
+    public function unreviewedCounts(int $householdId): array
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN transaction_date < :today THEN 1 ELSE 0 END) AS before_today
+             FROM transactions
+             WHERE household_id = :household_id AND deleted_at IS NULL AND is_reviewed = 0'
+        );
+
+        $stmt->execute(['household_id' => $householdId, 'today' => gmdate('Y-m-d')]);
+
+        $row = $stmt->fetch();
+
+        return [
+            'total' => (int) ($row['total'] ?? 0),
+            'before_today' => (int) ($row['before_today'] ?? 0),
+        ];
+    }
+
+    public function markReviewed(int $transactionId, int $householdId, int $userId): bool
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE transactions SET is_reviewed = 1, last_edited_by_user_id = :user_id, updated_at = :updated_at
+             WHERE id = :id AND household_id = :household_id AND deleted_at IS NULL'
+        );
+
+        $stmt->execute([
+            'user_id' => $userId,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $transactionId,
+            'household_id' => $householdId,
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Marks every currently-unreviewed transaction in the household as
+     * reviewed in one statement. Returns the number of rows affected so
+     * the caller can report it back to the user.
+     */
+    public function markAllReviewed(int $householdId, int $userId): int
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE transactions SET is_reviewed = 1, last_edited_by_user_id = :user_id, updated_at = :updated_at
+             WHERE household_id = :household_id AND deleted_at IS NULL AND is_reviewed = 0'
+        );
+
+        $stmt->execute([
+            'user_id' => $userId,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'household_id' => $householdId,
+        ]);
+
+        return $stmt->rowCount();
+    }
+
+    /**
      * @param array<string, mixed> $filters
      * @return array{0: string, 1: array<string, mixed>}
      */

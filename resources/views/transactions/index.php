@@ -7,6 +7,7 @@
 /** @var array $accounts */
 /** @var array $categories */
 /** @var array $filters */
+/** @var int $unreviewedCount */
 /** @var string $csrfToken */
 /** @var string|null $notice */
 
@@ -36,6 +37,12 @@ $totalPages = max(1, (int) ceil($total / $perPage));
                         <p class="text-sm text-stone-500 dark:text-stone-400 mt-1"><?= $total ?> total</p>
                     </div>
                     <div class="flex gap-3">
+                        <a href="/transactions/review" class="btn-secondary">
+                            Review
+                            <?php if ($unreviewedCount > 0): ?>
+                                <span class="badge-owner"><?= $unreviewedCount ?></span>
+                            <?php endif; ?>
+                        </a>
                         <a href="/transactions/export<?= $filters !== [] ? '?' . http_build_query($filters) : '' ?>" class="btn-secondary">Export</a>
                         <a href="/transactions/import" class="btn-secondary">Import</a>
                         <a href="/transactions/transfer" class="btn-secondary">Transfer</a>

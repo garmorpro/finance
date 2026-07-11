@@ -37,7 +37,8 @@ final class TransactionController
 
         $page = max(1, (int) $request->query('page', '1'));
 
-        $result = (new TransactionRepository())->listForHousehold($householdId, $filters, $page);
+        $transactionRepo = new TransactionRepository();
+        $result = $transactionRepo->listForHousehold($householdId, $filters, $page);
         $accountRepo = new AccountRepository();
 
         Response::html(View::render('transactions/index', [
@@ -48,11 +49,83 @@ final class TransactionController
             'accounts' => $accountRepo->listForHousehold($householdId, true),
             'categories' => (new CategoryRepository())->listForHousehold($householdId),
             'filters' => $filters,
+            'unreviewedCount' => $transactionRepo->unreviewedCounts($householdId)['total'],
             'csrfToken' => Csrf::token(),
             'notice' => $_SESSION['_flash_notice'] ?? null,
         ]));
 
         unset($_SESSION['_flash_notice']);
+    }
+
+    /**
+     * The daily review queue: every unreviewed transaction, grouped by
+     * date, so nothing from a missed day quietly falls off the bottom of
+     * the regular transactions list.
+     */
+    public function review(): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $householdId = (int) AuthMiddleware::householdId();
+        $transactionRepo = new TransactionRepository();
+
+        $transactions = $transactionRepo->unreviewedForHousehold($householdId);
+        $counts = $transactionRepo->unreviewedCounts($householdId);
+
+        $groups = [];
+        foreach ($transactions as $transaction) {
+            $groups[$transaction['transaction_date']][] = $transaction;
+        }
+
+        Response::html(View::render('transactions/review', [
+            'groups' => $groups,
+            'loadedCount' => count($transactions),
+            'counts' => $counts,
+            'csrfToken' => Csrf::token(),
+            'notice' => $_SESSION['_flash_notice'] ?? null,
+        ]));
+
+        unset($_SESSION['_flash_notice']);
+    }
+
+    public function markReviewed(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $transactionId = (int) $request->param('id');
+        $householdId = (int) AuthMiddleware::householdId();
+        $userId = (int) AuthMiddleware::userId();
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
+            header('Location: /transactions/review');
+            return;
+        }
+
+        (new TransactionRepository())->markReviewed($transactionId, $householdId, $userId);
+
+        header('Location: /transactions/review');
+    }
+
+    public function markAllReviewed(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $householdId = (int) AuthMiddleware::householdId();
+        $userId = (int) AuthMiddleware::userId();
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
+            header('Location: /transactions/review');
+            return;
+        }
+
+        $count = (new TransactionRepository())->markAllReviewed($householdId, $userId);
+
+        $_SESSION['_flash_notice'] = $count > 0
+            ? 'Marked ' . $count . ' transaction' . ($count === 1 ? '' : 's') . ' as reviewed.'
+            : 'Nothing to review.';
+        header('Location: /transactions/review');
     }
 
     public function export(Request $request): void
