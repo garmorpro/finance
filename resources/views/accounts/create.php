@@ -17,10 +17,12 @@ use App\Support\View;
     <title>Add account · Finance</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
-<body class="page-shell">
-    <?php View::partial('partials/nav', ['csrfToken' => $csrfToken, 'active' => 'accounts']); ?>
+<body>
+    <div class="app-shell">
+        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'accounts']); ?>
 
-    <main class="page-main">
+        <div class="app-content">
+        <main class="page-main">
         <div>
             <a href="/accounts" class="text-sm text-slate-500 dark:text-slate-400 hover:underline">&larr; Accounts</a>
             <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white mt-1">Add account</h1>
@@ -111,6 +113,8 @@ use App\Support\View;
                 <a href="/accounts" class="btn-secondary">Cancel</a>
             </div>
         </form>
-    </main>
+        </main>
+        </div>
+    </div>
 </body>
 </html>

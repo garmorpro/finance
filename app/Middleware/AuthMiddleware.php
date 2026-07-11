@@ -34,6 +34,22 @@ final class AuthMiddleware
         return isset($_SESSION['role']) ? (string) $_SESSION['role'] : null;
     }
 
+    public static function userName(): string
+    {
+        return isset($_SESSION['user_name']) ? (string) $_SESSION['user_name'] : '';
+    }
+
+    public static function userEmail(): string
+    {
+        return isset($_SESSION['user_email']) ? (string) $_SESSION['user_email'] : '';
+    }
+
+    public static function setUserIdentity(string $name, string $email): void
+    {
+        $_SESSION['user_name'] = $name;
+        $_SESSION['user_email'] = $email;
+    }
+
     /**
      * @param string[] $roles
      */

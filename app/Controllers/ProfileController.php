@@ -68,6 +68,7 @@ final class ProfileController
         }
 
         $userRepo->updateProfile($userId, $name, $email);
+        AuthMiddleware::setUserIdentity($name, $email);
 
         (new AuditLogRepository())->log(
             $userId,

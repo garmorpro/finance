@@ -220,6 +220,7 @@ final class HouseholdController
         $_SESSION['user_id'] = $userId;
         $_SESSION['household_id'] = (int) $invitation['household_id'];
         $_SESSION['role'] = $invitation['role'];
+        AuthMiddleware::setUserIdentity($name, $invitation['email']);
 
         header('Location: /');
     }

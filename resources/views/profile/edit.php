@@ -16,10 +16,12 @@ use App\Support\View;
     <title>Profile · Finance</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
-<body class="page-shell">
-    <?php View::partial('partials/nav', ['csrfToken' => $csrfToken, 'active' => 'profile']); ?>
+<body>
+    <div class="app-shell">
+        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'profile']); ?>
 
-    <main class="page-main">
+        <div class="app-content">
+        <main class="page-main">
         <div>
             <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Profile</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your account details and password.</p>
@@ -68,6 +70,8 @@ use App\Support\View;
                 <button type="submit" class="btn-primary">Update password</button>
             </form>
         </div>
-    </main>
+        </main>
+        </div>
+    </div>
 </body>
 </html>

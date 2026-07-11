@@ -19,10 +19,12 @@ use App\Support\View;
     <title>Household · Finance</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
-<body class="page-shell">
-    <?php View::partial('partials/nav', ['csrfToken' => $csrfToken, 'active' => 'household']); ?>
+<body>
+    <div class="app-shell">
+        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'household']); ?>
 
-    <main class="page-main">
+        <div class="app-content">
+        <main class="page-main">
         <div>
             <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white"><?= View::e($household['name'] ?? 'Household') ?></h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Members and pending invitations for your household.</p>
@@ -94,6 +96,8 @@ use App\Support\View;
                 </form>
             </div>
         <?php endif; ?>
-    </main>
+        </main>
+        </div>
+    </div>
 </body>
 </html>

@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Http\Request;
 use App\Http\Response;
+use App\Middleware\AuthMiddleware;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\HouseholdRepository;
 use App\Repositories\UserRepository;
@@ -66,6 +67,7 @@ final class AuthController
 
         session_regenerate_id(true);
         $_SESSION['user_id'] = (int) $user['id'];
+        AuthMiddleware::setUserIdentity($user['name'], $user['email']);
 
         $membership = $householdRepo->findMembership((int) $user['id']);
         if ($membership !== null) {

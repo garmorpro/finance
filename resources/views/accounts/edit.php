@@ -20,10 +20,12 @@ use App\Support\View;
     <title><?= View::e($account['name']) ?> · Finance</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
-<body class="page-shell">
-    <?php View::partial('partials/nav', ['csrfToken' => $csrfToken, 'active' => 'accounts']); ?>
+<body>
+    <div class="app-shell">
+        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'accounts']); ?>
 
-    <main class="page-main">
+        <div class="app-content">
+        <main class="page-main">
         <div class="flex items-center justify-between">
             <div>
                 <a href="/accounts" class="text-sm text-slate-500 dark:text-slate-400 hover:underline">&larr; Accounts</a>
@@ -171,6 +173,8 @@ use App\Support\View;
                 </button>
             </form>
         </div>
-    </main>
+        </main>
+        </div>
+    </div>
 </body>
 </html>

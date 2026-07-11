@@ -17,10 +17,12 @@ use App\Support\View;
     <title>Accounts · Finance</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
-<body class="page-shell">
-    <?php View::partial('partials/nav', ['csrfToken' => $csrfToken, 'active' => 'accounts']); ?>
+<body>
+    <div class="app-shell">
+        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'accounts']); ?>
 
-    <main class="page-main">
+        <div class="app-content">
+        <main class="page-main">
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Accounts</h1>
@@ -68,6 +70,8 @@ use App\Support\View;
                 </table>
             </div>
         <?php endif; ?>
-    </main>
+        </main>
+        </div>
+    </div>
 </body>
 </html>

@@ -29,6 +29,47 @@
     @apply max-w-6xl mx-auto px-6 py-10 space-y-6;
   }
 
+  /* Fixed sidebar layout — sidebar stays put; only .app-content scrolls. */
+  .app-shell {
+    @apply min-h-screen;
+  }
+
+  .sidebar {
+    @apply fixed inset-y-0 left-0 z-20 w-60 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900;
+  }
+
+  .sidebar-brand {
+    @apply px-5 py-5 font-semibold text-lg tracking-tight text-slate-900 dark:text-white;
+  }
+
+  .sidebar-nav {
+    @apply flex-1 px-3 space-y-1 overflow-y-auto;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors;
+  }
+
+  .sidebar-link-active {
+    @apply sidebar-link bg-blue-50 text-blue-700 hover:bg-blue-50 hover:text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-950/50 dark:hover:text-blue-300;
+  }
+
+  .sidebar-link-disabled {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 dark:text-slate-700 cursor-default;
+  }
+
+  .sidebar-footer {
+    @apply border-t border-slate-200 dark:border-slate-800 p-3 space-y-2;
+  }
+
+  .sidebar-user {
+    @apply px-2 text-sm;
+  }
+
+  .app-content {
+    @apply ml-60;
+  }
+
   .dashboard-grid {
     @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start;
   }
