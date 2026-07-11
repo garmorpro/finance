@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Controllers\AuthController;
 use App\Database\Connection;
 use App\Http\Request;
 use App\Http\Response;
@@ -18,7 +19,21 @@ date_default_timezone_set($appConfig['timezone']);
 
 ErrorHandler::register($appConfig['debug']);
 
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'httponly' => true,
+    'secure' => str_starts_with($appConfig['url'], 'https://'),
+    'samesite' => 'Lax',
+]);
+session_start();
+
 $router = new Router();
+
+$authController = new AuthController();
+$router->get('/login', fn (): mixed => $authController->showLogin());
+$router->post('/login', fn (Request $r): mixed => $authController->login($r));
+$router->post('/logout', fn (Request $r): mixed => $authController->logout($r));
 
 $router->get('/', function () use ($appConfig): void {
     $name = htmlspecialchars($appConfig['name'], ENT_QUOTES);

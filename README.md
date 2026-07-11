@@ -1,10 +1,18 @@
-# Hearth
+# Finance
 
-A self-hosted, manual-entry personal finance dashboard built for household use. Hearth tracks accounts, transactions, budgets, bills, goals, debt, and net worth — all entered manually, with no bank connections of any kind. See [CLAUDE.md](CLAUDE.md) for the full manual-only data policy and product requirements.
+A self-hosted, manual-entry personal finance dashboard built for household use. Finance tracks accounts, transactions, budgets, bills, goals, debt, and net worth — all entered manually, with no bank connections of any kind. See [CLAUDE.md](CLAUDE.md) for the full manual-only data policy and product requirements.
 
 ## Status
 
-Phase 1 (Project Foundation) complete: environment config, database connection, migration runner, base routing, error handling, and logging. No user-facing features yet — auth is Phase 2. Following the phased roadmap in `CLAUDE.md`.
+Phase 2a (Authentication core) complete: login/logout, secure sessions, CSRF protection, login rate limiting, and audit logging. Registration is invite-only — there is no public sign-up route. Household invitations, password reset, and roles/permissions enforcement are still to come. Following the phased roadmap in `CLAUDE.md`.
+
+## First-time setup
+
+After running migrations, create the first Owner account and household from the command line (there is no public registration form):
+
+```
+php bin/create-owner.php
+```
 
 ## Tech stack
 
