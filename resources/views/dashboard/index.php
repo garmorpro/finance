@@ -7,6 +7,7 @@
 /** @var array $accounts */
 /** @var array $recentTransactions */
 /** @var array{total: int, before_today: int} $reviewCounts */
+/** @var array{planned: string, spent: string, remaining: string, has_items: bool} $budgetSummary */
 /** @var list<string> $widgetOrder */
 /** @var list<string> $hiddenWidgets */
 /** @var string $csrfToken */
@@ -46,6 +47,7 @@ use App\Support\View;
                                     'accounts' => $accounts,
                                     'recentTransactions' => $recentTransactions,
                                     'reviewCounts' => $reviewCounts,
+                                    'budgetSummary' => $budgetSummary,
                                 ]); ?>
                             <?php else: ?>
                                 <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Controllers\AccountController;
 use App\Controllers\AuthController;
+use App\Controllers\BudgetController;
 use App\Controllers\CategoryController;
 use App\Controllers\DashboardController;
 use App\Controllers\HouseholdController;
@@ -89,6 +90,11 @@ $importController = new ImportController();
 $router->get('/transactions/import', fn (): mixed => $importController->showUploadForm());
 $router->post('/transactions/import', fn (Request $r): mixed => $importController->upload($r));
 $router->post('/transactions/import/confirm', fn (Request $r): mixed => $importController->confirm($r));
+
+$budgetController = new BudgetController();
+$router->get('/budgets', fn (Request $r): mixed => $budgetController->index($r));
+$router->post('/budgets/items', fn (Request $r): mixed => $budgetController->saveItem($r));
+$router->post('/budgets/copy-previous', fn (Request $r): mixed => $budgetController->copyPrevious($r));
 
 $categoryController = new CategoryController();
 $router->get('/settings/categories', fn (): mixed => $categoryController->index());

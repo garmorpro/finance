@@ -15,7 +15,7 @@ final class DashboardWidgets
         'net_worth' => ['title' => 'Net Worth', 'available' => true],
         'accounts' => ['title' => 'Accounts', 'available' => true],
         'spending' => ['title' => 'Spending', 'available' => false],
-        'budget' => ['title' => 'Budget', 'available' => false],
+        'budget' => ['title' => 'Budget', 'available' => true],
         'transactions' => ['title' => 'Recent Transactions', 'available' => true],
         'review' => ['title' => 'Needs Review', 'available' => true],
         'recurring' => ['title' => 'Recurring Bills', 'available' => false],

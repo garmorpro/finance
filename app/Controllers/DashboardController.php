@@ -8,6 +8,7 @@ use App\Http\Request;
 use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AccountRepository;
+use App\Repositories\BudgetRepository;
 use App\Repositories\HouseholdRepository;
 use App\Repositories\TransactionRepository;
 use App\Repositories\UserRepository;
@@ -33,6 +34,7 @@ final class DashboardController
         $transactionRepo = new TransactionRepository();
         $recentTransactions = $householdId !== null ? $transactionRepo->recentForHousehold($householdId, 5) : [];
         $reviewCounts = $householdId !== null ? $transactionRepo->unreviewedCounts($householdId) : ['total' => 0, 'before_today' => 0];
+        $budgetSummary = $householdId !== null ? (new BudgetRepository())->monthSummary($householdId, gmdate('Y-m-01')) : ['planned' => '0.00', 'spent' => '0.00', 'remaining' => '0.00', 'has_items' => false];
 
         $layout = $userRepo->getDashboardLayout($userId);
         $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
@@ -46,6 +48,7 @@ final class DashboardController
             'accounts' => $accounts,
             'recentTransactions' => $recentTransactions,
             'reviewCounts' => $reviewCounts,
+            'budgetSummary' => $budgetSummary,
             'widgetOrder' => $widgetOrder,
             'hiddenWidgets' => $hiddenWidgets,
             'csrfToken' => Csrf::token(),
