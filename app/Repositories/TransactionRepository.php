@@ -69,6 +69,27 @@ final class TransactionRepository
         ]);
     }
 
+    /**
+     * Links a transaction to the recurring item it was generated from,
+     * mirroring how linkTransferPair() sets transfer_pair_id after the
+     * fact — the transaction must already exist since this is always the
+     * second step of a create-then-link sequence.
+     */
+    public function linkRecurringItem(int $transactionId, int $householdId, int $recurringItemId): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE transactions SET recurring_item_id = :recurring_item_id, updated_at = :updated_at
+             WHERE id = :id AND household_id = :household_id'
+        );
+
+        $stmt->execute([
+            'recurring_item_id' => $recurringItemId,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $transactionId,
+            'household_id' => $householdId,
+        ]);
+    }
+
     public function findById(int $transactionId, int $householdId): ?array
     {
         $stmt = Connection::get()->prepare(
@@ -245,6 +266,22 @@ final class TransactionRepository
 
         $stmt = Connection::get()->prepare($sql);
         $stmt->execute($params);
+
+        return $stmt->fetchAll();
+    }
+
+    public function listForRecurringItem(int $recurringItemId, int $householdId, int $limit = 10): array
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT t.*, a.name AS account_name
+             FROM transactions t
+             INNER JOIN accounts a ON a.id = t.account_id
+             WHERE t.recurring_item_id = :recurring_item_id AND t.household_id = :household_id AND t.deleted_at IS NULL
+             ORDER BY t.transaction_date DESC, t.id DESC
+             LIMIT ' . max(1, $limit)
+        );
+
+        $stmt->execute(['recurring_item_id' => $recurringItemId, 'household_id' => $householdId]);
 
         return $stmt->fetchAll();
     }

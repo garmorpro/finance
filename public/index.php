@@ -12,6 +12,7 @@ use App\Controllers\HouseholdController;
 use App\Controllers\ImportController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
+use App\Controllers\RecurringController;
 use App\Controllers\TransactionController;
 use App\Database\Connection;
 use App\Http\Request;
@@ -96,6 +97,17 @@ $budgetController = new BudgetController();
 $router->get('/budgets', fn (Request $r): mixed => $budgetController->index($r));
 $router->post('/budgets/items', fn (Request $r): mixed => $budgetController->saveItem($r));
 $router->post('/budgets/copy-previous', fn (Request $r): mixed => $budgetController->copyPrevious($r));
+
+$recurringController = new RecurringController();
+$router->get('/recurring', fn (): mixed => $recurringController->index());
+$router->get('/recurring/create', fn (): mixed => $recurringController->showCreateForm());
+$router->post('/recurring', fn (Request $r): mixed => $recurringController->store($r));
+$router->get('/recurring/{id}/edit', fn (Request $r): mixed => $recurringController->showEditForm($r));
+$router->post('/recurring/{id}', fn (Request $r): mixed => $recurringController->update($r));
+$router->get('/recurring/{id}/pay', fn (Request $r): mixed => $recurringController->showMarkPaidForm($r));
+$router->post('/recurring/{id}/pay', fn (Request $r): mixed => $recurringController->markPaid($r));
+$router->post('/recurring/{id}/cancel', fn (Request $r): mixed => $recurringController->cancel($r));
+$router->post('/recurring/{id}/reactivate', fn (Request $r): mixed => $recurringController->reactivate($r));
 
 $categoryController = new CategoryController();
 $router->get('/settings/categories', fn (): mixed => $categoryController->index());

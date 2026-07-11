@@ -8,6 +8,8 @@
 /** @var array $recentTransactions */
 /** @var array{total: int, before_today: int} $reviewCounts */
 /** @var array{planned: string, spent: string, remaining: string, has_items: bool} $budgetSummary */
+/** @var array $upcomingRecurring */
+/** @var array{overdue: int, monthlyExpense: string, monthlyIncome: string} $recurringSummary */
 /** @var list<string> $widgetOrder */
 /** @var list<string> $hiddenWidgets */
 /** @var string $csrfToken */
@@ -48,6 +50,8 @@ use App\Support\View;
                                     'recentTransactions' => $recentTransactions,
                                     'reviewCounts' => $reviewCounts,
                                     'budgetSummary' => $budgetSummary,
+                                    'upcomingRecurring' => $upcomingRecurring,
+                                    'recurringSummary' => $recurringSummary,
                                 ]); ?>
                             <?php else: ?>
                                 <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>

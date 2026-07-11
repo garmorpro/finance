@@ -10,6 +10,7 @@ use App\Middleware\AuthMiddleware;
 use App\Repositories\AccountRepository;
 use App\Repositories\BudgetRepository;
 use App\Repositories\HouseholdRepository;
+use App\Repositories\RecurringItemRepository;
 use App\Repositories\TransactionRepository;
 use App\Repositories\UserRepository;
 use App\Support\Csrf;
@@ -35,6 +36,9 @@ final class DashboardController
         $recentTransactions = $householdId !== null ? $transactionRepo->recentForHousehold($householdId, 5) : [];
         $reviewCounts = $householdId !== null ? $transactionRepo->unreviewedCounts($householdId) : ['total' => 0, 'before_today' => 0];
         $budgetSummary = $householdId !== null ? (new BudgetRepository())->monthSummary($householdId, gmdate('Y-m-01')) : ['planned' => '0.00', 'spent' => '0.00', 'remaining' => '0.00', 'has_items' => false];
+        $recurringRepo = new RecurringItemRepository();
+        $upcomingRecurring = $householdId !== null ? $recurringRepo->upcomingForHousehold($householdId, 5) : [];
+        $recurringSummary = $householdId !== null ? $recurringRepo->summaryForHousehold($householdId) : ['overdue' => 0, 'monthlyExpense' => '0.00', 'monthlyIncome' => '0.00'];
 
         $layout = $userRepo->getDashboardLayout($userId);
         $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
@@ -49,6 +53,8 @@ final class DashboardController
             'recentTransactions' => $recentTransactions,
             'reviewCounts' => $reviewCounts,
             'budgetSummary' => $budgetSummary,
+            'upcomingRecurring' => $upcomingRecurring,
+            'recurringSummary' => $recurringSummary,
             'widgetOrder' => $widgetOrder,
             'hiddenWidgets' => $hiddenWidgets,
             'csrfToken' => Csrf::token(),

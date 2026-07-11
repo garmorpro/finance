@@ -39,7 +39,7 @@ $link = function (string $key, string $href, string $label) use ($active): strin
 
         <span class="sidebar-link-disabled" title="Coming soon">Cash Flow</span>
         <?= $link('budgets', '/budgets', 'Budgets') ?>
-        <span class="sidebar-link-disabled" title="Coming soon">Recurring</span>
+        <?= $link('recurring', '/recurring', 'Recurring') ?>
         <span class="sidebar-link-disabled" title="Coming soon">Goals</span>
         <span class="sidebar-link-disabled" title="Coming soon">Reports</span>
 
