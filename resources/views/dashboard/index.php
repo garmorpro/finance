@@ -50,7 +50,7 @@ use App\Support\View;
                 <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
                     <?php foreach ($widgetOrder as $widgetKey): ?>
                         <?php $isWide = in_array($widgetKey, $wideWidgets, true); ?>
-                        <div class="tile <?= $isWide ? 'lg:col-span-2' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
+                        <div class="tile <?= $isWide ? 'tile-wide' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
                             <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
                                 <?php View::partial('dashboard/widgets/' . $widgetKey, [
                                     'widgetKey' => $widgetKey,

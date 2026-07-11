@@ -139,8 +139,8 @@
       return;
     }
 
-    var nowWide = !tile.classList.contains('lg:col-span-2');
-    tile.classList.toggle('lg:col-span-2', nowWide);
+    var nowWide = !tile.classList.contains('tile-wide');
+    tile.classList.toggle('tile-wide', nowWide);
     btn.dataset.wide = nowWide ? '1' : '0';
     btn.title = nowWide ? 'Shrink to column width' : 'Expand to full width';
 

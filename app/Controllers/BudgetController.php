@@ -11,6 +11,7 @@ use App\Repositories\AuditLogRepository;
 use App\Repositories\BudgetRepository;
 use App\Repositories\CategoryGroupRepository;
 use App\Repositories\CategoryRepository;
+use App\Repositories\GoalRepository;
 use App\Support\Csrf;
 use App\Support\View;
 use App\Validation\MoneyInput;
@@ -59,6 +60,21 @@ final class BudgetController
         $expenseTotals = $this->sectionTotals($expenseSections);
         $incomeTotals = $this->sectionTotals($incomeSections);
 
+        $goalRepo = new GoalRepository();
+        $plannedGoalContributions = '0.00';
+        foreach ($goalRepo->listForHousehold($householdId) as $goal) {
+            if ($goal['status'] === 'active' && $goal['planned_monthly_contribution'] !== null) {
+                $plannedGoalContributions = bcadd($plannedGoalContributions, $goal['planned_monthly_contribution'], 2);
+            }
+        }
+        $actualGoalContributions = $goalRepo->totalContributionsForRange($householdId, $periodMonth, $monthEnd);
+
+        // "Left to budget" mirrors the common envelope-budgeting framing:
+        // planned income minus everything already earmarked (expenses and
+        // planned goal contributions) — not the same as actual surplus,
+        // which is what's really left over regardless of the plan.
+        $leftToBudget = bcsub(bcsub($incomeTotals['planned'], $expenseTotals['planned'], 2), $plannedGoalContributions, 2);
+
         Response::html(View::render('budgets/index', [
             'periodMonth' => $periodMonth,
             'monthLabel' => date('F Y', strtotime($periodMonth)),
@@ -72,6 +88,9 @@ final class BudgetController
             'totalActualIncome' => $incomeTotals['actual'],
             'plannedSurplus' => bcsub($incomeTotals['planned'], $expenseTotals['planned'], 2),
             'actualSurplus' => bcsub($incomeTotals['actual'], $expenseTotals['actual'], 2),
+            'plannedGoalContributions' => $plannedGoalContributions,
+            'actualGoalContributions' => $actualGoalContributions,
+            'leftToBudget' => $leftToBudget,
             'canManage' => in_array(AuthMiddleware::role(), self::MANAGE_ROLES, true),
             'hasPreviousBudget' => $budgetRepo->findForMonth($householdId, date('Y-m-d', strtotime($periodMonth . ' -1 month'))) !== null,
             'csrfToken' => Csrf::token(),

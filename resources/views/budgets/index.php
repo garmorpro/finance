@@ -12,6 +12,9 @@
 /** @var string $totalActualIncome */
 /** @var string $plannedSurplus */
 /** @var string $actualSurplus */
+/** @var string $plannedGoalContributions */
+/** @var string $actualGoalContributions */
+/** @var string $leftToBudget */
 /** @var bool $canManage */
 /** @var bool $hasPreviousBudget */
 /** @var string $csrfToken */
@@ -32,7 +35,9 @@ $percentFor = function (string $actual, string $planned): int {
     return min(100, max(0, $percent));
 };
 
-$renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, $canManage, $percentFor): void {
+$rowGrid = 'grid grid-cols-[minmax(0,1fr)_130px_100px_120px] items-center gap-3';
+
+$renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, $canManage, $rowGrid): void {
     $category = $row['category'];
     $categoryId = (int) $category['id'];
     $planned = $row['planned'];
@@ -41,61 +46,88 @@ $renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, 
     $isExpense = $type === 'expense';
     $overBudget = $isExpense && $remaining !== null && bccomp($remaining, '0.00', 2) < 0;
     ?>
-    <div class="py-4 first:pt-0 last:pb-0">
-        <div class="flex items-center justify-between gap-4 mb-2">
-            <div class="flex items-center gap-2 min-w-0">
-                <span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style="background-color: <?= View::e($category['color'] ?? '#a8a29e') ?>"></span>
-                <span class="font-medium text-stone-900 dark:text-white truncate"><?= View::e($category['name']) ?></span>
-            </div>
-            <div class="flex items-center gap-4 text-sm shrink-0">
-                <span class="text-stone-500 dark:text-stone-400">
-                    <?= Money::format($actual) ?><?= $planned !== null ? ' of ' . Money::format($planned) : ($isExpense ? ' spent' : ' received') ?>
-                </span>
-                <?php if ($planned !== null): ?>
-                    <span class="font-medium w-32 text-right <?= $overBudget ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white' ?>">
-                        <?php if ($isExpense): ?>
-                            <?= $overBudget ? 'Over by ' . Money::format(bcmul($remaining, '-1', 2)) : Money::format($remaining) . ' left' ?>
-                        <?php elseif (bccomp($remaining, '0.00', 2) > 0): ?>
-                            <?= Money::format($remaining) ?> short
-                        <?php elseif (bccomp($remaining, '0.00', 2) < 0): ?>
-                            +<?= Money::format(bcmul($remaining, '-1', 2)) ?> extra
-                        <?php else: ?>
-                            Fully received
-                        <?php endif; ?>
-                    </span>
-                <?php endif; ?>
-                <?php if ($canManage): ?>
-                    <form method="POST" action="/budgets/items" class="flex items-center gap-2">
-                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                        <input type="hidden" name="period_month" value="<?= View::e($periodMonth) ?>">
-                        <input type="hidden" name="category_id" value="<?= $categoryId ?>">
-                        <input type="text" inputmode="decimal" name="planned_amount" placeholder="0.00" value="<?= $planned !== null ? View::e($planned) : '' ?>" class="field-input w-24 text-right">
-                        <button type="submit" class="btn-secondary">Save</button>
-                    </form>
-                <?php endif; ?>
-            </div>
+    <div class="<?= $rowGrid ?> py-3 border-b border-stone-100 dark:border-stone-800 last:border-b-0">
+        <div class="flex items-center gap-2 min-w-0">
+            <span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style="background-color: <?= View::e($category['color'] ?? '#a8a29e') ?>"></span>
+            <span class="text-sm text-stone-900 dark:text-white truncate"><?= View::e($category['name']) ?></span>
         </div>
-        <?php if ($planned !== null): ?>
-            <div class="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-1.5">
-                <div class="h-1.5 rounded-full <?= $isExpense ? ($overBudget ? 'bg-red-500' : 'bg-terracotta-600') : 'bg-emerald-600' ?>" style="width: <?= $percentFor($actual, $planned) ?>%"></div>
-            </div>
+        <?php if ($canManage): ?>
+            <form method="POST" action="/budgets/items" class="flex items-center gap-1.5 justify-self-end">
+                <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                <input type="hidden" name="period_month" value="<?= View::e($periodMonth) ?>">
+                <input type="hidden" name="category_id" value="<?= $categoryId ?>">
+                <input type="text" inputmode="decimal" name="planned_amount" placeholder="0.00" value="<?= $planned !== null ? View::e($planned) : '' ?>" class="field-input w-20 text-right text-sm py-1.5 px-2">
+                <button type="submit" class="text-xs font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Save</button>
+            </form>
+        <?php else: ?>
+            <span class="text-sm text-stone-500 dark:text-stone-400 text-right"><?= $planned !== null ? Money::format($planned) : '—' ?></span>
         <?php endif; ?>
+        <span class="text-sm text-stone-500 dark:text-stone-400 text-right"><?= Money::format($actual) ?></span>
+        <span class="text-sm font-medium text-right <?= $overBudget ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white' ?>">
+            <?php if ($planned === null): ?>
+                &mdash;
+            <?php elseif ($isExpense): ?>
+                <?= $overBudget ? '-' . Money::format(bcmul($remaining, '-1', 2)) : Money::format($remaining) ?>
+            <?php else: ?>
+                <?= Money::format($remaining) ?>
+            <?php endif; ?>
+        </span>
     </div>
+    <?php if ($planned !== null): ?>
+        <div class="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-1 -mt-2 mb-1">
+            <div class="h-1 rounded-full <?= $isExpense ? ($overBudget ? 'bg-red-500' : 'bg-terracotta-600') : 'bg-emerald-600' ?>" style="width: <?= $percentFor($actual, $planned) ?>%"></div>
+        </div>
+    <?php endif; ?>
     <?php
 };
 
-$renderSection = function (array $section, string $type) use ($renderRow): void {
+$renderSection = function (array $section, string $type) use ($renderRow, $rowGrid): void {
     $title = $section['group'] !== null ? $section['group']['name'] : 'Ungrouped';
+
+    $planned = '0.00';
+    $actual = '0.00';
+    foreach ($section['rows'] as $row) {
+        if ($row['planned'] !== null) {
+            $planned = bcadd($planned, $row['planned'], 2);
+            $actual = bcadd($actual, $row['actual'], 2);
+        }
+    }
+    $remaining = bcsub($planned, $actual, 2);
     ?>
-    <div class="card divide-y divide-stone-100 dark:divide-stone-800">
-        <h3 class="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide pb-3"><?= View::e($title) ?></h3>
-        <?php if ($section['rows'] === []): ?>
-            <p class="text-sm text-stone-400 dark:text-stone-600 py-4">No categories in this section yet.</p>
-        <?php else: ?>
-            <?php foreach ($section['rows'] as $row): ?>
-                <?php $renderRow($row, $type); ?>
-            <?php endforeach; ?>
-        <?php endif; ?>
+    <details class="card p-0 overflow-hidden" open>
+        <summary class="<?= $rowGrid ?> px-6 py-4 cursor-pointer select-none">
+            <span class="font-semibold text-stone-900 dark:text-white truncate"><?= View::e($title) ?></span>
+            <span class="text-sm font-medium text-stone-500 dark:text-stone-400 text-right"><?= Money::format($planned) ?></span>
+            <span class="text-sm font-medium text-stone-500 dark:text-stone-400 text-right"><?= Money::format($actual) ?></span>
+            <span class="text-sm font-semibold text-right <?= $type === 'expense' && bccomp($remaining, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white' ?>"><?= Money::format($remaining) ?></span>
+        </summary>
+        <div class="px-6 pb-4 border-t border-stone-100 dark:border-stone-800">
+            <?php if ($section['rows'] === []): ?>
+                <p class="text-sm text-stone-400 dark:text-stone-600 py-4">No categories in this section yet.</p>
+            <?php else: ?>
+                <?php foreach ($section['rows'] as $row): ?>
+                    <?php $renderRow($row, $type); ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </details>
+    <?php
+};
+
+$summaryBar = function (string $label, string $planned, string $actual, string $remaining, string $earnedOrSpentLabel, string $barColorClass) use ($percentFor): void {
+    ?>
+    <div>
+        <div class="flex items-baseline justify-between mb-1.5">
+            <span class="text-sm font-medium text-stone-900 dark:text-white"><?= View::e($label) ?></span>
+            <span class="text-xs text-stone-500 dark:text-stone-400"><?= Money::format($planned) ?> planned</span>
+        </div>
+        <div class="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-1.5 mb-1.5">
+            <div class="h-1.5 rounded-full <?= $barColorClass ?>" style="width: <?= $percentFor($actual, $planned) ?>%"></div>
+        </div>
+        <div class="flex items-baseline justify-between text-xs">
+            <span class="text-stone-500 dark:text-stone-400"><?= Money::format($actual) ?> <?= View::e($earnedOrSpentLabel) ?></span>
+            <span class="font-medium <?= bccomp($remaining, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' ?>"><?= Money::format($remaining) ?> remaining</span>
+        </div>
     </div>
     <?php
 };
@@ -144,56 +176,65 @@ $renderSection = function (array $section, string $type) use ($renderRow): void 
                     <div class="alert-success"><?= View::e($notice) ?></div>
                 <?php endif; ?>
 
-                <div class="card">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div class="budget-layout">
+                    <div class="space-y-6 min-w-0">
                         <div>
-                            <div class="label-text">Income</div>
-                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($totalActualIncome) ?></div>
-                            <div class="text-xs text-stone-500 dark:text-stone-400 mt-0.5"><?= Money::format($totalPlannedIncome) ?> planned</div>
+                            <h2 class="text-lg font-semibold text-stone-900 dark:text-white mb-3">Income</h2>
+                            <?php if ($incomeSections === []): ?>
+                                <div class="card text-center py-10">
+                                    <p class="text-stone-500 dark:text-stone-400 mb-2">No income categories yet.</p>
+                                    <a href="/settings/categories" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add categories in Settings &rarr;</a>
+                                </div>
+                            <?php else: ?>
+                                <div class="space-y-4">
+                                    <?php foreach ($incomeSections as $section): ?>
+                                        <?php $renderSection($section, 'income'); ?>
+                                    <?php endforeach; ?>
+                                    <div class="<?= $rowGrid ?> px-6 py-3">
+                                        <span class="font-semibold text-stone-900 dark:text-white">Total Income</span>
+                                        <span class="text-sm font-semibold text-stone-900 dark:text-white text-right"><?= Money::format($totalPlannedIncome) ?></span>
+                                        <span class="text-sm font-semibold text-stone-900 dark:text-white text-right"><?= Money::format($totalActualIncome) ?></span>
+                                        <span class="text-sm font-semibold text-stone-900 dark:text-white text-right"><?= Money::format(bcsub($totalPlannedIncome, $totalActualIncome, 2)) ?></span>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
+
                         <div>
-                            <div class="label-text">Expenses</div>
-                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($totalActualExpense) ?></div>
-                            <div class="text-xs text-stone-500 dark:text-stone-400 mt-0.5"><?= Money::format($totalPlannedExpense) ?> planned</div>
-                        </div>
-                        <div>
-                            <div class="label-text">Surplus</div>
-                            <div class="text-xl font-semibold <?= bccomp($actualSurplus, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' ?>"><?= Money::format($actualSurplus) ?></div>
-                            <div class="text-xs text-stone-500 dark:text-stone-400 mt-0.5"><?= Money::format($plannedSurplus) ?> planned</div>
+                            <h2 class="text-lg font-semibold text-stone-900 dark:text-white mb-3">Expenses</h2>
+                            <?php if ($expenseSections === []): ?>
+                                <div class="card text-center py-10">
+                                    <p class="text-stone-500 dark:text-stone-400 mb-2">No expense categories yet.</p>
+                                    <a href="/settings/categories" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add categories in Settings &rarr;</a>
+                                </div>
+                            <?php else: ?>
+                                <div class="space-y-4">
+                                    <?php foreach ($expenseSections as $section): ?>
+                                        <?php $renderSection($section, 'expense'); ?>
+                                    <?php endforeach; ?>
+                                    <div class="<?= $rowGrid ?> px-6 py-3">
+                                        <span class="font-semibold text-stone-900 dark:text-white">Total Expenses</span>
+                                        <span class="text-sm font-semibold text-stone-900 dark:text-white text-right"><?= Money::format($totalPlannedExpense) ?></span>
+                                        <span class="text-sm font-semibold text-stone-900 dark:text-white text-right"><?= Money::format($totalActualExpense) ?></span>
+                                        <span class="text-sm font-semibold text-right <?= bccomp(bcsub($totalPlannedExpense, $totalActualExpense, 2), '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white' ?>"><?= Money::format(bcsub($totalPlannedExpense, $totalActualExpense, 2)) ?></span>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
-                </div>
 
-                <div>
-                    <h2 class="text-lg font-semibold text-stone-900 dark:text-white mb-3">Income</h2>
-                    <?php if ($incomeSections === []): ?>
-                        <div class="card text-center py-10">
-                            <p class="text-stone-500 dark:text-stone-400 mb-2">No income categories yet.</p>
-                            <a href="/settings/categories" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add categories in Settings &rarr;</a>
+                    <div class="budget-sidebar space-y-4">
+                        <div class="rounded-2xl p-6 text-center <?= bccomp($leftToBudget, '0.00', 2) < 0 ? 'bg-red-50 dark:bg-red-950/40' : 'bg-emerald-50 dark:bg-emerald-950/40' ?>">
+                            <div class="text-3xl font-semibold <?= bccomp($leftToBudget, '0.00', 2) < 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400' ?>"><?= Money::format($leftToBudget) ?></div>
+                            <div class="text-sm font-medium mt-1 <?= bccomp($leftToBudget, '0.00', 2) < 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400' ?>">Left to budget</div>
                         </div>
-                    <?php else: ?>
-                        <div class="space-y-4">
-                            <?php foreach ($incomeSections as $section): ?>
-                                <?php $renderSection($section, 'income'); ?>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
 
-                <div>
-                    <h2 class="text-lg font-semibold text-stone-900 dark:text-white mb-3">Expenses</h2>
-                    <?php if ($expenseSections === []): ?>
-                        <div class="card text-center py-10">
-                            <p class="text-stone-500 dark:text-stone-400 mb-2">No expense categories yet.</p>
-                            <a href="/settings/categories" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add categories in Settings &rarr;</a>
+                        <div class="card space-y-5">
+                            <?php $summaryBar('Income', $totalPlannedIncome, $totalActualIncome, bcsub($totalPlannedIncome, $totalActualIncome, 2), 'earned', 'bg-emerald-600'); ?>
+                            <?php $summaryBar('Expenses', $totalPlannedExpense, $totalActualExpense, bcsub($totalPlannedExpense, $totalActualExpense, 2), 'spent', 'bg-terracotta-600'); ?>
+                            <?php $summaryBar('Goals', $plannedGoalContributions, $actualGoalContributions, bcsub($plannedGoalContributions, $actualGoalContributions, 2), 'contributed', 'bg-terracotta-400'); ?>
                         </div>
-                    <?php else: ?>
-                        <div class="space-y-4">
-                            <?php foreach ($expenseSections as $section): ?>
-                                <?php $renderSection($section, 'expense'); ?>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
             </main>
         </div>

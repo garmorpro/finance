@@ -211,4 +211,28 @@ final class GoalRepository
 
         return $stmt->fetchAll();
     }
+
+    /**
+     * Sum of goal contributions logged within a date range, for the
+     * Budgets page's "Goals" summary — contributions aren't transactions,
+     * so they don't show up in any transaction-based total elsewhere.
+     */
+    public function totalContributionsForRange(int $householdId, string $monthStart, string $monthEndExclusive): string
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT COALESCE(SUM(gc.amount), 0) AS total
+             FROM goal_contributions gc
+             INNER JOIN financial_goals g ON g.id = gc.goal_id
+             WHERE g.household_id = :household_id
+               AND gc.contribution_date >= :month_start AND gc.contribution_date < :month_end'
+        );
+
+        $stmt->execute([
+            'household_id' => $householdId,
+            'month_start' => $monthStart,
+            'month_end' => $monthEndExclusive,
+        ]);
+
+        return bcadd((string) $stmt->fetchColumn(), '0.00', 2);
+    }
 }
