@@ -1,14 +1,15 @@
 <?php
 
 /** @var array|null $netWorth */
+/** @var string $widgetKey */
+/** @var bool $isWide */
 
 use App\Support\Money;
+use App\Support\View;
+
+View::partial('dashboard/widgets/_header', ['title' => 'Net Worth', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
 
 ?>
-<div class="tile-header">
-    <span class="label-text mb-0">Net Worth</span>
-    <span class="tile-drag-handle" aria-hidden="true">&#8942;&#8942;</span>
-</div>
 <?php if ($netWorth === null): ?>
     <div class="tile-placeholder"><p class="text-sm">No household found.</p></div>
 <?php else: ?>

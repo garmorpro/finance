@@ -1,6 +1,8 @@
 <?php
 
 /** @var list<array{name: string, color: string|null, amount: string}> $spendingByCategory */
+/** @var string $widgetKey */
+/** @var bool $isWide */
 
 use App\Support\Money;
 use App\Support\View;
@@ -19,11 +21,9 @@ $chartPayload = [
     ]],
 ];
 
+View::partial('dashboard/widgets/_header', ['title' => 'Spending by Category', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
+
 ?>
-<div class="tile-header">
-    <span class="label-text mb-0">Spending by Category</span>
-    <span class="tile-drag-handle" aria-hidden="true">&#8942;&#8942;</span>
-</div>
 <?php if ($spendingByCategory === []): ?>
     <div class="tile-placeholder">
         <p class="text-sm mb-2">No spending recorded this month.</p>

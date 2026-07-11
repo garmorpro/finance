@@ -1,15 +1,15 @@
 <?php
 
 /** @var array $recentTransactions */
+/** @var string $widgetKey */
+/** @var bool $isWide */
 
 use App\Support\Money;
 use App\Support\View;
 
+View::partial('dashboard/widgets/_header', ['title' => 'Recent Transactions', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
+
 ?>
-<div class="tile-header">
-    <span class="label-text mb-0">Recent Transactions</span>
-    <span class="tile-drag-handle" aria-hidden="true">&#8942;&#8942;</span>
-</div>
 <?php if ($recentTransactions === []): ?>
     <div class="tile-placeholder">
         <p class="text-sm mb-2">No transactions yet.</p>

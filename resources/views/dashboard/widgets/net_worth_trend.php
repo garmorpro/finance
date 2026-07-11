@@ -1,6 +1,8 @@
 <?php
 
 /** @var list<array{label: string, assets: string, liabilities: string, netWorth: string}> $netWorthTrend */
+/** @var string $widgetKey */
+/** @var bool $isWide */
 
 use App\Support\Money;
 use App\Support\View;
@@ -12,11 +14,9 @@ $chartPayload = [
     ],
 ];
 
+View::partial('dashboard/widgets/_header', ['title' => 'Net Worth Trend', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
+
 ?>
-<div class="tile-header">
-    <span class="label-text mb-0">Net Worth Trend</span>
-    <span class="tile-drag-handle" aria-hidden="true">&#8942;&#8942;</span>
-</div>
 <?php if ($netWorthTrend === [] || array_sum(array_map(fn (array $r): float => (float) $r['assets'] + (float) $r['liabilities'], $netWorthTrend)) === 0.0): ?>
     <div class="tile-placeholder">
         <p class="text-sm mb-2">Not enough account history yet.</p>

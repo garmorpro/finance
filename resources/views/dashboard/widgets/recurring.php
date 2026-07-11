@@ -2,17 +2,17 @@
 
 /** @var array $upcomingRecurring */
 /** @var array{overdue: int, monthlyExpense: string, monthlyIncome: string} $recurringSummary */
+/** @var string $widgetKey */
+/** @var bool $isWide */
 
 use App\Support\Money;
 use App\Support\View;
 
 $today = gmdate('Y-m-d');
 
+View::partial('dashboard/widgets/_header', ['title' => 'Recurring Bills', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
+
 ?>
-<div class="tile-header">
-    <span class="label-text mb-0">Recurring Bills</span>
-    <span class="tile-drag-handle" aria-hidden="true">&#8942;&#8942;</span>
-</div>
 <?php if ($upcomingRecurring === []): ?>
     <div class="tile-placeholder">
         <p class="text-sm mb-2">No recurring items yet.</p>

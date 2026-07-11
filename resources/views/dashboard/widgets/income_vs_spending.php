@@ -1,6 +1,8 @@
 <?php
 
 /** @var list<array{label: string, income: string, expenses: string}> $incomeVsSpending */
+/** @var string $widgetKey */
+/** @var bool $isWide */
 
 use App\Support\Money;
 use App\Support\View;
@@ -15,11 +17,9 @@ $chartPayload = [
     ],
 ];
 
+View::partial('dashboard/widgets/_header', ['title' => 'Income vs. Spending', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
+
 ?>
-<div class="tile-header">
-    <span class="label-text mb-0">Income vs. Spending</span>
-    <span class="tile-drag-handle" aria-hidden="true">&#8942;&#8942;</span>
-</div>
 <?php if (!$hasActivity): ?>
     <div class="tile-placeholder">
         <p class="text-sm mb-2">No transactions yet.</p>

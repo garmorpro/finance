@@ -96,7 +96,13 @@ final class UserRepository
     }
 
     /**
-     * @return array{order: list<string>, hidden: list<string>}
+     * `wide` is null when the user has never touched tile widths — the
+     * caller falls back to each widget's own default width in that case.
+     * Once saved, it's the complete authoritative set of wide tiles (same
+     * "full list, not a diff" convention as `hidden`), including an
+     * explicitly-saved empty array meaning "everything narrow."
+     *
+     * @return array{order: list<string>, hidden: list<string>, wide: list<string>|null}
      */
     public function getDashboardLayout(int $userId): array
     {
@@ -107,13 +113,14 @@ final class UserRepository
         $decoded = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
 
         if (!is_array($decoded)) {
-            return ['order' => [], 'hidden' => []];
+            return ['order' => [], 'hidden' => [], 'wide' => null];
         }
 
         $order = is_array($decoded['order'] ?? null) ? array_values(array_filter($decoded['order'], 'is_string')) : [];
         $hidden = is_array($decoded['hidden'] ?? null) ? array_values(array_filter($decoded['hidden'], 'is_string')) : [];
+        $wide = is_array($decoded['wide'] ?? null) ? array_values(array_filter($decoded['wide'], 'is_string')) : null;
 
-        return ['order' => $order, 'hidden' => $hidden];
+        return ['order' => $order, 'hidden' => $hidden, 'wide' => $wide];
     }
 
     /**
@@ -122,7 +129,7 @@ final class UserRepository
     public function updateDashboardOrder(int $userId, array $order): void
     {
         $current = $this->getDashboardLayout($userId);
-        $this->saveDashboardLayout($userId, $order, $current['hidden']);
+        $this->saveDashboardLayout($userId, $order, $current['hidden'], $current['wide']);
     }
 
     /**
@@ -131,21 +138,36 @@ final class UserRepository
     public function updateDashboardHidden(int $userId, array $hidden): void
     {
         $current = $this->getDashboardLayout($userId);
-        $this->saveDashboardLayout($userId, $current['order'], $hidden);
+        $this->saveDashboardLayout($userId, $current['order'], $hidden, $current['wide']);
+    }
+
+    /**
+     * @param list<string> $wide
+     */
+    public function updateDashboardWide(int $userId, array $wide): void
+    {
+        $current = $this->getDashboardLayout($userId);
+        $this->saveDashboardLayout($userId, $current['order'], $current['hidden'], $wide);
     }
 
     /**
      * @param list<string> $order
      * @param list<string> $hidden
+     * @param list<string>|null $wide
      */
-    private function saveDashboardLayout(int $userId, array $order, array $hidden): void
+    private function saveDashboardLayout(int $userId, array $order, array $hidden, ?array $wide): void
     {
+        $payload = ['order' => array_values($order), 'hidden' => array_values($hidden)];
+        if ($wide !== null) {
+            $payload['wide'] = array_values($wide);
+        }
+
         $stmt = Connection::get()->prepare(
             'UPDATE users SET dashboard_layout = :dashboard_layout, updated_at = :updated_at WHERE id = :id'
         );
 
         $stmt->execute([
-            'dashboard_layout' => json_encode(['order' => array_values($order), 'hidden' => array_values($hidden)]),
+            'dashboard_layout' => json_encode($payload),
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $userId,
         ]);

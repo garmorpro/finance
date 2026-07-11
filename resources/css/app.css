@@ -94,6 +94,14 @@
     @apply text-stone-300 dark:text-stone-700;
   }
 
+  .tile-resize-btn {
+    @apply inline-flex items-center justify-center w-5 h-5 rounded text-stone-300 dark:text-stone-700 hover:text-stone-500 dark:hover:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer;
+  }
+
+  .tile-resize-btn svg {
+    @apply w-3.5 h-3.5;
+  }
+
   .tile-placeholder {
     @apply flex flex-col items-center justify-center text-center py-8 text-stone-400 dark:text-stone-600;
   }

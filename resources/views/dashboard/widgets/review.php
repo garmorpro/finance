@@ -1,12 +1,14 @@
 <?php
 
 /** @var array{total: int, before_today: int} $reviewCounts */
+/** @var string $widgetKey */
+/** @var bool $isWide */
+
+use App\Support\View;
+
+View::partial('dashboard/widgets/_header', ['title' => 'Needs Review', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
 
 ?>
-<div class="tile-header">
-    <span class="label-text mb-0">Needs Review</span>
-    <span class="tile-drag-handle" aria-hidden="true">&#8942;&#8942;</span>
-</div>
 <?php if ($reviewCounts['total'] === 0): ?>
     <div class="tile-placeholder">
         <p class="text-sm">You're all caught up.</p>

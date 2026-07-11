@@ -126,4 +126,40 @@
 
     saveVisibility();
   });
+
+  // --- Per-tile resize toggle (full width vs. column width) ---
+  grid.addEventListener('click', function (event) {
+    var btn = event.target.closest('[data-widget-resize]');
+    if (!btn) {
+      return;
+    }
+
+    var tile = btn.closest('[data-widget]');
+    if (!tile) {
+      return;
+    }
+
+    var nowWide = !tile.classList.contains('lg:col-span-2');
+    tile.classList.toggle('lg:col-span-2', nowWide);
+    btn.dataset.wide = nowWide ? '1' : '0';
+    btn.title = nowWide ? 'Shrink to column width' : 'Expand to full width';
+
+    var wide = Array.prototype.map
+      .call(grid.querySelectorAll('[data-widget-resize][data-wide="1"]'), function (el) {
+        return el.closest('[data-widget]').dataset.widget;
+      });
+
+    var body = new URLSearchParams();
+    body.set('csrf_token', csrfToken);
+    body.set('wide', JSON.stringify(wide));
+
+    fetch('/dashboard/width', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    }).catch(function () {
+      // Silent failure is acceptable here too: worst case, the next
+      // page load falls back to the last successfully saved width state.
+    });
+  });
 })();

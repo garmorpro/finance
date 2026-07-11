@@ -75,4 +75,21 @@ final class DashboardWidgets
     {
         return array_values(array_filter($hidden, fn (string $key): bool => self::exists($key)));
     }
+
+    /**
+     * Resolves the effective set of full-width tiles: the user's saved
+     * choice if they've ever touched a resize toggle (even to an empty
+     * set), otherwise each widget's own built-in default.
+     *
+     * @param list<string>|null $savedWide
+     * @return list<string>
+     */
+    public static function resolveWide(?array $savedWide): array
+    {
+        if ($savedWide === null) {
+            return array_values(array_filter(array_keys(self::WIDGETS), fn (string $key): bool => self::isWide($key)));
+        }
+
+        return array_values(array_filter($savedWide, fn (string $key): bool => self::exists($key)));
+    }
 }

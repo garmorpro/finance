@@ -124,6 +124,7 @@ $router->post('/settings/category-groups/{id}/delete', fn (Request $r): mixed =>
 $dashboardController = new DashboardController();
 $router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardController->saveLayout($r));
 $router->post('/dashboard/widgets', fn (Request $r): mixed => $dashboardController->saveVisibility($r));
+$router->post('/dashboard/width', fn (Request $r): mixed => $dashboardController->saveWidth($r));
 
 $router->get('/', function () use ($appConfig, $dashboardController): void {
     if (!empty($_SESSION['user_id'])) {

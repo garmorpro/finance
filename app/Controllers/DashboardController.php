@@ -49,6 +49,7 @@ final class DashboardController
         $layout = $userRepo->getDashboardLayout($userId);
         $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
         $hiddenWidgets = DashboardWidgets::filterKnown($layout['hidden']);
+        $wideWidgets = DashboardWidgets::resolveWide($layout['wide']);
 
         Response::html(View::render('dashboard/index', [
             'user' => $user,
@@ -66,6 +67,7 @@ final class DashboardController
             'spendingByCategory' => $spendingByCategory,
             'widgetOrder' => $widgetOrder,
             'hiddenWidgets' => $hiddenWidgets,
+            'wideWidgets' => $wideWidgets,
             'csrfToken' => Csrf::token(),
         ]));
     }
@@ -118,6 +120,32 @@ final class DashboardController
         }
 
         (new UserRepository())->updateDashboardHidden((int) AuthMiddleware::userId(), array_values($decoded));
+
+        Response::json(['status' => 'ok']);
+    }
+
+    /**
+     * AJAX endpoint the per-tile resize toggle calls. Saves the complete
+     * current set of full-width tiles (not a diff), same convention as
+     * saveVisibility().
+     */
+    public function saveWidth(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            Response::json(['error' => 'Your session expired. Please refresh and try again.'], 419);
+            return;
+        }
+
+        $decoded = json_decode($request->post('wide'), true);
+
+        if (!is_array($decoded) || array_filter($decoded, fn ($v): bool => !is_string($v) || !DashboardWidgets::exists($v)) !== []) {
+            Response::json(['error' => 'Invalid layout data.'], 422);
+            return;
+        }
+
+        (new UserRepository())->updateDashboardWide((int) AuthMiddleware::userId(), array_values($decoded));
 
         Response::json(['status' => 'ok']);
     }

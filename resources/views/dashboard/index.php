@@ -15,6 +15,7 @@
 /** @var list<array{name: string, color: string|null, amount: string}> $spendingByCategory */
 /** @var list<string> $widgetOrder */
 /** @var list<string> $hiddenWidgets */
+/** @var list<string> $wideWidgets */
 /** @var string $csrfToken */
 
 use App\Support\DashboardWidgets;
@@ -45,9 +46,12 @@ use App\Support\View;
 
                 <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
                     <?php foreach ($widgetOrder as $widgetKey): ?>
-                        <div class="tile <?= DashboardWidgets::isWide($widgetKey) ? 'lg:col-span-2' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
+                        <?php $isWide = in_array($widgetKey, $wideWidgets, true); ?>
+                        <div class="tile <?= $isWide ? 'lg:col-span-2' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
                             <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
                                 <?php View::partial('dashboard/widgets/' . $widgetKey, [
+                                    'widgetKey' => $widgetKey,
+                                    'isWide' => $isWide,
                                     'netWorth' => $netWorth,
                                     'accounts' => $accounts,
                                     'recentTransactions' => $recentTransactions,
