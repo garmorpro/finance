@@ -55,12 +55,15 @@ final class UserRepository
 
     public function updateLastLogin(int $userId): void
     {
+        $now = gmdate('Y-m-d H:i:s');
+
         $stmt = Connection::get()->prepare(
-            'UPDATE users SET last_login_at = :now, updated_at = :now WHERE id = :id'
+            'UPDATE users SET last_login_at = :last_login_at, updated_at = :updated_at WHERE id = :id'
         );
 
         $stmt->execute([
-            'now' => gmdate('Y-m-d H:i:s'),
+            'last_login_at' => $now,
+            'updated_at' => $now,
             'id' => $userId,
         ]);
     }
