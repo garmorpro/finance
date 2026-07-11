@@ -58,6 +58,14 @@
     @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 dark:text-slate-700 cursor-default;
   }
 
+  .sidebar-icon-btn {
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 dark:text-slate-700 cursor-default;
+  }
+
+  .sidebar-icon-btn svg {
+    @apply w-[18px] h-[18px];
+  }
+
   .sidebar-footer {
     @apply border-t border-slate-200 dark:border-slate-800 p-3 space-y-2;
   }

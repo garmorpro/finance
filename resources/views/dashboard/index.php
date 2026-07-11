@@ -28,10 +28,7 @@ use App\Support\View;
         <div class="app-content">
             <main class="page-main-wide">
                 <div class="flex items-end justify-between">
-                    <div>
-                        <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Overview</h1>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Welcome back, <?= View::e(explode(' ', $user['name'])[0]) ?>.</p>
-                    </div>
+                    <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Hello, <?= View::e(explode(' ', $user['name'])[0]) ?>!</h1>
                     <div class="flex items-center gap-4">
                         <p class="text-xs text-slate-400 dark:text-slate-600">Drag tiles to rearrange</p>
                         <button type="button" id="customize-open" class="btn-secondary">Customize</button>
