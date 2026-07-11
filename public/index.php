@@ -20,6 +20,7 @@ use App\Controllers\ProfileController;
 use App\Controllers\RecurringController;
 use App\Controllers\ReportController;
 use App\Controllers\RuleController;
+use App\Controllers\SearchController;
 use App\Controllers\TagController;
 use App\Controllers\TransactionController;
 use App\Database\Connection;
@@ -171,6 +172,9 @@ $notificationController = new NotificationController();
 $router->get('/notifications', fn (): mixed => $notificationController->index());
 $router->get('/settings/notifications', fn (): mixed => $notificationController->settings());
 $router->post('/settings/notifications', fn (Request $r): mixed => $notificationController->updatePreferences($r));
+
+$searchController = new SearchController();
+$router->get('/search', fn (Request $r): mixed => $searchController->index($r));
 
 $ruleController = new RuleController();
 $router->get('/settings/rules', fn (): mixed => $ruleController->index());

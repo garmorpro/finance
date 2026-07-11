@@ -21,9 +21,9 @@ $notificationCount = (new NotificationService())->badgeCount((int) AuthMiddlewar
     <div class="sidebar-brand">Finance</div>
 
     <div class="flex items-center gap-1 px-4 pb-3">
-        <span class="sidebar-icon-btn" aria-hidden="true" title="Coming soon">
+        <a href="/search" class="sidebar-icon-btn cursor-pointer text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 <?= $active === 'search' ? 'text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800' : '' ?>" title="Search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </span>
+        </a>
         <a href="/notifications" class="sidebar-icon-btn relative cursor-pointer text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 <?= $active === 'notifications' ? 'text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800' : '' ?>" title="Notifications">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <?php if ($notificationCount > 0): ?>
