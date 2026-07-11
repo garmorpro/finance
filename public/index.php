@@ -16,6 +16,7 @@ use App\Controllers\ImportController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
 use App\Controllers\RecurringController;
+use App\Controllers\ReportController;
 use App\Controllers\TransactionController;
 use App\Database\Connection;
 use App\Http\Request;
@@ -129,6 +130,10 @@ $router->get('/debt', fn (): mixed => $debtController->index());
 
 $cashFlowController = new CashFlowController();
 $router->get('/cash-flow', fn (Request $r): mixed => $cashFlowController->index($r));
+
+$reportController = new ReportController();
+$router->get('/reports', fn (Request $r): mixed => $reportController->index($r));
+$router->get('/reports/export', fn (Request $r): mixed => $reportController->export($r));
 
 $categoryController = new CategoryController();
 $router->get('/settings/categories', fn (): mixed => $categoryController->index());

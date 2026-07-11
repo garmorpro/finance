@@ -215,4 +215,147 @@ final class ReportingService
 
         return $totals;
     }
+
+    /**
+     * The configurable report behind /reports: an arbitrary date range,
+     * optional account/category/type/member filters, and a choice of
+     * grouping dimension. Transfers are included in the raw dataset when
+     * selected but always kept out of the income/expense net, per
+     * CLAUDE.md's rule that transfers are never household income or
+     * spending — they get their own column instead.
+     *
+     * @param array{date_from: string, date_to: string, account_ids: list<int>, category_ids: list<int>, type: string, user_id: int|null} $filters
+     * @return array{rows: list<array{label: string, income: string, expense: string, transfer: string, net: string, count: int}>, totals: array{income: string, expense: string, transfer: string, net: string, count: int}}
+     */
+    public function transactionsReport(int $householdId, array $filters, string $groupBy): array
+    {
+        $clauses = [
+            't.household_id = :household_id',
+            't.deleted_at IS NULL',
+            't.exclude_from_reports = 0',
+            't.transaction_date >= :date_from',
+            't.transaction_date <= :date_to',
+        ];
+        $params = [
+            'household_id' => $householdId,
+            'date_from' => $filters['date_from'],
+            'date_to' => $filters['date_to'],
+        ];
+
+        if ($filters['account_ids'] !== []) {
+            [$inClause, $inParams] = $this->buildInClause('account_id', $filters['account_ids']);
+            $clauses[] = "t.account_id {$inClause}";
+            $params += $inParams;
+        }
+
+        if ($filters['category_ids'] !== []) {
+            [$inClause, $inParams] = $this->buildInClause('category_id', $filters['category_ids']);
+            $clauses[] = "t.category_id {$inClause}";
+            $params += $inParams;
+        }
+
+        if ($filters['type'] !== '') {
+            $clauses[] = 't.transaction_type = :type';
+            $params['type'] = $filters['type'];
+        }
+
+        if ($filters['user_id'] !== null) {
+            $clauses[] = 't.created_by_user_id = :user_id';
+            $params['user_id'] = $filters['user_id'];
+        }
+
+        $where = 'WHERE ' . implode(' AND ', $clauses);
+
+        $stmt = Connection::get()->prepare(
+            "SELECT t.transaction_type, t.amount, t.transaction_date, t.payee, t.category_id, t.account_id, t.created_by_user_id,
+                    c.name AS category_name, a.name AS account_name, u.name AS user_name
+             FROM transactions t
+             LEFT JOIN categories c ON c.id = t.category_id
+             INNER JOIN accounts a ON a.id = t.account_id
+             INNER JOIN users u ON u.id = t.created_by_user_id
+             {$where}
+             ORDER BY t.transaction_date"
+        );
+        $stmt->execute($params);
+
+        return $this->groupTransactions($stmt->fetchAll(), $groupBy);
+    }
+
+    /**
+     * @param list<int> $ids
+     * @return array{0: string, 1: array<string, int>}
+     */
+    private function buildInClause(string $paramPrefix, array $ids): array
+    {
+        $placeholders = [];
+        $params = [];
+
+        foreach (array_values($ids) as $i => $id) {
+            $key = "{$paramPrefix}_{$i}";
+            $placeholders[] = ":{$key}";
+            $params[$key] = $id;
+        }
+
+        return ['IN (' . implode(',', $placeholders) . ')', $params];
+    }
+
+    /**
+     * @param array $transactions
+     * @return array{rows: list<array>, totals: array{income: string, expense: string, transfer: string, net: string, count: int}}
+     */
+    private function groupTransactions(array $transactions, string $groupBy): array
+    {
+        $groups = [];
+        $totals = ['income' => '0.00', 'expense' => '0.00', 'transfer' => '0.00', 'count' => 0];
+
+        foreach ($transactions as $t) {
+            [$key, $label] = match ($groupBy) {
+                'category' => [$t['category_id'] !== null ? 'c' . $t['category_id'] : 'uncategorized', $t['category_name'] ?? 'Uncategorized'],
+                'merchant' => ['m:' . $t['payee'], $t['payee']],
+                'account' => ['a' . $t['account_id'], $t['account_name']],
+                'member' => ['u' . $t['created_by_user_id'], $t['user_name']],
+                'month' => [substr($t['transaction_date'], 0, 7), date('M Y', strtotime($t['transaction_date']))],
+                default => ['all', 'All'],
+            };
+
+            if (!isset($groups[$key])) {
+                $groups[$key] = ['label' => $label, 'income' => '0.00', 'expense' => '0.00', 'transfer' => '0.00', 'count' => 0];
+            }
+
+            $groups[$key]['count']++;
+            $totals['count']++;
+
+            if ($t['transaction_type'] === 'income') {
+                $groups[$key]['income'] = bcadd($groups[$key]['income'], $t['amount'], 2);
+                $totals['income'] = bcadd($totals['income'], $t['amount'], 2);
+            } elseif ($t['transaction_type'] === 'expense') {
+                $expense = bcmul($t['amount'], '-1', 2);
+                $groups[$key]['expense'] = bcadd($groups[$key]['expense'], $expense, 2);
+                $totals['expense'] = bcadd($totals['expense'], $expense, 2);
+            } else {
+                $groups[$key]['transfer'] = bcadd($groups[$key]['transfer'], $t['amount'], 2);
+                $totals['transfer'] = bcadd($totals['transfer'], $t['amount'], 2);
+            }
+        }
+
+        foreach ($groups as &$group) {
+            $group['net'] = bcsub($group['income'], $group['expense'], 2);
+        }
+        unset($group);
+
+        if ($groupBy === 'month') {
+            ksort($groups);
+            $rows = array_values($groups);
+        } else {
+            $rows = array_values($groups);
+            usort(
+                $rows,
+                fn (array $a, array $b): int => bccomp(bcadd($b['income'], $b['expense'], 2), bcadd($a['income'], $a['expense'], 2), 2)
+            );
+        }
+
+        $totals['net'] = bcsub($totals['income'], $totals['expense'], 2);
+
+        return ['rows' => $rows, 'totals' => $totals];
+    }
 }

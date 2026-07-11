@@ -31,6 +31,19 @@ final class Request
         return is_string($_GET[$key] ?? null) ? $_GET[$key] : $default;
     }
 
+    /**
+     * For multi-select filter inputs (e.g. "account_ids[]"). Non-array or
+     * non-string entries are dropped rather than trusted.
+     *
+     * @return list<string>
+     */
+    public function queryArray(string $key): array
+    {
+        $value = $_GET[$key] ?? null;
+
+        return is_array($value) ? array_values(array_filter($value, 'is_string')) : [];
+    }
+
     public function ip(): string
     {
         return is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
