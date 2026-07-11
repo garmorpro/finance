@@ -13,6 +13,7 @@ use App\Http\Request;
 use App\Http\Response;
 use App\Http\Router;
 use App\Support\ErrorHandler;
+use App\Support\View;
 use Dotenv\Dotenv;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
@@ -77,6 +78,7 @@ $router->get('/', function () use ($appConfig, $dashboardController): void {
     }
 
     $name = htmlspecialchars($appConfig['name'], ENT_QUOTES);
+    $appCss = View::asset('/assets/css/app.css');
 
     Response::html(<<<HTML
         <!DOCTYPE html>
@@ -85,7 +87,7 @@ $router->get('/', function () use ($appConfig, $dashboardController): void {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>{$name}</title>
-            <link rel="stylesheet" href="/assets/css/app.css">
+            <link rel="stylesheet" href="{$appCss}">
         </head>
         <body class="auth-shell">
             <div class="text-center">

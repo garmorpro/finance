@@ -1,10 +1,11 @@
+<?php use App\Support\View; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Link expired · Finance</title>
-    <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body class="auth-shell">
     <div class="auth-card text-center">

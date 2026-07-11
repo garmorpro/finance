@@ -18,7 +18,7 @@ use App\Support\View;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Overview · Finance</title>
-    <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body class="page-shell">
     <?php View::partial('partials/nav', ['csrfToken' => $csrfToken, 'active' => 'overview']); ?>
@@ -69,6 +69,6 @@ use App\Support\View;
         </div>
     </main>
 
-    <script src="/assets/js/dashboard.js" defer></script>
+    <script src="<?= View::asset('/assets/js/dashboard.js') ?>" defer></script>
 </body>
 </html>
