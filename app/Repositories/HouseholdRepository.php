@@ -68,4 +68,19 @@ final class HouseholdRepository
 
         return $household === false ? null : $household;
     }
+
+    public function listMembers(int $householdId): array
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT users.id, users.name, users.email, household_members.role, household_members.created_at
+             FROM household_members
+             INNER JOIN users ON users.id = household_members.user_id
+             WHERE household_members.household_id = :household_id AND users.deleted_at IS NULL
+             ORDER BY FIELD(household_members.role, "owner", "administrator", "member", "viewer"), users.name'
+        );
+
+        $stmt->execute(['household_id' => $householdId]);
+
+        return $stmt->fetchAll();
+    }
 }

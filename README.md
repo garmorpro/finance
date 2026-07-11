@@ -4,7 +4,9 @@ A self-hosted, manual-entry personal finance dashboard built for household use. 
 
 ## Status
 
-Phase 2a (Authentication core) complete: login/logout, secure sessions, CSRF protection, login rate limiting, and audit logging. Registration is invite-only — there is no public sign-up route. Household invitations, password reset, and roles/permissions enforcement are still to come. Following the phased roadmap in `CLAUDE.md`.
+Phase 2 (Authentication and Household Access) complete: login/logout, secure sessions, CSRF protection, login rate limiting, audit logging, password reset (email stubbed — see below), user profile management, and household invitations with role-based access (Owner/Administrator/Member/Viewer). Registration is invite-only — there is no public sign-up route. Following the phased roadmap in `CLAUDE.md`.
+
+Password reset and household invitation emails are **stubbed**: instead of sending real email, the link is written to `storage/logs/app-*.log`. Real SMTP is a deliberate follow-up, not done yet.
 
 ## First-time setup
 

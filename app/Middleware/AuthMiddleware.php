@@ -28,4 +28,24 @@ final class AuthMiddleware
     {
         return isset($_SESSION['household_id']) ? (int) $_SESSION['household_id'] : null;
     }
+
+    public static function role(): ?string
+    {
+        return isset($_SESSION['role']) ? (string) $_SESSION['role'] : null;
+    }
+
+    /**
+     * @param string[] $roles
+     */
+    public static function requireRole(array $roles): void
+    {
+        self::requireAuth();
+
+        if (!in_array(self::role(), $roles, true)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'You do not have permission to do that.']);
+            exit;
+        }
+    }
 }

@@ -67,4 +67,31 @@ final class UserRepository
             'id' => $userId,
         ]);
     }
+
+    public function updatePassword(int $userId, string $passwordHash): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET password_hash = :password_hash, updated_at = :updated_at WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'password_hash' => $passwordHash,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+    }
+
+    public function updateProfile(int $userId, string $name, string $email): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET name = :name, email = :email, updated_at = :updated_at WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'name' => $name,
+            'email' => $email,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+    }
 }

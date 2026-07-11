@@ -1,8 +1,10 @@
 <?php
 
+/** @var string $token */
+/** @var string $email */
+/** @var string $role */
 /** @var string $csrfToken */
 /** @var string|null $error */
-/** @var string|null $notice */
 
 use App\Support\View;
 
@@ -12,36 +14,34 @@ use App\Support\View;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log in</title>
+    <title>Accept invitation</title>
     <style>
         body { font-family: system-ui, sans-serif; background: #0f172a; color: #f1f5f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         form { background: #1e293b; padding: 2rem; border-radius: 12px; width: 100%; max-width: 340px; }
-        h1 { font-size: 1.25rem; margin: 0 0 1.5rem; }
+        h1 { font-size: 1.25rem; margin: 0 0 0.25rem; }
+        p.help { color: #94a3b8; font-size: 0.875rem; margin-bottom: 1.5rem; }
         label { display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #94a3b8; }
         input { width: 100%; padding: 0.5rem 0.75rem; margin-bottom: 1rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #f1f5f9; box-sizing: border-box; }
         button { width: 100%; padding: 0.6rem; border-radius: 6px; border: none; background: #3b82f6; color: white; font-weight: 600; cursor: pointer; }
         .error { background: #7f1d1d; color: #fecaca; padding: 0.5rem 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.875rem; }
-        .notice { background: #14532d; color: #bbf7d0; padding: 0.5rem 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.875rem; }
-        .links { display: flex; justify-content: space-between; margin-top: 1rem; font-size: 0.8rem; }
-        a { color: #3b82f6; }
     </style>
 </head>
 <body>
-    <form method="POST" action="/login">
-        <h1>Log in</h1>
+    <form method="POST" action="/accept-invite">
+        <h1>Join as <?= View::e(ucfirst($role)) ?></h1>
+        <p class="help"><?= View::e($email) ?></p>
         <?php if (!empty($error)): ?>
             <div class="error"><?= View::e($error) ?></div>
         <?php endif; ?>
-        <?php if (!empty($notice)): ?>
-            <div class="notice"><?= View::e($notice) ?></div>
-        <?php endif; ?>
         <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required autocomplete="username">
+        <input type="hidden" name="token" value="<?= View::e($token) ?>">
+        <label for="name">Your name</label>
+        <input type="text" id="name" name="name" required>
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" required autocomplete="current-password">
-        <button type="submit">Log in</button>
-        <p class="links"><a href="/forgot-password">Forgot password?</a></p>
+        <input type="password" id="password" name="password" required minlength="12" autocomplete="new-password">
+        <label for="password_confirmation">Confirm password</label>
+        <input type="password" id="password_confirmation" name="password_confirmation" required minlength="12" autocomplete="new-password">
+        <button type="submit">Create account</button>
     </form>
 </body>
 </html>

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
+use App\Controllers\HouseholdController;
+use App\Controllers\PasswordResetController;
+use App\Controllers\ProfileController;
 use App\Database\Connection;
 use App\Http\Request;
 use App\Http\Response;
@@ -35,6 +38,23 @@ $authController = new AuthController();
 $router->get('/login', fn (): mixed => $authController->showLogin());
 $router->post('/login', fn (Request $r): mixed => $authController->login($r));
 $router->post('/logout', fn (Request $r): mixed => $authController->logout($r));
+
+$passwordResetController = new PasswordResetController();
+$router->get('/forgot-password', fn (): mixed => $passwordResetController->showForgotForm());
+$router->post('/forgot-password', fn (Request $r): mixed => $passwordResetController->sendReset($r));
+$router->get('/reset-password', fn (Request $r): mixed => $passwordResetController->showResetForm($r));
+$router->post('/reset-password', fn (Request $r): mixed => $passwordResetController->resetPassword($r));
+
+$householdController = new HouseholdController();
+$router->get('/household', fn (): mixed => $householdController->showMembers());
+$router->post('/household/invite', fn (Request $r): mixed => $householdController->sendInvite($r));
+$router->get('/accept-invite', fn (): mixed => $householdController->showAcceptForm());
+$router->post('/accept-invite', fn (Request $r): mixed => $householdController->acceptInvite($r));
+
+$profileController = new ProfileController();
+$router->get('/profile', fn (): mixed => $profileController->show());
+$router->post('/profile', fn (Request $r): mixed => $profileController->updateProfile($r));
+$router->post('/profile/password', fn (Request $r): mixed => $profileController->updatePassword($r));
 
 $dashboardController = new DashboardController();
 

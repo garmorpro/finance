@@ -23,15 +23,24 @@ use App\Support\View;
         .value { font-size: 1.1rem; margin-top: 0.25rem; }
         button { padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #334155; background: transparent; color: #f1f5f9; cursor: pointer; }
         button:hover { background: #1e293b; }
+        nav a { color: #94a3b8; text-decoration: none; margin-right: 1.25rem; font-size: 0.9rem; }
+        nav a:hover { color: #f1f5f9; }
+        .header-right { display: flex; align-items: center; gap: 1.25rem; }
     </style>
 </head>
 <body>
     <header>
         <strong>Finance</strong>
-        <form method="POST" action="/logout">
-            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-            <button type="submit">Log out</button>
-        </form>
+        <div class="header-right">
+            <nav>
+                <a href="/household">Household</a>
+                <a href="/profile">Profile</a>
+            </nav>
+            <form method="POST" action="/logout">
+                <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                <button type="submit">Log out</button>
+            </form>
+        </div>
     </header>
     <main>
         <div class="card">

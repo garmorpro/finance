@@ -25,9 +25,10 @@ final class AuthController
         Response::html(View::render('auth/login', [
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
+            'notice' => $_SESSION['_flash_notice'] ?? null,
         ]));
 
-        unset($_SESSION['_flash_error']);
+        unset($_SESSION['_flash_error'], $_SESSION['_flash_notice']);
     }
 
     public function login(Request $request): void
