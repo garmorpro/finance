@@ -137,9 +137,23 @@
     }
   }
 
+  /*
+   * The outer .tile (draggable, column-broken) deliberately carries no
+   * box-shadow/border-radius of its own — a shadowed, rounded box that's
+   * also `break-inside: avoid` in a multi-column context is a known
+   * browser rendering bug (Chromium/WebKit can leave a ghost shadow/
+   * border sliver at the column-fragment boundary, especially next to a
+   * column-span:all tile forcing a layout break). .tile-card carries the
+   * actual visual chrome and never participates in column fragmentation
+   * itself, since it's just inline content inside .tile.
+   */
   .tile {
-    @apply card cursor-grab active:cursor-grabbing select-none transition-shadow hover:shadow-md mb-4;
+    @apply cursor-grab active:cursor-grabbing select-none mb-4;
     break-inside: avoid;
+  }
+
+  .tile-card {
+    @apply card transition-shadow hover:shadow-md;
   }
 
   .tile-wide {

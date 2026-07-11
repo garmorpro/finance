@@ -51,27 +51,29 @@ use App\Support\View;
                     <?php foreach ($widgetOrder as $widgetKey): ?>
                         <?php $isWide = in_array($widgetKey, $wideWidgets, true); ?>
                         <div class="tile <?= $isWide ? 'tile-wide' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
-                            <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
-                                <?php View::partial('dashboard/widgets/' . $widgetKey, [
-                                    'widgetKey' => $widgetKey,
-                                    'isWide' => $isWide,
-                                    'netWorth' => $netWorth,
-                                    'accounts' => $accounts,
-                                    'recentTransactions' => $recentTransactions,
-                                    'reviewCounts' => $reviewCounts,
-                                    'budgetSummary' => $budgetSummary,
-                                    'upcomingRecurring' => $upcomingRecurring,
-                                    'recurringSummary' => $recurringSummary,
-                                    'netWorthTrend' => $netWorthTrend,
-                                    'incomeVsSpending' => $incomeVsSpending,
-                                    'spendingByCategory' => $spendingByCategory,
-                                    'topGoals' => $topGoals,
-                                    'activeGoalCount' => $activeGoalCount,
-                                    'debtSummary' => $debtSummary,
-                                ]); ?>
-                            <?php else: ?>
-                                <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>
-                            <?php endif; ?>
+                            <div class="tile-card">
+                                <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
+                                    <?php View::partial('dashboard/widgets/' . $widgetKey, [
+                                        'widgetKey' => $widgetKey,
+                                        'isWide' => $isWide,
+                                        'netWorth' => $netWorth,
+                                        'accounts' => $accounts,
+                                        'recentTransactions' => $recentTransactions,
+                                        'reviewCounts' => $reviewCounts,
+                                        'budgetSummary' => $budgetSummary,
+                                        'upcomingRecurring' => $upcomingRecurring,
+                                        'recurringSummary' => $recurringSummary,
+                                        'netWorthTrend' => $netWorthTrend,
+                                        'incomeVsSpending' => $incomeVsSpending,
+                                        'spendingByCategory' => $spendingByCategory,
+                                        'topGoals' => $topGoals,
+                                        'activeGoalCount' => $activeGoalCount,
+                                        'debtSummary' => $debtSummary,
+                                    ]); ?>
+                                <?php else: ?>
+                                    <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
