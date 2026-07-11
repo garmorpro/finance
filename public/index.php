@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\AccountController;
 use App\Controllers\AuthController;
 use App\Controllers\BudgetController;
+use App\Controllers\CashFlowController;
 use App\Controllers\CategoryController;
 use App\Controllers\CategoryGroupController;
 use App\Controllers\DashboardController;
@@ -125,6 +126,9 @@ $router->post('/goals/{id}/reactivate', fn (Request $r): mixed => $goalControlle
 
 $debtController = new DebtController();
 $router->get('/debt', fn (): mixed => $debtController->index());
+
+$cashFlowController = new CashFlowController();
+$router->get('/cash-flow', fn (Request $r): mixed => $cashFlowController->index($r));
 
 $categoryController = new CategoryController();
 $router->get('/settings/categories', fn (): mixed => $categoryController->index());

@@ -72,6 +72,54 @@
     });
   }
 
+  function buildCashFlowChart(canvas, payload) {
+    var net = payload.datasets[0] || { data: [] };
+    var cumulative = payload.datasets[1] || { data: [] };
+
+    return new Chart(canvas, {
+      data: {
+        labels: payload.labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: net.label,
+            data: net.data,
+            backgroundColor: function (ctx) {
+              return ctx.raw >= 0 ? '#059669' : '#dc2626';
+            },
+            borderRadius: 3,
+            order: 2,
+          },
+          {
+            type: 'line',
+            label: cumulative.label,
+            data: cumulative.data,
+            borderColor: '#c94f32',
+            backgroundColor: 'rgba(201, 79, 50, 0.1)',
+            tension: 0.3,
+            pointRadius: 2,
+            fill: false,
+            order: 1,
+            yAxisID: 'y1',
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } },
+          tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + money.format(ctx.parsed.y); } } },
+        },
+        scales: {
+          y: { grid: { color: gridColor }, ticks: { callback: function (v) { return money.format(v); } } },
+          y1: { position: 'right', grid: { display: false }, ticks: { callback: function (v) { return money.format(v); } } },
+          x: { grid: { display: false } },
+        },
+      },
+    });
+  }
+
   function buildDoughnutChart(canvas, payload) {
     var ds = payload.datasets[0] || { data: [] };
     return new Chart(canvas, {
@@ -91,7 +139,7 @@
     });
   }
 
-  var builders = { line: buildLineChart, bar: buildBarChart, doughnut: buildDoughnutChart };
+  var builders = { line: buildLineChart, bar: buildBarChart, doughnut: buildDoughnutChart, cashflow: buildCashFlowChart };
 
   document.querySelectorAll('[data-chart]').forEach(function (canvas) {
     var dataScript = document.getElementById(canvas.id + '-data');

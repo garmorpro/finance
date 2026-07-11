@@ -114,6 +114,38 @@ final class ReportingService
      */
     public function incomeVsSpending(int $householdId, int $months = 6): array
     {
+        return $this->monthlyIncomeExpense($householdId, $months);
+    }
+
+    /**
+     * Same monthly income/expense series as incomeVsSpending(), with a net
+     * (income minus expenses) and a running cumulative total added — the
+     * "money in vs. money out over time" story a fixed side-by-side
+     * comparison doesn't tell on its own.
+     *
+     * @return list<array{label: string, income: string, expenses: string, net: string, cumulative: string}>
+     */
+    public function cashFlow(int $householdId, int $months = 12): array
+    {
+        $series = $this->monthlyIncomeExpense($householdId, $months);
+
+        $cumulative = '0.00';
+        foreach ($series as &$row) {
+            $net = bcsub($row['income'], $row['expenses'], 2);
+            $cumulative = bcadd($cumulative, $net, 2);
+            $row['net'] = $net;
+            $row['cumulative'] = $cumulative;
+        }
+        unset($row);
+
+        return $series;
+    }
+
+    /**
+     * @return list<array{label: string, income: string, expenses: string}>
+     */
+    private function monthlyIncomeExpense(int $householdId, int $months): array
+    {
         $startMonth = date('Y-m-01', strtotime('-' . ($months - 1) . ' months'));
 
         $stmt = Connection::get()->prepare(
