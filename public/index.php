@@ -13,6 +13,7 @@ use App\Controllers\DebtController;
 use App\Controllers\GoalController;
 use App\Controllers\HouseholdController;
 use App\Controllers\ImportController;
+use App\Controllers\NotificationController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
 use App\Controllers\RecurringController;
@@ -158,6 +159,11 @@ $router->get('/settings/tags', fn (): mixed => $tagController->index());
 $router->post('/settings/tags', fn (Request $r): mixed => $tagController->store($r));
 $router->post('/settings/tags/{id}', fn (Request $r): mixed => $tagController->update($r));
 $router->post('/settings/tags/{id}/delete', fn (Request $r): mixed => $tagController->destroy($r));
+
+$notificationController = new NotificationController();
+$router->get('/notifications', fn (): mixed => $notificationController->index());
+$router->get('/settings/notifications', fn (): mixed => $notificationController->settings());
+$router->post('/settings/notifications', fn (Request $r): mixed => $notificationController->updatePreferences($r));
 
 $dashboardController = new DashboardController();
 $router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardController->saveLayout($r));
