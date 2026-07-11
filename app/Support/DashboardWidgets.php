@@ -13,8 +13,10 @@ final class DashboardWidgets
 {
     private const WIDGETS = [
         'net_worth' => ['title' => 'Net Worth', 'available' => true],
+        'net_worth_trend' => ['title' => 'Net Worth Trend', 'available' => true, 'wide' => true],
         'accounts' => ['title' => 'Accounts', 'available' => true],
-        'spending' => ['title' => 'Spending', 'available' => false],
+        'spending' => ['title' => 'Spending by Category', 'available' => true, 'wide' => true],
+        'income_vs_spending' => ['title' => 'Income vs. Spending', 'available' => true, 'wide' => true],
         'budget' => ['title' => 'Budget', 'available' => true],
         'transactions' => ['title' => 'Recent Transactions', 'available' => true],
         'review' => ['title' => 'Needs Review', 'available' => true],
@@ -25,7 +27,7 @@ final class DashboardWidgets
 
     /** @var list<string> */
     private const DEFAULT_ORDER = [
-        'net_worth', 'accounts', 'spending', 'budget',
+        'net_worth', 'net_worth_trend', 'accounts', 'spending', 'income_vs_spending', 'budget',
         'transactions', 'review', 'recurring', 'goals', 'investments',
     ];
 
@@ -37,6 +39,11 @@ final class DashboardWidgets
     public static function isAvailable(string $key): bool
     {
         return self::WIDGETS[$key]['available'] ?? false;
+    }
+
+    public static function isWide(string $key): bool
+    {
+        return self::WIDGETS[$key]['wide'] ?? false;
     }
 
     public static function exists(string $key): bool

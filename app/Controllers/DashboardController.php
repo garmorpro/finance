@@ -13,6 +13,7 @@ use App\Repositories\HouseholdRepository;
 use App\Repositories\RecurringItemRepository;
 use App\Repositories\TransactionRepository;
 use App\Repositories\UserRepository;
+use App\Services\ReportingService;
 use App\Support\Csrf;
 use App\Support\DashboardWidgets;
 use App\Support\View;
@@ -40,6 +41,11 @@ final class DashboardController
         $upcomingRecurring = $householdId !== null ? $recurringRepo->upcomingForHousehold($householdId, 5) : [];
         $recurringSummary = $householdId !== null ? $recurringRepo->summaryForHousehold($householdId) : ['overdue' => 0, 'monthlyExpense' => '0.00', 'monthlyIncome' => '0.00'];
 
+        $reportingService = new ReportingService();
+        $netWorthTrend = $householdId !== null ? $reportingService->netWorthTrend($householdId) : [];
+        $incomeVsSpending = $householdId !== null ? $reportingService->incomeVsSpending($householdId) : [];
+        $spendingByCategory = $householdId !== null ? $reportingService->spendingByCategory($householdId, gmdate('Y-m-01')) : [];
+
         $layout = $userRepo->getDashboardLayout($userId);
         $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
         $hiddenWidgets = DashboardWidgets::filterKnown($layout['hidden']);
@@ -55,6 +61,9 @@ final class DashboardController
             'budgetSummary' => $budgetSummary,
             'upcomingRecurring' => $upcomingRecurring,
             'recurringSummary' => $recurringSummary,
+            'netWorthTrend' => $netWorthTrend,
+            'incomeVsSpending' => $incomeVsSpending,
+            'spendingByCategory' => $spendingByCategory,
             'widgetOrder' => $widgetOrder,
             'hiddenWidgets' => $hiddenWidgets,
             'csrfToken' => Csrf::token(),

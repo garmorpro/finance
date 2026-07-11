@@ -47,4 +47,33 @@ final class AccountBalanceHistoryRepository
 
         return $stmt->fetchAll();
     }
+
+    /**
+     * Full history for a set of accounts in one query (for building a net
+     * worth trend across all of a household's accounts without an N+1),
+     * ordered so each account's rows are already oldest-first — callers
+     * that need "balance as of date X" can stop at the first row past
+     * that date. Household scoping is the caller's responsibility since
+     * $accountIds is expected to already come from a household-scoped
+     * account list, not user input.
+     *
+     * @param list<int> $accountIds
+     */
+    public function listForAccounts(array $accountIds): array
+    {
+        if ($accountIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($accountIds), '?'));
+        $stmt = Connection::get()->prepare(
+            "SELECT account_id, previous_balance, new_balance, created_at
+             FROM account_balance_history
+             WHERE account_id IN ({$placeholders})
+             ORDER BY account_id, created_at ASC"
+        );
+        $stmt->execute(array_values($accountIds));
+
+        return $stmt->fetchAll();
+    }
 }

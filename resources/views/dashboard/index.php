@@ -10,6 +10,9 @@
 /** @var array{planned: string, spent: string, remaining: string, has_items: bool} $budgetSummary */
 /** @var array $upcomingRecurring */
 /** @var array{overdue: int, monthlyExpense: string, monthlyIncome: string} $recurringSummary */
+/** @var list<array{label: string, assets: string, liabilities: string, netWorth: string}> $netWorthTrend */
+/** @var list<array{label: string, income: string, expenses: string}> $incomeVsSpending */
+/** @var list<array{name: string, color: string|null, amount: string}> $spendingByCategory */
 /** @var list<string> $widgetOrder */
 /** @var list<string> $hiddenWidgets */
 /** @var string $csrfToken */
@@ -42,7 +45,7 @@ use App\Support\View;
 
                 <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
                     <?php foreach ($widgetOrder as $widgetKey): ?>
-                        <div class="tile <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
+                        <div class="tile <?= DashboardWidgets::isWide($widgetKey) ? 'lg:col-span-2' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
                             <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
                                 <?php View::partial('dashboard/widgets/' . $widgetKey, [
                                     'netWorth' => $netWorth,
@@ -52,6 +55,9 @@ use App\Support\View;
                                     'budgetSummary' => $budgetSummary,
                                     'upcomingRecurring' => $upcomingRecurring,
                                     'recurringSummary' => $recurringSummary,
+                                    'netWorthTrend' => $netWorthTrend,
+                                    'incomeVsSpending' => $incomeVsSpending,
+                                    'spendingByCategory' => $spendingByCategory,
                                 ]); ?>
                             <?php else: ?>
                                 <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>
@@ -101,5 +107,7 @@ use App\Support\View;
     </div>
 
     <script src="<?= View::asset('/assets/js/dashboard.js') ?>" defer></script>
+    <script src="<?= View::asset('/assets/js/vendor/chart.umd.min.js') ?>" defer></script>
+    <script src="<?= View::asset('/assets/js/charts.js') ?>" defer></script>
 </body>
 </html>
