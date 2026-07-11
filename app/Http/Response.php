@@ -13,6 +13,13 @@ final class Response
         echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }
 
+    public static function html(string $content, int $status = 200): void
+    {
+        http_response_code($status);
+        header('Content-Type: text/html; charset=UTF-8');
+        echo $content;
+    }
+
     public static function notFound(): void
     {
         self::json(['error' => 'Not found'], 404);
