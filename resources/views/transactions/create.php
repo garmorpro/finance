@@ -10,6 +10,8 @@
 use App\Support\View;
 
 $oldTagIds = array_map('intval', $old['tag_ids'] ?? []);
+$oldIsSplit = !empty($old['is_split']);
+$oldSplits = $old['splits'] ?? [];
 
 ?>
 <!DOCTYPE html>
@@ -75,6 +77,29 @@ $oldTagIds = array_map('intval', $old['tag_ids'] ?? []);
                                     <option value="<?= (int) $category['id'] ?>" <?= (string) $category['id'] === ($old['category_id'] ?? '') ? 'selected' : '' ?>><?= View::e($category['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            <p class="field-help">Ignored when split into multiple categories below.</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+                            <input type="checkbox" name="is_split" value="1" <?= $oldIsSplit ? 'checked' : '' ?> class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
+                            Split this transaction across multiple categories
+                        </label>
+                        <div class="mt-3 space-y-2">
+                            <?php for ($i = 0; $i < 4; $i++): ?>
+                                <?php $row = $oldSplits[$i] ?? ['category_id' => '', 'amount' => '']; ?>
+                                <div class="grid grid-cols-[1fr_140px] gap-2">
+                                    <select name="splits[<?= $i ?>][category_id]" class="field-input">
+                                        <option value="">Choose category&hellip;</option>
+                                        <?php foreach ($categories as $category): ?>
+                                            <option value="<?= (int) $category['id'] ?>" <?= (string) $category['id'] === ($row['category_id'] ?? '') ? 'selected' : '' ?>><?= View::e($category['name']) ?> (<?= View::e(ucfirst($category['type'])) ?>)</option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <input type="text" inputmode="decimal" name="splits[<?= $i ?>][amount]" placeholder="0.00" value="<?= View::e($row['amount'] ?? '') ?>" class="field-input text-right">
+                                </div>
+                            <?php endfor; ?>
+                            <p class="field-help">Up to 4 categories; amounts must add up to the total above.</p>
                         </div>
                     </div>
 

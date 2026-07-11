@@ -147,15 +147,33 @@ final class BudgetRepository
      * category with activity, not just budgeted ones, so the caller can
      * surface unbudgeted amounts.
      *
+     * A split transaction's own category_id is just a "primary" display
+     * category (the largest split line — see TransactionController); the
+     * actual per-category total here has to come from each split's own
+     * line item instead, or a split purchase would misreport its whole
+     * amount against just the primary category. Unsplit transactions
+     * (the overwhelming majority) are read directly, unchanged.
+     *
      * @return array<int, string>
      */
     public function actualByCategory(int $householdId, string $transactionType, string $monthStart, string $monthEndExclusive): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT category_id, amount FROM transactions
-             WHERE household_id = :household_id AND deleted_at IS NULL AND exclude_from_budget = 0
-               AND transaction_type = :transaction_type AND category_id IS NOT NULL
-               AND transaction_date >= :month_start AND transaction_date < :month_end'
+            'SELECT category_id, amount FROM (
+                SELECT t.category_id AS category_id, t.amount AS amount
+                FROM transactions t
+                WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.exclude_from_budget = 0
+                  AND t.transaction_type = :transaction_type AND t.is_split = 0
+                  AND t.transaction_date >= :month_start AND t.transaction_date < :month_end
+                UNION ALL
+                SELECT ts.category_id AS category_id, ts.amount AS amount
+                FROM transactions t
+                INNER JOIN transaction_splits ts ON ts.transaction_id = t.id
+                WHERE t.household_id = :household_id2 AND t.deleted_at IS NULL AND t.exclude_from_budget = 0
+                  AND t.transaction_type = :transaction_type2 AND t.is_split = 1
+                  AND t.transaction_date >= :month_start2 AND t.transaction_date < :month_end2
+            ) combined
+            WHERE category_id IS NOT NULL'
         );
 
         $stmt->execute([
@@ -163,6 +181,10 @@ final class BudgetRepository
             'transaction_type' => $transactionType,
             'month_start' => $monthStart,
             'month_end' => $monthEndExclusive,
+            'household_id2' => $householdId,
+            'transaction_type2' => $transactionType,
+            'month_start2' => $monthStart,
+            'month_end2' => $monthEndExclusive,
         ]);
 
         $totals = [];

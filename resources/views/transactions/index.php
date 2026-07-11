@@ -134,7 +134,16 @@ $totalPages = max(1, (int) ceil($total / $perPage));
                                                 <span class="badge ml-2"><?= View::e($tag['name']) ?></span>
                                             <?php endforeach; ?>
                                         </td>
-                                        <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['transaction_type'] === 'transfer' ? 'Transfer' : ($transaction['category_name'] ?? '—')) ?></td>
+                                        <td class="text-stone-500 dark:text-stone-400">
+                                            <?php if ($transaction['transaction_type'] === 'transfer'): ?>
+                                                Transfer
+                                            <?php else: ?>
+                                                <?= View::e($transaction['category_name'] ?? '—') ?>
+                                                <?php if ((int) $transaction['is_split'] === 1): ?>
+                                                    <span class="badge ml-1" title="Split across multiple categories">Split</span>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['account_name']) ?></td>
                                         <td class="text-right font-medium <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
                                             <?= Money::format($transaction['amount']) ?>

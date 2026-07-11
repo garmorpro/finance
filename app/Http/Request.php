@@ -74,6 +74,22 @@ final class Request
     }
 
     /**
+     * For nested array form inputs (e.g. "splits[1][category_id]",
+     * "splits[1][amount]") — returns the raw nested structure so callers
+     * can shape it themselves. Every leaf value still needs to be
+     * type-checked by the caller, since PHP doesn't enforce any shape on
+     * submitted array data.
+     *
+     * @return array<int|string, mixed>
+     */
+    public function postNestedArray(string $key): array
+    {
+        $value = $_POST[$key] ?? null;
+
+        return is_array($value) ? $value : [];
+    }
+
+    /**
      * @param list<string> $values
      * @return list<int>
      */

@@ -14,6 +14,7 @@ use App\Repositories\AuditLogRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\TagRepository;
 use App\Repositories\TransactionRepository;
+use App\Repositories\TransactionSplitRepository;
 use App\Services\RuleMatchingService;
 use App\Support\Csrf;
 use App\Support\View;
@@ -157,10 +158,15 @@ final class TransactionController
         fputcsv($out, ['Date', 'Payee', 'Category', 'Account', 'Type', 'Amount', 'Reviewed', 'Notes']);
 
         foreach ($rows as $row) {
+            $category = $row['category_name'] ?? '';
+            if ((int) $row['is_split'] === 1 && $category !== '') {
+                $category .= ' (split)';
+            }
+
             fputcsv($out, [
                 $row['transaction_date'],
                 $row['payee'],
-                $row['category_name'] ?? '',
+                $category,
                 $row['account_name'],
                 $row['transaction_type'],
                 $row['amount'],
@@ -215,24 +221,44 @@ final class TransactionController
 
         $signedAmount = $this->signedAmount($input['transaction_type'], $input['amount']);
 
+        // A split transaction's own category_id is a "primary" display
+        // category (the largest split), not what actually determines
+        // budget/spending totals — see the doc comment on
+        // primaryCategoryFromSplits().
+        $categoryId = $input['is_split']
+            ? $this->primaryCategoryFromSplits($input['splits'])
+            : ($input['category_id'] !== null ? (int) $input['category_id'] : null);
+
         $pdo = Connection::get();
         $pdo->beginTransaction();
 
         try {
             $transactionId = (new TransactionRepository())->create($householdId, $userId, [
                 ...$input,
+                'category_id' => $categoryId,
                 'signed_amount' => $signedAmount,
             ]);
 
             (new TagRepository())->setTagsForTransaction($transactionId, $input['tag_ids']);
 
-            (new RuleMatchingService())->applyToTransaction($householdId, $transactionId, [
-                'payee' => $input['payee'],
-                'notes' => $input['notes'],
-                'amount' => $signedAmount,
-                'account_id' => (int) $input['account_id'],
-                'transaction_type' => $input['transaction_type'],
-            ]);
+            if ($input['is_split']) {
+                (new TransactionSplitRepository())->replaceForTransaction(
+                    $transactionId,
+                    $this->normalizeSplitsForStorage($input['splits'], $input['transaction_type'])
+                );
+            } else {
+                // Rules are skipped for a split transaction — the user
+                // just explicitly categorized it by hand across multiple
+                // lines, and an auto-rule overriding that single
+                // "primary" category field would be surprising.
+                (new RuleMatchingService())->applyToTransaction($householdId, $transactionId, [
+                    'payee' => $input['payee'],
+                    'notes' => $input['notes'],
+                    'amount' => $signedAmount,
+                    'account_id' => (int) $input['account_id'],
+                    'transaction_type' => $input['transaction_type'],
+                ]);
+            }
 
             $newBalance = bcadd($account['current_balance'], $signedAmount, 2);
 
@@ -305,6 +331,7 @@ final class TransactionController
         $this->renderForm('transactions/edit', [
             'transaction' => $transaction,
             'selectedTagIds' => array_column((new TagRepository())->listForTransaction($transactionId), 'id'),
+            'existingSplits' => (new TransactionSplitRepository())->listForTransaction($transactionId),
             'error' => $_SESSION['_flash_error'] ?? null,
         ]);
 
@@ -356,16 +383,29 @@ final class TransactionController
         $oldAccountId = (int) $existing['account_id'];
         $newAccountId = (int) $input['account_id'];
 
+        $categoryId = $input['is_split']
+            ? $this->primaryCategoryFromSplits($input['splits'])
+            : ($input['category_id'] !== null ? (int) $input['category_id'] : null);
+
         $pdo = Connection::get();
         $pdo->beginTransaction();
 
         try {
             $transactionRepo->update($transactionId, $householdId, $userId, [
                 ...$input,
+                'category_id' => $categoryId,
                 'signed_amount' => $newSignedAmount,
             ]);
 
             (new TagRepository())->setTagsForTransaction($transactionId, $input['tag_ids']);
+
+            // Always replaced, not conditionally — an empty array clears
+            // existing splits back to none, so unchecking "split" on an
+            // edit correctly un-splits the transaction.
+            (new TransactionSplitRepository())->replaceForTransaction(
+                $transactionId,
+                $input['is_split'] ? $this->normalizeSplitsForStorage($input['splits'], $input['transaction_type']) : []
+            );
 
             $historyRepo = new AccountBalanceHistoryRepository();
 
@@ -685,7 +725,43 @@ final class TransactionController
             'exclude_from_budget' => $request->post('exclude_from_budget') === '1',
             'exclude_from_reports' => $request->post('exclude_from_reports') === '1',
             'tag_ids' => $request->postIntList('tag_ids'),
+            'is_split' => $request->post('is_split') === '1',
+            'splits' => $this->readSplits($request),
         ];
+    }
+
+    /**
+     * Up to 4 fixed split rows (a static form, no add/remove-row
+     * JavaScript, matching this app's Rules engine form) — a blank row
+     * (no amount entered) is silently dropped rather than treated as an
+     * error, so the user doesn't have to fill every slot.
+     *
+     * @return list<array{category_id: string, amount: string}>
+     */
+    private function readSplits(Request $request): array
+    {
+        $raw = $request->postNestedArray('splits');
+        $splits = [];
+
+        foreach ($raw as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $amount = isset($row['amount']) && is_string($row['amount']) ? trim($row['amount']) : '';
+            if ($amount === '') {
+                continue;
+            }
+
+            $categoryId = isset($row['category_id']) && is_string($row['category_id']) ? $row['category_id'] : '';
+
+            $splits[] = [
+                'category_id' => $categoryId,
+                'amount' => $amount,
+            ];
+        }
+
+        return $splits;
     }
 
     private function validate(array $input, int $householdId): ?string
@@ -727,6 +803,81 @@ final class TransactionController
             }
         }
 
+        if ($input['is_split']) {
+            return $this->validateSplits($input, $householdId);
+        }
+
         return null;
+    }
+
+    private function validateSplits(array $input, int $householdId): ?string
+    {
+        if (count($input['splits']) < 2) {
+            return 'A split transaction needs at least two categories.';
+        }
+
+        $categoryRepo = new CategoryRepository();
+        $sum = '0.00';
+
+        foreach ($input['splits'] as $split) {
+            if ($split['category_id'] === '') {
+                return 'Please choose a category for every split.';
+            }
+
+            if (!MoneyInput::isValid($split['amount']) || bccomp($split['amount'], '0', 2) <= 0) {
+                return 'Each split amount must be greater than zero.';
+            }
+
+            $category = $categoryRepo->findById((int) $split['category_id'], $householdId);
+            if ($category === null || $category['type'] !== $input['transaction_type']) {
+                return 'Please choose a valid ' . $input['transaction_type'] . ' category for every split.';
+            }
+
+            $sum = bcadd($sum, MoneyInput::normalize($split['amount']), 2);
+        }
+
+        if (bccomp($sum, $input['amount'], 2) !== 0) {
+            return 'Split amounts must add up to the transaction total.';
+        }
+
+        return null;
+    }
+
+    /**
+     * The category shown on the transaction outside the split-detail view
+     * (the transaction list, filters, CSV export, and the Reports page)
+     * is the largest split's category — a "primary" display category, not
+     * a claim that the whole amount belongs there. The Budgets page and
+     * the dashboard's spending-by-category chart read each split's own
+     * category and amount individually instead, so those stay exact.
+     *
+     * @param list<array{category_id: string, amount: string}> $splits
+     */
+    private function primaryCategoryFromSplits(array $splits): int
+    {
+        $largestCategoryId = (int) $splits[0]['category_id'];
+        $largestAmount = MoneyInput::normalize($splits[0]['amount']);
+
+        foreach ($splits as $split) {
+            $amount = MoneyInput::normalize($split['amount']);
+            if (bccomp($amount, $largestAmount, 2) > 0) {
+                $largestAmount = $amount;
+                $largestCategoryId = (int) $split['category_id'];
+            }
+        }
+
+        return $largestCategoryId;
+    }
+
+    /**
+     * @param list<array{category_id: string, amount: string}> $splits
+     * @return list<array{category_id: int, amount: string}>
+     */
+    private function normalizeSplitsForStorage(array $splits, string $transactionType): array
+    {
+        return array_map(fn (array $split): array => [
+            'category_id' => (int) $split['category_id'],
+            'amount' => $this->signedAmount($transactionType, MoneyInput::normalize($split['amount'])),
+        ], $splits);
     }
 }

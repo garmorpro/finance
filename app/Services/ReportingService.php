@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Database\Connection;
 use App\Repositories\AccountBalanceHistoryRepository;
 use App\Repositories\AccountRepository;
+use App\Repositories\CategoryRepository;
 
 /**
  * Chart/report data for the dashboard. Kept out of controllers per
@@ -184,6 +185,10 @@ final class ReportingService
 
     /**
      * Expense totals by category for one month, descending by amount.
+     * Split lines are read individually rather than the parent
+     * transaction's row — see BudgetRepository::actualByCategory()'s
+     * doc comment for why (the parent's category_id on a split
+     * transaction is only a "primary" display category).
      *
      * @return list<array{name: string, color: string|null, amount: string}>
      */
@@ -192,20 +197,50 @@ final class ReportingService
         $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
 
         $stmt = Connection::get()->prepare(
-            'SELECT c.id AS category_id, c.name, c.color, t.amount
-             FROM transactions t
-             INNER JOIN categories c ON c.id = t.category_id
-             WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.exclude_from_reports = 0
-               AND t.transaction_type = "expense"
-               AND t.transaction_date >= :month_start AND t.transaction_date < :month_end'
+            'SELECT category_id, amount FROM (
+                SELECT t.category_id AS category_id, t.amount AS amount
+                FROM transactions t
+                WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.exclude_from_reports = 0
+                  AND t.transaction_type = "expense" AND t.is_split = 0
+                  AND t.transaction_date >= :month_start AND t.transaction_date < :month_end
+                UNION ALL
+                SELECT ts.category_id AS category_id, ts.amount AS amount
+                FROM transactions t
+                INNER JOIN transaction_splits ts ON ts.transaction_id = t.id
+                WHERE t.household_id = :household_id2 AND t.deleted_at IS NULL AND t.exclude_from_reports = 0
+                  AND t.transaction_type = "expense" AND t.is_split = 1
+                  AND t.transaction_date >= :month_start2 AND t.transaction_date < :month_end2
+            ) combined
+            WHERE category_id IS NOT NULL'
         );
-        $stmt->execute(['household_id' => $householdId, 'month_start' => $periodMonth, 'month_end' => $monthEnd]);
+        $stmt->execute([
+            'household_id' => $householdId,
+            'month_start' => $periodMonth,
+            'month_end' => $monthEnd,
+            'household_id2' => $householdId,
+            'month_start2' => $periodMonth,
+            'month_end2' => $monthEnd,
+        ]);
+
+        $categoryRows = $stmt->fetchAll();
+        if ($categoryRows === []) {
+            return [];
+        }
+
+        $categories = (new CategoryRepository())->listForHousehold($householdId, true);
+        $categoryById = [];
+        foreach ($categories as $category) {
+            $categoryById[(int) $category['id']] = $category;
+        }
 
         $totals = [];
-        foreach ($stmt->fetchAll() as $row) {
+        foreach ($categoryRows as $row) {
             $categoryId = (int) $row['category_id'];
+            if (!isset($categoryById[$categoryId])) {
+                continue;
+            }
             if (!isset($totals[$categoryId])) {
-                $totals[$categoryId] = ['name' => $row['name'], 'color' => $row['color'], 'amount' => '0.00'];
+                $totals[$categoryId] = ['name' => $categoryById[$categoryId]['name'], 'color' => $categoryById[$categoryId]['color'], 'amount' => '0.00'];
             }
             $totals[$categoryId]['amount'] = bcadd($totals[$categoryId]['amount'], bcmul($row['amount'], '-1', 2), 2);
         }

@@ -19,11 +19,11 @@ final class TransactionRepository
 
         $stmt = Connection::get()->prepare(
             'INSERT INTO transactions
-                (household_id, account_id, category_id, created_by_user_id, last_edited_by_user_id,
+                (household_id, account_id, category_id, is_split, created_by_user_id, last_edited_by_user_id,
                  transaction_type, transaction_date, amount, payee, notes,
                  is_reviewed, exclude_from_budget, exclude_from_reports, created_at, updated_at)
              VALUES
-                (:household_id, :account_id, :category_id, :created_by_user_id, :last_edited_by_user_id,
+                (:household_id, :account_id, :category_id, :is_split, :created_by_user_id, :last_edited_by_user_id,
                  :transaction_type, :transaction_date, :amount, :payee, :notes,
                  :is_reviewed, :exclude_from_budget, :exclude_from_reports, :created_at, :updated_at)'
         );
@@ -32,6 +32,7 @@ final class TransactionRepository
             'household_id' => $householdId,
             'account_id' => $data['account_id'],
             'category_id' => $data['category_id'],
+            'is_split' => !empty($data['is_split']) ? 1 : 0,
             'created_by_user_id' => $userId,
             'last_edited_by_user_id' => $userId,
             'transaction_type' => $data['transaction_type'],
@@ -206,6 +207,7 @@ final class TransactionRepository
             'UPDATE transactions SET
                 account_id = :account_id,
                 category_id = :category_id,
+                is_split = :is_split,
                 last_edited_by_user_id = :last_edited_by_user_id,
                 transaction_type = :transaction_type,
                 transaction_date = :transaction_date,
@@ -222,6 +224,7 @@ final class TransactionRepository
         $stmt->execute([
             'account_id' => $data['account_id'],
             'category_id' => $data['category_id'],
+            'is_split' => !empty($data['is_split']) ? 1 : 0,
             'last_edited_by_user_id' => $userId,
             'transaction_type' => $data['transaction_type'],
             'transaction_date' => $data['transaction_date'],
