@@ -49,6 +49,26 @@ final class TransactionRepository
         return (int) Connection::get()->lastInsertId();
     }
 
+    /**
+     * Links two transaction rows as the two sides of one transfer. Called
+     * after both rows exist (can't reference an ID that doesn't exist yet),
+     * so this is always the second step of a two-insert-then-link sequence.
+     */
+    public function linkTransferPair(int $transactionId, int $householdId, int $pairId): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE transactions SET transfer_pair_id = :pair_id, updated_at = :updated_at
+             WHERE id = :id AND household_id = :household_id'
+        );
+
+        $stmt->execute([
+            'pair_id' => $pairId,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $transactionId,
+            'household_id' => $householdId,
+        ]);
+    }
+
     public function findById(int $transactionId, int $householdId): ?array
     {
         $stmt = Connection::get()->prepare(
@@ -96,6 +116,32 @@ final class TransactionRepository
             'is_reviewed' => $data['is_reviewed'] ? 1 : 0,
             'exclude_from_budget' => $data['exclude_from_budget'] ? 1 : 0,
             'exclude_from_reports' => $data['exclude_from_reports'] ? 1 : 0,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $transactionId,
+            'household_id' => $householdId,
+        ]);
+    }
+
+    /**
+     * Narrow update used for transfers, which only allow editing notes and
+     * reviewed status — changing the amount or account on one side of a
+     * transfer without touching the other would desync both balances.
+     */
+    public function updateNotesAndReviewed(int $transactionId, int $householdId, int $userId, ?string $notes, bool $isReviewed): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE transactions SET
+                notes = :notes,
+                is_reviewed = :is_reviewed,
+                last_edited_by_user_id = :last_edited_by_user_id,
+                updated_at = :updated_at
+             WHERE id = :id AND household_id = :household_id'
+        );
+
+        $stmt->execute([
+            'notes' => $notes,
+            'is_reviewed' => $isReviewed ? 1 : 0,
+            'last_edited_by_user_id' => $userId,
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $transactionId,
             'household_id' => $householdId,

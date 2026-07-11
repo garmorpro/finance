@@ -35,7 +35,10 @@ $totalPages = max(1, (int) ceil($total / $perPage));
                         <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Transactions</h1>
                         <p class="text-sm text-stone-500 dark:text-stone-400 mt-1"><?= $total ?> total</p>
                     </div>
-                    <a href="/transactions/create" class="btn-primary">Add transaction</a>
+                    <div class="flex gap-3">
+                        <a href="/transactions/transfer" class="btn-secondary">Transfer</a>
+                        <a href="/transactions/create" class="btn-primary">Add transaction</a>
+                    </div>
                 </div>
 
                 <?php if (!empty($notice)): ?>
@@ -68,6 +71,7 @@ $totalPages = max(1, (int) ceil($total / $perPage));
                                 <option value="">All</option>
                                 <option value="income" <?= $filters['type'] === 'income' ? 'selected' : '' ?>>Income</option>
                                 <option value="expense" <?= $filters['type'] === 'expense' ? 'selected' : '' ?>>Expense</option>
+                                <option value="transfer" <?= $filters['type'] === 'transfer' ? 'selected' : '' ?>>Transfer</option>
                             </select>
                         </div>
                         <div>
@@ -117,7 +121,7 @@ $totalPages = max(1, (int) ceil($total / $perPage));
                                                 <span class="badge ml-2">Unreviewed</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['category_name'] ?? '—') ?></td>
+                                        <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['transaction_type'] === 'transfer' ? 'Transfer' : ($transaction['category_name'] ?? '—')) ?></td>
                                         <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['account_name']) ?></td>
                                         <td class="text-right font-medium <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
                                             <?= Money::format($transaction['amount']) ?>

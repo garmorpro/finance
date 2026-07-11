@@ -146,10 +146,32 @@ final class TransactionController
         $transactionId = (int) $request->param('id');
         $householdId = (int) AuthMiddleware::householdId();
 
-        $transaction = (new TransactionRepository())->findById($transactionId, $householdId);
+        $transactionRepo = new TransactionRepository();
+        $transaction = $transactionRepo->findById($transactionId, $householdId);
 
         if ($transaction === null) {
             Response::html('Transaction not found.', 404);
+            return;
+        }
+
+        // Transfers are two linked rows — editing the amount or account on
+        // just one side would desync the balances, so they get a reduced
+        // edit view (notes/reviewed only) with delete as the way to "undo."
+        if ($transaction['transaction_type'] === 'transfer') {
+            $pairAccountName = null;
+            if ($transaction['transfer_pair_id'] !== null) {
+                $pair = $transactionRepo->findById((int) $transaction['transfer_pair_id'], $householdId);
+                $pairAccountName = $pair !== null ? (new AccountRepository())->findById((int) $pair['account_id'], $householdId)['name'] ?? null : null;
+            }
+
+            Response::html(View::render('transactions/edit-transfer', [
+                'transaction' => $transaction,
+                'pairAccountName' => $pairAccountName,
+                'csrfToken' => Csrf::token(),
+                'error' => $_SESSION['_flash_error'] ?? null,
+            ]));
+
+            unset($_SESSION['_flash_error']);
             return;
         }
 
@@ -174,6 +196,11 @@ final class TransactionController
 
         if ($existing === null) {
             Response::html('Transaction not found.', 404);
+            return;
+        }
+
+        if ($existing['transaction_type'] === 'transfer') {
+            $this->updateTransferNotes($request, $transactionRepo, $transactionId, $householdId, $userId);
             return;
         }
 
@@ -274,34 +301,26 @@ final class TransactionController
         }
 
         $accountRepo = new AccountRepository();
-        $accountId = (int) $transaction['account_id'];
+        $historyRepo = new AccountBalanceHistoryRepository();
+        $auditRepo = new AuditLogRepository();
+
+        $pair = $transaction['transfer_pair_id'] !== null
+            ? $transactionRepo->findById((int) $transaction['transfer_pair_id'], $householdId)
+            : null;
 
         $pdo = Connection::get();
         $pdo->beginTransaction();
 
         try {
-            $transactionRepo->softDelete($transactionId, $householdId);
+            $this->deleteOneSideAndReverseBalance($transactionRepo, $accountRepo, $historyRepo, $auditRepo, $transaction, $householdId, $userId, $request->ip());
 
-            $account = $accountRepo->findById($accountId, $householdId);
-            $newBalance = bcsub($account['current_balance'], $transaction['amount'], 2);
-
-            (new AccountBalanceHistoryRepository())->record(
-                $accountId,
-                $userId,
-                $account['current_balance'],
-                $newBalance,
-                'Transaction deleted: ' . $transaction['payee']
-            );
-            $accountRepo->updateBalance($accountId, $householdId, $newBalance);
-
-            (new AuditLogRepository())->log(
-                $userId,
-                $householdId,
-                'transaction.deleted',
-                'transaction',
-                $transactionId,
-                $request->ip()
-            );
+            // A transfer is two rows representing one real-world event —
+            // deleting only one side would leave the other's balance
+            // effect applied with no matching counterpart, so both sides
+            // are deleted together or not at all.
+            if ($pair !== null) {
+                $this->deleteOneSideAndReverseBalance($transactionRepo, $accountRepo, $historyRepo, $auditRepo, $pair, $householdId, $userId, $request->ip());
+            }
 
             $pdo->commit();
         } catch (\Throwable $e) {
@@ -311,7 +330,189 @@ final class TransactionController
             return;
         }
 
-        $_SESSION['_flash_notice'] = 'Transaction deleted.';
+        $_SESSION['_flash_notice'] = $pair !== null ? 'Transfer deleted.' : 'Transaction deleted.';
+        header('Location: /transactions');
+    }
+
+    private function deleteOneSideAndReverseBalance(
+        TransactionRepository $transactionRepo,
+        AccountRepository $accountRepo,
+        AccountBalanceHistoryRepository $historyRepo,
+        AuditLogRepository $auditRepo,
+        array $transaction,
+        int $householdId,
+        int $userId,
+        string $ip
+    ): void {
+        $transactionRepo->softDelete((int) $transaction['id'], $householdId);
+
+        $accountId = (int) $transaction['account_id'];
+        $account = $accountRepo->findById($accountId, $householdId);
+        $newBalance = bcsub($account['current_balance'], $transaction['amount'], 2);
+
+        $historyRepo->record($accountId, $userId, $account['current_balance'], $newBalance, 'Transaction deleted: ' . $transaction['payee']);
+        $accountRepo->updateBalance($accountId, $householdId, $newBalance);
+
+        $auditRepo->log($userId, $householdId, 'transaction.deleted', 'transaction', (int) $transaction['id'], $ip);
+    }
+
+    private function updateTransferNotes(
+        Request $request,
+        TransactionRepository $transactionRepo,
+        int $transactionId,
+        int $householdId,
+        int $userId
+    ): void {
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
+            header('Location: /transactions/' . $transactionId . '/edit');
+            return;
+        }
+
+        $transactionRepo->updateNotesAndReviewed(
+            $transactionId,
+            $householdId,
+            $userId,
+            trim($request->post('notes')) !== '' ? trim($request->post('notes')) : null,
+            $request->post('is_reviewed') === '1'
+        );
+
+        (new AuditLogRepository())->log($userId, $householdId, 'transaction.updated', 'transaction', $transactionId, $request->ip());
+
+        $_SESSION['_flash_notice'] = 'Transfer updated.';
+        header('Location: /transactions');
+    }
+
+    public function showTransferForm(): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $householdId = (int) AuthMiddleware::householdId();
+
+        Response::html(View::render('transactions/transfer', [
+            'accounts' => (new AccountRepository())->listForHousehold($householdId),
+            'csrfToken' => Csrf::token(),
+            'error' => $_SESSION['_flash_error'] ?? null,
+            'old' => $_SESSION['_flash_old'] ?? [],
+        ]));
+
+        unset($_SESSION['_flash_error'], $_SESSION['_flash_old']);
+    }
+
+    public function storeTransfer(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $householdId = (int) AuthMiddleware::householdId();
+        $userId = (int) AuthMiddleware::userId();
+
+        $input = [
+            'from_account_id' => $request->post('from_account_id'),
+            'to_account_id' => $request->post('to_account_id'),
+            'transaction_date' => $request->post('transaction_date'),
+            'amount' => trim($request->post('amount')),
+            'notes' => trim($request->post('notes')) !== '' ? trim($request->post('notes')) : null,
+        ];
+
+        $redirectBack = function (string $message) use ($input): void {
+            $_SESSION['_flash_error'] = $message;
+            $_SESSION['_flash_old'] = $input;
+            header('Location: /transactions/transfer');
+        };
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $redirectBack('Your session expired. Please try again.');
+            return;
+        }
+
+        if (in_array($input['from_account_id'], ['', null], true) || in_array($input['to_account_id'], ['', null], true)) {
+            $redirectBack('Please choose both accounts.');
+            return;
+        }
+
+        if ($input['from_account_id'] === $input['to_account_id']) {
+            $redirectBack('Please choose two different accounts.');
+            return;
+        }
+
+        if (!MoneyInput::isValid($input['amount']) || bccomp($input['amount'], '0', 2) <= 0) {
+            $redirectBack('Please enter a valid amount greater than zero.');
+            return;
+        }
+
+        if (($input['transaction_date'] ?? '') === '' || \DateTime::createFromFormat('Y-m-d', $input['transaction_date']) === false) {
+            $redirectBack('Please enter a valid transaction date.');
+            return;
+        }
+
+        $accountRepo = new AccountRepository();
+        $fromAccount = $accountRepo->findById((int) $input['from_account_id'], $householdId);
+        $toAccount = $accountRepo->findById((int) $input['to_account_id'], $householdId);
+
+        if ($fromAccount === null || $toAccount === null) {
+            $redirectBack('Please choose valid accounts.');
+            return;
+        }
+
+        $pdo = Connection::get();
+        $pdo->beginTransaction();
+
+        try {
+            $transactionRepo = new TransactionRepository();
+            $historyRepo = new AccountBalanceHistoryRepository();
+            $auditRepo = new AuditLogRepository();
+
+            $fromId = $transactionRepo->create($householdId, $userId, [
+                'account_id' => $fromAccount['id'],
+                'category_id' => null,
+                'transaction_type' => 'transfer',
+                'transaction_date' => $input['transaction_date'],
+                'payee' => 'Transfer to ' . $toAccount['name'],
+                'notes' => $input['notes'],
+                'is_reviewed' => false,
+                'exclude_from_budget' => true,
+                'exclude_from_reports' => true,
+                'signed_amount' => bcmul($input['amount'], '-1', 2),
+            ]);
+
+            $toId = $transactionRepo->create($householdId, $userId, [
+                'account_id' => $toAccount['id'],
+                'category_id' => null,
+                'transaction_type' => 'transfer',
+                'transaction_date' => $input['transaction_date'],
+                'payee' => 'Transfer from ' . $fromAccount['name'],
+                'notes' => $input['notes'],
+                'is_reviewed' => false,
+                'exclude_from_budget' => true,
+                'exclude_from_reports' => true,
+                'signed_amount' => $input['amount'],
+            ]);
+
+            $transactionRepo->linkTransferPair($fromId, $householdId, $toId);
+            $transactionRepo->linkTransferPair($toId, $householdId, $fromId);
+
+            $newFromBalance = bcsub($fromAccount['current_balance'], $input['amount'], 2);
+            $historyRepo->record($fromAccount['id'], $userId, $fromAccount['current_balance'], $newFromBalance, 'Transfer to ' . $toAccount['name']);
+            $accountRepo->updateBalance($fromAccount['id'], $householdId, $newFromBalance);
+
+            $newToBalance = bcadd($toAccount['current_balance'], $input['amount'], 2);
+            $historyRepo->record($toAccount['id'], $userId, $toAccount['current_balance'], $newToBalance, 'Transfer from ' . $fromAccount['name']);
+            $accountRepo->updateBalance($toAccount['id'], $householdId, $newToBalance);
+
+            $auditRepo->log($userId, $householdId, 'transaction.transfer_created', 'transaction', $fromId, $request->ip(), [
+                'from_account' => $fromAccount['name'],
+                'to_account' => $toAccount['name'],
+                'amount' => $input['amount'],
+            ]);
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            $redirectBack('Something went wrong saving that transfer. Please try again.');
+            return;
+        }
+
+        $_SESSION['_flash_notice'] = 'Transfer added.';
         header('Location: /transactions');
     }
 
