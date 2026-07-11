@@ -33,6 +33,15 @@ php bin/create-owner.php
 6. Point Apache's document root at `public/`.
 7. Verify with `curl https://your-domain/health` — should return `{"status":"ok","database":"ok",...}`.
 
+## Frontend build (CSS)
+
+Styling is Tailwind CSS, compiled to a static file (`public/assets/css/app.css`) that's committed to the repo — **the production server does not need Node.js installed**, only whichever machine is used to run the build. Only rebuild after changing `resources/css/app.css`, `tailwind.config.js`, or adding new Tailwind classes to a view:
+
+```
+npm install
+npm run build:css
+```
+
 ## Testing
 
 ```

@@ -18,6 +18,11 @@ final class View
         return (string) ob_get_clean();
     }
 
+    public static function partial(string $template, array $data = []): void
+    {
+        echo self::render($template, $data);
+    }
+
     public static function e(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');

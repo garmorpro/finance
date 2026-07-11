@@ -71,13 +71,15 @@ $router->get('/', function () use ($appConfig, $dashboardController): void {
         <html lang="en">
         <head>
             <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>{$name}</title>
+            <link rel="stylesheet" href="/assets/css/app.css">
         </head>
-        <body style="font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: #f1f5f9;">
-            <div style="text-align: center;">
-                <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">{$name}</h1>
-                <p style="color: #94a3b8; margin-bottom: 1.5rem;">Under construction — Phase 1 foundation is live.</p>
-                <a href="/login" style="color: #3b82f6;">Log in</a>
+        <body class="auth-shell">
+            <div class="text-center">
+                <h1 class="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white mb-2">{$name}</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">A self-hosted household finance dashboard.</p>
+                <a href="/login" class="btn-primary">Log in</a>
             </div>
         </body>
         </html>

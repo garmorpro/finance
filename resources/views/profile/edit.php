@@ -13,57 +13,59 @@ use App\Support\View;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #f1f5f9; margin: 0; min-height: 100vh; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; border-bottom: 1px solid #1e293b; }
-        header a { color: #f1f5f9; text-decoration: none; }
-        main { padding: 2rem; max-width: 480px; margin: 0 auto; }
-        .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem; }
-        h2 { font-size: 1rem; margin: 0 0 1rem; }
-        label { display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #94a3b8; }
-        input { width: 100%; padding: 0.5rem 0.75rem; margin-bottom: 1rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #f1f5f9; box-sizing: border-box; }
-        button { padding: 0.5rem 1rem; border-radius: 6px; border: none; background: #3b82f6; color: white; font-weight: 600; cursor: pointer; }
-        .error { background: #7f1d1d; color: #fecaca; padding: 0.5rem 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.875rem; }
-        .notice { background: #14532d; color: #bbf7d0; padding: 0.5rem 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.875rem; }
-    </style>
+    <title>Profile · Finance</title>
+    <link rel="stylesheet" href="/assets/css/app.css">
 </head>
-<body>
-    <header>
-        <a href="/">&larr; Back to overview</a>
-        <strong>Profile</strong>
-    </header>
-    <main>
+<body class="page-shell">
+    <?php View::partial('partials/nav', ['csrfToken' => $csrfToken, 'active' => 'profile']); ?>
+
+    <main class="page-main">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Profile</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your account details and password.</p>
+        </div>
+
         <?php if (!empty($error)): ?>
-            <div class="error"><?= View::e($error) ?></div>
+            <div class="alert-error"><?= View::e($error) ?></div>
         <?php endif; ?>
         <?php if (!empty($notice)): ?>
-            <div class="notice"><?= View::e($notice) ?></div>
+            <div class="alert-success"><?= View::e($notice) ?></div>
         <?php endif; ?>
 
         <div class="card">
-            <h2>Your info</h2>
-            <form method="POST" action="/profile">
+            <h2 class="font-medium text-slate-900 dark:text-white mb-4">Your info</h2>
+            <form method="POST" action="/profile" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                <label for="name">Name</label>
-                <input type="text" id="name" name="name" value="<?= View::e($user['name']) ?>" required>
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" value="<?= View::e($user['email']) ?>" required>
-                <button type="submit">Save changes</button>
+                <div>
+                    <label for="name" class="field-label">Name</label>
+                    <input type="text" id="name" name="name" value="<?= View::e($user['name']) ?>" required class="field-input">
+                </div>
+                <div>
+                    <label for="email" class="field-label">Email</label>
+                    <input type="email" id="email" name="email" value="<?= View::e($user['email']) ?>" required class="field-input">
+                </div>
+                <button type="submit" class="btn-primary">Save changes</button>
             </form>
         </div>
 
         <div class="card">
-            <h2>Change password</h2>
-            <form method="POST" action="/profile/password">
+            <h2 class="font-medium text-slate-900 dark:text-white mb-4">Change password</h2>
+            <form method="POST" action="/profile/password" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                <label for="current_password">Current password</label>
-                <input type="password" id="current_password" name="current_password" required autocomplete="current-password">
-                <label for="new_password">New password</label>
-                <input type="password" id="new_password" name="new_password" required minlength="12" autocomplete="new-password">
-                <label for="new_password_confirmation">Confirm new password</label>
-                <input type="password" id="new_password_confirmation" name="new_password_confirmation" required minlength="12" autocomplete="new-password">
-                <button type="submit">Update password</button>
+                <div>
+                    <label for="current_password" class="field-label">Current password</label>
+                    <input type="password" id="current_password" name="current_password" required autocomplete="current-password" class="field-input">
+                </div>
+                <div>
+                    <label for="new_password" class="field-label">New password</label>
+                    <input type="password" id="new_password" name="new_password" required minlength="12" autocomplete="new-password" class="field-input">
+                    <p class="field-help">At least 12 characters.</p>
+                </div>
+                <div>
+                    <label for="new_password_confirmation" class="field-label">Confirm new password</label>
+                    <input type="password" id="new_password_confirmation" name="new_password_confirmation" required minlength="12" autocomplete="new-password" class="field-input">
+                </div>
+                <button type="submit" class="btn-primary">Update password</button>
             </form>
         </div>
     </main>

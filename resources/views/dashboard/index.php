@@ -13,48 +13,42 @@ use App\Support\View;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Overview</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #f1f5f9; margin: 0; min-height: 100vh; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; border-bottom: 1px solid #1e293b; }
-        main { padding: 2rem; max-width: 640px; margin: 0 auto; }
-        .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem; }
-        .label { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .value { font-size: 1.1rem; margin-top: 0.25rem; }
-        button { padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #334155; background: transparent; color: #f1f5f9; cursor: pointer; }
-        button:hover { background: #1e293b; }
-        nav a { color: #94a3b8; text-decoration: none; margin-right: 1.25rem; font-size: 0.9rem; }
-        nav a:hover { color: #f1f5f9; }
-        .header-right { display: flex; align-items: center; gap: 1.25rem; }
-    </style>
+    <title>Overview · Finance</title>
+    <link rel="stylesheet" href="/assets/css/app.css">
 </head>
-<body>
-    <header>
-        <strong>Finance</strong>
-        <div class="header-right">
-            <nav>
-                <a href="/household">Household</a>
-                <a href="/profile">Profile</a>
-            </nav>
-            <form method="POST" action="/logout">
-                <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                <button type="submit">Log out</button>
-            </form>
+<body class="page-shell">
+    <?php View::partial('partials/nav', ['csrfToken' => $csrfToken, 'active' => 'overview']); ?>
+
+    <main class="page-main">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Overview</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Welcome back, <?= View::e(explode(' ', $user['name'])[0]) ?>.</p>
         </div>
-    </header>
-    <main>
+
         <div class="card">
-            <div class="label">Logged in as</div>
-            <div class="value"><?= View::e($user['name']) ?> (<?= View::e($user['email']) ?>)</div>
+            <div class="label-text">Logged in as</div>
+            <div class="text-base text-slate-900 dark:text-white"><?= View::e($user['name']) ?></div>
+            <div class="text-sm text-slate-500 dark:text-slate-400"><?= View::e($user['email']) ?></div>
         </div>
+
         <?php if ($household !== null): ?>
         <div class="card">
-            <div class="label">Household</div>
-            <div class="value"><?= View::e($household['name']) ?></div>
-            <div class="label" style="margin-top: 0.75rem;">Role</div>
-            <div class="value"><?= View::e(ucfirst((string) $role)) ?></div>
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="label-text">Household</div>
+                    <div class="text-base text-slate-900 dark:text-white"><?= View::e($household['name']) ?></div>
+                </div>
+                <span class="<?= $role === 'owner' ? 'badge-owner' : 'badge' ?>"><?= View::e(ucfirst((string) $role)) ?></span>
+            </div>
+            <a href="/household" class="inline-block mt-4 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Manage household &rarr;</a>
         </div>
         <?php endif; ?>
+
+        <div class="card border-dashed">
+            <div class="text-sm text-slate-500 dark:text-slate-400">
+                Accounts, transactions, budgets, and net worth tracking are coming in the next build phase.
+            </div>
+        </div>
     </main>
 </body>
 </html>
