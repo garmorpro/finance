@@ -61,4 +61,69 @@
 
     grid.insertBefore(dragging, before ? target : target.nextSibling);
   });
+
+  // --- Customize modal: show/hide tiles ---
+  var modal = document.getElementById('customize-modal');
+  var openBtn = document.getElementById('customize-open');
+  var closeBtn = document.getElementById('customize-close');
+  var list = document.getElementById('customize-list');
+
+  if (!modal || !openBtn || !closeBtn || !list) {
+    return;
+  }
+
+  function openModal() {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  openBtn.addEventListener('click', openModal);
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', function (event) {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+
+  function saveVisibility() {
+    var hidden = Array.prototype.filter
+      .call(list.querySelectorAll('[data-widget-toggle]'), function (input) {
+        return !input.checked;
+      })
+      .map(function (input) {
+        return input.dataset.widgetToggle;
+      });
+
+    var body = new URLSearchParams();
+    body.set('csrf_token', list.dataset.csrfToken);
+    body.set('hidden', JSON.stringify(hidden));
+
+    fetch('/dashboard/widgets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    }).catch(function () {
+      // Silent failure: worst case, the next page load falls back to
+      // the last successfully saved visibility state.
+    });
+  }
+
+  list.addEventListener('change', function (event) {
+    var toggle = event.target.closest('[data-widget-toggle]');
+    if (!toggle) {
+      return;
+    }
+
+    var tile = grid.querySelector('[data-widget="' + toggle.dataset.widgetToggle + '"]');
+    if (tile) {
+      tile.classList.toggle('hidden', !toggle.checked);
+    }
+
+    saveVisibility();
+  });
 })();

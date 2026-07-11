@@ -6,6 +6,7 @@
 /** @var array|null $netWorth */
 /** @var array $accounts */
 /** @var list<string> $widgetOrder */
+/** @var list<string> $hiddenWidgets */
 /** @var string $csrfToken */
 
 use App\Support\DashboardWidgets;
@@ -31,12 +32,15 @@ use App\Support\View;
                         <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Overview</h1>
                         <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Welcome back, <?= View::e(explode(' ', $user['name'])[0]) ?>.</p>
                     </div>
-                    <p class="text-xs text-slate-400 dark:text-slate-600">Drag tiles to rearrange</p>
+                    <div class="flex items-center gap-4">
+                        <p class="text-xs text-slate-400 dark:text-slate-600">Drag tiles to rearrange</p>
+                        <button type="button" id="customize-open" class="btn-secondary">Customize</button>
+                    </div>
                 </div>
 
                 <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
                     <?php foreach ($widgetOrder as $widgetKey): ?>
-                        <div class="tile" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
+                        <div class="tile <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
                             <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
                                 <?php View::partial('dashboard/widgets/' . $widgetKey, [
                                     'netWorth' => $netWorth,
@@ -62,6 +66,30 @@ use App\Support\View;
                 </div>
                 <?php endif; ?>
             </main>
+        </div>
+    </div>
+
+    <div id="customize-modal" class="hidden fixed inset-0 z-30 items-center justify-center bg-slate-900/50 px-4">
+        <div class="card w-full max-w-md max-h-[80vh] overflow-y-auto">
+            <div class="flex items-start justify-between mb-1">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Customize dashboard</h2>
+                <button type="button" id="customize-close" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Close">&times;</button>
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Choose which tiles appear on your overview.</p>
+
+            <div id="customize-list" class="space-y-1" data-csrf-token="<?= View::e($csrfToken) ?>">
+                <?php foreach ($widgetOrder as $widgetKey): ?>
+                    <?php $isHidden = in_array($widgetKey, $hiddenWidgets, true); ?>
+                    <label class="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300"><?= View::e(DashboardWidgets::title($widgetKey)) ?></span>
+                        <span class="relative inline-flex items-center">
+                            <input type="checkbox" data-widget-toggle="<?= View::e($widgetKey) ?>" class="sr-only peer" <?= $isHidden ? '' : 'checked' ?>>
+                            <span class="w-11 h-6 bg-slate-300 dark:bg-slate-700 rounded-full peer-checked:bg-blue-600 transition-colors"></span>
+                            <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></span>
+                        </span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
         </div>
     </div>
 

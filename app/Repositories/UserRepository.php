@@ -96,35 +96,56 @@ final class UserRepository
     }
 
     /**
-     * @return list<string>|null
+     * @return array{order: list<string>, hidden: list<string>}
      */
-    public function getDashboardLayout(int $userId): ?array
+    public function getDashboardLayout(int $userId): array
     {
         $stmt = Connection::get()->prepare('SELECT dashboard_layout FROM users WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $userId]);
 
         $raw = $stmt->fetchColumn();
+        $decoded = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
 
-        if (!is_string($raw) || $raw === '') {
-            return null;
+        if (!is_array($decoded)) {
+            return ['order' => [], 'hidden' => []];
         }
 
-        $decoded = json_decode($raw, true);
+        $order = is_array($decoded['order'] ?? null) ? array_values(array_filter($decoded['order'], 'is_string')) : [];
+        $hidden = is_array($decoded['hidden'] ?? null) ? array_values(array_filter($decoded['hidden'], 'is_string')) : [];
 
-        return is_array($decoded) ? array_values(array_filter($decoded, 'is_string')) : null;
+        return ['order' => $order, 'hidden' => $hidden];
     }
 
     /**
      * @param list<string> $order
      */
-    public function updateDashboardLayout(int $userId, array $order): void
+    public function updateDashboardOrder(int $userId, array $order): void
+    {
+        $current = $this->getDashboardLayout($userId);
+        $this->saveDashboardLayout($userId, $order, $current['hidden']);
+    }
+
+    /**
+     * @param list<string> $hidden
+     */
+    public function updateDashboardHidden(int $userId, array $hidden): void
+    {
+        $current = $this->getDashboardLayout($userId);
+        $this->saveDashboardLayout($userId, $current['order'], $hidden);
+    }
+
+    /**
+     * @param list<string> $order
+     * @param list<string> $hidden
+     */
+    private function saveDashboardLayout(int $userId, array $order, array $hidden): void
     {
         $stmt = Connection::get()->prepare(
             'UPDATE users SET dashboard_layout = :dashboard_layout, updated_at = :updated_at WHERE id = :id'
         );
 
         $stmt->execute([
-            'dashboard_layout' => json_encode(array_values($order)),
+            'dashboard_layout' => json_encode(['order' => array_values($order), 'hidden' => array_values($hidden)]),
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $userId,
         ]);
