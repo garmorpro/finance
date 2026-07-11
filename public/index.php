@@ -68,6 +68,7 @@ $router->post('/accounts/{id}/archive', fn (Request $r): mixed => $accountContro
 $router->post('/accounts/{id}/restore', fn (Request $r): mixed => $accountController->restore($r));
 
 $dashboardController = new DashboardController();
+$router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardController->saveLayout($r));
 
 $router->get('/', function () use ($appConfig, $dashboardController): void {
     if (!empty($_SESSION['user_id'])) {

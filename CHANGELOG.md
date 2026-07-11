@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Customizable dashboard: draggable tile grid (native HTML5 drag-and-drop, no JS library) with per-user persisted order (`users.dashboard_layout` JSON column). Real data in the Net Worth and Accounts tiles; honest "Coming soon" placeholders for Spending/Budget/Transactions/Recurring/Goals/Investments until those phases are built. Layout save endpoint validates every tile key against the widget registry server-side (never trusts client-supplied keys).
 - Design system: Tailwind CSS compiled to a static `public/assets/css/app.css` (no Node.js required on the server), a shared component layer (cards, buttons, form fields, alerts, badges, tables), dark mode, and a shared authenticated-page nav partial. Every Phase 1/2 view rebuilt against it.
 - Router: added dynamic path segments (`/accounts/{id}/edit`) needed for per-record pages, with exact-match routes still taking priority over pattern routes.
 - Phase 3 (Financial Accounts): manual account CRUD (checking/savings/credit card/mortgage/loans/investment/property/vehicle/etc.), archive/restore, and balance adjustments with a full audit-trail history (`account_balance_history` — balances are never silently overwritten). All monetary values are `DECIMAL`, never float; all account queries are scoped to the household ID from the session, never a client-supplied one. Dashboard now shows net worth (assets/liabilities via bcmath, not float arithmetic) and an accounts summary. `accounts` and `account_balance_history` tables added.

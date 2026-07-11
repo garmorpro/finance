@@ -94,4 +94,39 @@ final class UserRepository
             'id' => $userId,
         ]);
     }
+
+    /**
+     * @return list<string>|null
+     */
+    public function getDashboardLayout(int $userId): ?array
+    {
+        $stmt = Connection::get()->prepare('SELECT dashboard_layout FROM users WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $userId]);
+
+        $raw = $stmt->fetchColumn();
+
+        if (!is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? array_values(array_filter($decoded, 'is_string')) : null;
+    }
+
+    /**
+     * @param list<string> $order
+     */
+    public function updateDashboardLayout(int $userId, array $order): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET dashboard_layout = :dashboard_layout, updated_at = :updated_at WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'dashboard_layout' => json_encode(array_values($order)),
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+    }
 }

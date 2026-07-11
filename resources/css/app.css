@@ -25,6 +25,30 @@
     @apply max-w-2xl mx-auto px-6 py-10 space-y-6;
   }
 
+  .page-main-wide {
+    @apply max-w-6xl mx-auto px-6 py-10 space-y-6;
+  }
+
+  .dashboard-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start;
+  }
+
+  .tile {
+    @apply card cursor-grab active:cursor-grabbing select-none transition-shadow hover:shadow-md;
+  }
+
+  .tile-header {
+    @apply flex items-center justify-between mb-3;
+  }
+
+  .tile-drag-handle {
+    @apply text-slate-300 dark:text-slate-700;
+  }
+
+  .tile-placeholder {
+    @apply flex flex-col items-center justify-center text-center py-8 text-slate-400 dark:text-slate-600;
+  }
+
   .brand {
     @apply font-semibold text-lg tracking-tight text-slate-900 dark:text-white;
   }
