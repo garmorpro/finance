@@ -9,6 +9,7 @@ use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AccountRepository;
 use App\Repositories\HouseholdRepository;
+use App\Repositories\TransactionRepository;
 use App\Repositories\UserRepository;
 use App\Support\Csrf;
 use App\Support\DashboardWidgets;
@@ -29,6 +30,7 @@ final class DashboardController
         $accountRepo = new AccountRepository();
         $netWorth = $householdId !== null ? $accountRepo->netWorthSummary($householdId) : null;
         $accounts = $householdId !== null ? $accountRepo->listForHousehold($householdId) : [];
+        $recentTransactions = $householdId !== null ? (new TransactionRepository())->recentForHousehold($householdId, 5) : [];
 
         $layout = $userRepo->getDashboardLayout($userId);
         $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
@@ -40,6 +42,7 @@ final class DashboardController
             'role' => $_SESSION['role'] ?? null,
             'netWorth' => $netWorth,
             'accounts' => $accounts,
+            'recentTransactions' => $recentTransactions,
             'widgetOrder' => $widgetOrder,
             'hiddenWidgets' => $hiddenWidgets,
             'csrfToken' => Csrf::token(),

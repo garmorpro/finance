@@ -8,6 +8,7 @@ use App\Controllers\DashboardController;
 use App\Controllers\HouseholdController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
+use App\Controllers\TransactionController;
 use App\Database\Connection;
 use App\Http\Request;
 use App\Http\Response;
@@ -68,6 +69,14 @@ $router->post('/accounts/{id}/balance', fn (Request $r): mixed => $accountContro
 $router->post('/accounts/{id}/archive', fn (Request $r): mixed => $accountController->archive($r));
 $router->post('/accounts/{id}/restore', fn (Request $r): mixed => $accountController->restore($r));
 
+$transactionController = new TransactionController();
+$router->get('/transactions', fn (Request $r): mixed => $transactionController->index($r));
+$router->get('/transactions/create', fn (): mixed => $transactionController->showCreateForm());
+$router->post('/transactions', fn (Request $r): mixed => $transactionController->store($r));
+$router->get('/transactions/{id}/edit', fn (Request $r): mixed => $transactionController->showEditForm($r));
+$router->post('/transactions/{id}', fn (Request $r): mixed => $transactionController->update($r));
+$router->post('/transactions/{id}/delete', fn (Request $r): mixed => $transactionController->destroy($r));
+
 $dashboardController = new DashboardController();
 $router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardController->saveLayout($r));
 $router->post('/dashboard/widgets', fn (Request $r): mixed => $dashboardController->saveVisibility($r));
@@ -92,8 +101,8 @@ $router->get('/', function () use ($appConfig, $dashboardController): void {
         </head>
         <body class="auth-shell">
             <div class="text-center">
-                <h1 class="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white mb-2">{$name}</h1>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">A self-hosted household finance dashboard.</p>
+                <h1 class="text-3xl font-semibold tracking-tight text-stone-900 dark:text-white mb-2">{$name}</h1>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">A self-hosted household finance dashboard.</p>
                 <a href="/login" class="btn-primary">Log in</a>
             </div>
         </body>

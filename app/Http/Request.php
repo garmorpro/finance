@@ -26,6 +26,11 @@ final class Request
         return is_string($_POST[$key] ?? null) ? $_POST[$key] : $default;
     }
 
+    public function query(string $key, string $default = ''): string
+    {
+        return is_string($_GET[$key] ?? null) ? $_GET[$key] : $default;
+    }
+
     public function ip(): string
     {
         return is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';

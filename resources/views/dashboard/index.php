@@ -5,6 +5,7 @@
 /** @var string|null $role */
 /** @var array|null $netWorth */
 /** @var array $accounts */
+/** @var array $recentTransactions */
 /** @var list<string> $widgetOrder */
 /** @var list<string> $hiddenWidgets */
 /** @var string $csrfToken */
@@ -42,6 +43,7 @@ use App\Support\View;
                                 <?php View::partial('dashboard/widgets/' . $widgetKey, [
                                     'netWorth' => $netWorth,
                                     'accounts' => $accounts,
+                                    'recentTransactions' => $recentTransactions,
                                 ]); ?>
                             <?php else: ?>
                                 <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>
@@ -82,7 +84,7 @@ use App\Support\View;
                         <span class="relative inline-flex items-center">
                             <input type="checkbox" data-widget-toggle="<?= View::e($widgetKey) ?>" class="sr-only peer" <?= $isHidden ? '' : 'checked' ?>>
                             <span class="w-11 h-6 bg-stone-300 dark:bg-stone-700 rounded-full peer-checked:bg-terracotta-600 transition-colors"></span>
-                            <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:transtone-x-5"></span>
+                            <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></span>
                         </span>
                     </label>
                 <?php endforeach; ?>

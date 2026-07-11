@@ -35,8 +35,8 @@ $link = function (string $key, string $href, string $label) use ($active): strin
     <nav class="sidebar-nav">
         <?= $link('overview', '/', 'Overview') ?>
         <?= $link('accounts', '/accounts', 'Accounts') ?>
+        <?= $link('transactions', '/transactions', 'Transactions') ?>
 
-        <span class="sidebar-link-disabled" title="Coming soon">Transactions</span>
         <span class="sidebar-link-disabled" title="Coming soon">Cash Flow</span>
         <span class="sidebar-link-disabled" title="Coming soon">Budgets</span>
         <span class="sidebar-link-disabled" title="Coming soon">Recurring</span>

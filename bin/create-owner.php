@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Database\Connection;
 use App\Repositories\AuditLogRepository;
+use App\Repositories\CategoryRepository;
 use App\Repositories\HouseholdRepository;
 use App\Repositories\UserRepository;
 use Dotenv\Dotenv;
@@ -71,6 +72,7 @@ try {
     $householdRepo = new HouseholdRepository();
     $householdId = $householdRepo->create($householdName, $userId);
     $householdRepo->addMember($householdId, $userId, 'owner');
+    (new CategoryRepository())->seedDefaults($householdId);
 
     (new AuditLogRepository())->log($userId, $householdId, 'household.bootstrap', 'user', $userId, null, [
         'email' => $email,

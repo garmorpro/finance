@@ -16,7 +16,7 @@ final class DashboardWidgets
         'accounts' => ['title' => 'Accounts', 'available' => true],
         'spending' => ['title' => 'Spending', 'available' => false],
         'budget' => ['title' => 'Budget', 'available' => false],
-        'transactions' => ['title' => 'Recent Transactions', 'available' => false],
+        'transactions' => ['title' => 'Recent Transactions', 'available' => true],
         'recurring' => ['title' => 'Recurring Bills', 'available' => false],
         'goals' => ['title' => 'Goals', 'available' => false],
         'investments' => ['title' => 'Investments', 'available' => false],
