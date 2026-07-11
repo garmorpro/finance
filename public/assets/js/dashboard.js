@@ -9,6 +9,96 @@
   var csrfToken = grid.dataset.csrfToken;
   var dragging = null;
 
+  // --- Masonry layout ---
+  // Tiles flow into the shortest column, computed here rather than via
+  // CSS multi-column — `columns` + `break-inside: avoid` + `column-span:
+  // all` + a box-shadowed child proved unreliable across browsers (it
+  // produced two different rendering artifacts at the column-fragment
+  // boundary next to a wide tile). Absolute positioning sidesteps that
+  // class of bug entirely: nothing ever gets fragmented across a column
+  // boundary because there's no column boundary as far as the browser's
+  // layout engine is concerned.
+  var GAP = 16; // px, matches Tailwind's gap-4 / 1rem
+  var LG_BREAKPOINT = 1024; // px, matches this app's `lg:` breakpoint
+
+  function layoutMasonry() {
+    var containerWidth = grid.clientWidth;
+    if (containerWidth === 0) {
+      return;
+    }
+
+    var columns = window.innerWidth >= LG_BREAKPOINT ? 2 : 1;
+    var colWidth = columns === 1 ? containerWidth : (containerWidth - GAP) / 2;
+    var colHeights = new Array(columns).fill(0);
+
+    var tiles = Array.prototype.filter.call(grid.querySelectorAll('[data-widget]'), function (tile) {
+      return !tile.classList.contains('hidden');
+    });
+
+    tiles.forEach(function (tile) {
+      var isWide = columns > 1 && tile.classList.contains('tile-wide');
+      var width = isWide ? containerWidth : colWidth;
+      tile.style.position = 'absolute';
+      tile.style.width = width + 'px';
+
+      if (isWide) {
+        var top = Math.max.apply(null, colHeights);
+        tile.style.left = '0px';
+        tile.style.top = top + 'px';
+        var newHeight = top + tile.offsetHeight + GAP;
+        colHeights = colHeights.map(function () {
+          return newHeight;
+        });
+      } else {
+        var shortest = 0;
+        for (var i = 1; i < colHeights.length; i++) {
+          if (colHeights[i] < colHeights[shortest]) {
+            shortest = i;
+          }
+        }
+        tile.style.left = (shortest * (colWidth + GAP)) + 'px';
+        tile.style.top = colHeights[shortest] + 'px';
+        colHeights[shortest] += tile.offsetHeight + GAP;
+      }
+    });
+
+    var maxHeight = 0;
+    for (var j = 0; j < colHeights.length; j++) {
+      maxHeight = Math.max(maxHeight, colHeights[j]);
+    }
+    grid.style.height = Math.max(0, maxHeight - GAP) + 'px';
+  }
+
+  var layoutScheduled = false;
+  function scheduleLayout() {
+    if (layoutScheduled) {
+      return;
+    }
+    layoutScheduled = true;
+    requestAnimationFrame(function () {
+      layoutScheduled = false;
+      layoutMasonry();
+    });
+  }
+
+  layoutMasonry();
+  window.addEventListener('load', scheduleLayout);
+  window.addEventListener('resize', scheduleLayout);
+
+  // Chart tiles render asynchronously (charts.js runs after this file) —
+  // a ResizeObserver on every tile catches that late height change (and
+  // any other content that changes height after initial layout) without
+  // guessing at a fixed delay. Chart canvases sit in a fixed-height
+  // wrapper, so this doesn't loop: width changes from layoutMasonry()
+  // don't feed back into another height change.
+  if (window.ResizeObserver) {
+    var observer = new ResizeObserver(scheduleLayout);
+    Array.prototype.forEach.call(grid.querySelectorAll('.tile-card'), function (card) {
+      observer.observe(card);
+    });
+  }
+
+  // --- Drag to reorder ---
   function currentOrder() {
     return Array.prototype.map.call(grid.querySelectorAll('[data-widget]'), function (el) {
       return el.dataset.widget;
@@ -46,6 +136,7 @@
     }
     dragging = null;
     saveOrder();
+    layoutMasonry();
   });
 
   grid.addEventListener('dragover', function (event) {
@@ -68,64 +159,63 @@
   var closeBtn = document.getElementById('customize-close');
   var list = document.getElementById('customize-list');
 
-  if (!modal || !openBtn || !closeBtn || !list) {
-    return;
-  }
+  if (modal && openBtn && closeBtn && list) {
+    var openModal = function () {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
 
-  function openModal() {
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-  }
+    var closeModal = function () {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
 
-  function closeModal() {
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-  }
+    openBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function (event) {
+      if (event.target === modal) {
+        closeModal();
+      }
+    });
 
-  openBtn.addEventListener('click', openModal);
-  closeBtn.addEventListener('click', closeModal);
-  modal.addEventListener('click', function (event) {
-    if (event.target === modal) {
-      closeModal();
-    }
-  });
+    var saveVisibility = function () {
+      var hidden = Array.prototype.filter
+        .call(list.querySelectorAll('[data-widget-toggle]'), function (input) {
+          return !input.checked;
+        })
+        .map(function (input) {
+          return input.dataset.widgetToggle;
+        });
 
-  function saveVisibility() {
-    var hidden = Array.prototype.filter
-      .call(list.querySelectorAll('[data-widget-toggle]'), function (input) {
-        return !input.checked;
-      })
-      .map(function (input) {
-        return input.dataset.widgetToggle;
+      var body = new URLSearchParams();
+      body.set('csrf_token', list.dataset.csrfToken);
+      body.set('hidden', JSON.stringify(hidden));
+
+      fetch('/dashboard/widgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      }).catch(function () {
+        // Silent failure: worst case, the next page load falls back to
+        // the last successfully saved visibility state.
       });
+    };
 
-    var body = new URLSearchParams();
-    body.set('csrf_token', list.dataset.csrfToken);
-    body.set('hidden', JSON.stringify(hidden));
+    list.addEventListener('change', function (event) {
+      var toggle = event.target.closest('[data-widget-toggle]');
+      if (!toggle) {
+        return;
+      }
 
-    fetch('/dashboard/widgets', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    }).catch(function () {
-      // Silent failure: worst case, the next page load falls back to
-      // the last successfully saved visibility state.
+      var tile = grid.querySelector('[data-widget="' + toggle.dataset.widgetToggle + '"]');
+      if (tile) {
+        tile.classList.toggle('hidden', !toggle.checked);
+      }
+
+      saveVisibility();
+      layoutMasonry();
     });
   }
-
-  list.addEventListener('change', function (event) {
-    var toggle = event.target.closest('[data-widget-toggle]');
-    if (!toggle) {
-      return;
-    }
-
-    var tile = grid.querySelector('[data-widget="' + toggle.dataset.widgetToggle + '"]');
-    if (tile) {
-      tile.classList.toggle('hidden', !toggle.checked);
-    }
-
-    saveVisibility();
-  });
 
   // --- Per-tile resize toggle (full width vs. column width) ---
   grid.addEventListener('click', function (event) {
@@ -143,6 +233,7 @@
     tile.classList.toggle('tile-wide', nowWide);
     btn.dataset.wide = nowWide ? '1' : '0';
     btn.title = nowWide ? 'Shrink to column width' : 'Expand to full width';
+    layoutMasonry();
 
     var wide = Array.prototype.map
       .call(grid.querySelectorAll('[data-widget-resize][data-wide="1"]'), function (el) {

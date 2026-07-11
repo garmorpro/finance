@@ -118,46 +118,35 @@
   }
 
   /*
-   * CSS multi-column instead of CSS grid: grid lays tiles into strict
-   * rows, so a short tile next to a tall one leaves a gap below it
-   * (the next tile can't move up to fill it). Columns flow each tile
-   * into the shortest column instead, like Pinterest/Monarch's tiling —
-   * no gaps, at the cost of DOM order reading top-to-bottom-per-column
-   * rather than left-to-right-per-row (acceptable for a drag-to-reorder
-   * dashboard where the user already controls placement directly).
+   * True masonry (tiles flow into the shortest column, no gaps under a
+   * short tile next to a tall one) computed in JS, not CSS multi-column.
+   * CSS `columns` + `break-inside: avoid` + `column-span: all` + a
+   * box-shadowed child is a genuinely unreliable combination across
+   * browsers — it produced two different rendering artifacts (a ghost
+   * border sliver, then a smeared shadow band) at the column-fragment
+   * boundary next to a wide tile. JS-computed absolute positioning
+   * (dashboard.js's layoutMasonry()) sidesteps that class of bug
+   * entirely by never asking the browser to fragment a box across a
+   * column boundary in the first place. See dashboard.js.
    */
   .dashboard-grid {
-    columns: 1;
-    column-gap: 1rem;
-  }
-
-  @screen lg {
-    .dashboard-grid {
-      columns: 2;
-    }
+    position: relative;
   }
 
   /*
-   * The outer .tile (draggable, column-broken) deliberately carries no
-   * box-shadow/border-radius of its own — a shadowed, rounded box that's
-   * also `break-inside: avoid` in a multi-column context is a known
-   * browser rendering bug (Chromium/WebKit can leave a ghost shadow/
-   * border sliver at the column-fragment boundary, especially next to a
-   * column-span:all tile forcing a layout break). .tile-card carries the
-   * actual visual chrome and never participates in column fragmentation
-   * itself, since it's just inline content inside .tile.
+   * Tiles start in normal document flow (plain stacked blocks, mb-4
+   * spacing) so the dashboard is readable before dashboard.js runs — it
+   * switches each tile to `position: absolute` itself once it computes
+   * the masonry layout. Without this, a moment of zero-height/overlapping
+   * absolutely-positioned tiles could flash before JS executes.
    */
   .tile {
     @apply cursor-grab active:cursor-grabbing select-none mb-4;
-    break-inside: avoid;
+    transition: top 0.2s ease, left 0.2s ease, width 0.2s ease;
   }
 
   .tile-card {
     @apply card transition-shadow hover:shadow-md;
-  }
-
-  .tile-wide {
-    column-span: all;
   }
 
   .tile-header {
