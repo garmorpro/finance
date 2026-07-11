@@ -56,4 +56,16 @@ final class HouseholdRepository
 
         return $membership === false ? null : $membership;
     }
+
+    public function findById(int $householdId): ?array
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT * FROM households WHERE id = :id AND deleted_at IS NULL LIMIT 1'
+        );
+        $stmt->execute(['id' => $householdId]);
+
+        $household = $stmt->fetch();
+
+        return $household === false ? null : $household;
+    }
 }

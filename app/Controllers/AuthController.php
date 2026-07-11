@@ -86,6 +86,11 @@ final class AuthController
 
     public function logout(Request $request): void
     {
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            header('Location: /');
+            return;
+        }
+
         $userId = $_SESSION['user_id'] ?? null;
         $householdId = $_SESSION['household_id'] ?? null;
 

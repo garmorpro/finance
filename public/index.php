@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AuthController;
+use App\Controllers\DashboardController;
 use App\Database\Connection;
 use App\Http\Request;
 use App\Http\Response;
@@ -35,7 +36,14 @@ $router->get('/login', fn (): mixed => $authController->showLogin());
 $router->post('/login', fn (Request $r): mixed => $authController->login($r));
 $router->post('/logout', fn (Request $r): mixed => $authController->logout($r));
 
-$router->get('/', function () use ($appConfig): void {
+$dashboardController = new DashboardController();
+
+$router->get('/', function () use ($appConfig, $dashboardController): void {
+    if (!empty($_SESSION['user_id'])) {
+        $dashboardController->index();
+        return;
+    }
+
     $name = htmlspecialchars($appConfig['name'], ENT_QUOTES);
 
     Response::html(<<<HTML
@@ -48,7 +56,8 @@ $router->get('/', function () use ($appConfig): void {
         <body style="font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: #f1f5f9;">
             <div style="text-align: center;">
                 <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">{$name}</h1>
-                <p style="color: #94a3b8;">Under construction — Phase 1 foundation is live.</p>
+                <p style="color: #94a3b8; margin-bottom: 1.5rem;">Under construction — Phase 1 foundation is live.</p>
+                <a href="/login" style="color: #3b82f6;">Log in</a>
             </div>
         </body>
         </html>
