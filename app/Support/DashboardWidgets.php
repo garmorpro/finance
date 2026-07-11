@@ -21,14 +21,15 @@ final class DashboardWidgets
         'transactions' => ['title' => 'Recent Transactions', 'available' => true],
         'review' => ['title' => 'Needs Review', 'available' => true],
         'recurring' => ['title' => 'Recurring Bills', 'available' => true],
-        'goals' => ['title' => 'Goals', 'available' => false],
+        'goals' => ['title' => 'Goals', 'available' => true],
+        'debt' => ['title' => 'Debt', 'available' => true],
         'investments' => ['title' => 'Investments', 'available' => false],
     ];
 
     /** @var list<string> */
     private const DEFAULT_ORDER = [
         'net_worth', 'net_worth_trend', 'accounts', 'spending', 'income_vs_spending', 'budget',
-        'transactions', 'review', 'recurring', 'goals', 'investments',
+        'transactions', 'review', 'recurring', 'goals', 'debt', 'investments',
     ];
 
     public static function title(string $key): string

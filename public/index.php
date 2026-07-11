@@ -8,6 +8,8 @@ use App\Controllers\BudgetController;
 use App\Controllers\CategoryController;
 use App\Controllers\CategoryGroupController;
 use App\Controllers\DashboardController;
+use App\Controllers\DebtController;
+use App\Controllers\GoalController;
 use App\Controllers\HouseholdController;
 use App\Controllers\ImportController;
 use App\Controllers\PasswordResetController;
@@ -108,6 +110,21 @@ $router->get('/recurring/{id}/pay', fn (Request $r): mixed => $recurringControll
 $router->post('/recurring/{id}/pay', fn (Request $r): mixed => $recurringController->markPaid($r));
 $router->post('/recurring/{id}/cancel', fn (Request $r): mixed => $recurringController->cancel($r));
 $router->post('/recurring/{id}/reactivate', fn (Request $r): mixed => $recurringController->reactivate($r));
+
+$goalController = new GoalController();
+$router->get('/goals', fn (): mixed => $goalController->index());
+$router->get('/goals/create', fn (): mixed => $goalController->showCreateForm());
+$router->post('/goals', fn (Request $r): mixed => $goalController->store($r));
+$router->get('/goals/{id}/edit', fn (Request $r): mixed => $goalController->showEditForm($r));
+$router->post('/goals/{id}', fn (Request $r): mixed => $goalController->update($r));
+$router->post('/goals/{id}/contributions', fn (Request $r): mixed => $goalController->addContribution($r));
+$router->post('/goals/{id}/contributions/{contributionId}/delete', fn (Request $r): mixed => $goalController->deleteContribution($r));
+$router->post('/goals/{id}/complete', fn (Request $r): mixed => $goalController->complete($r));
+$router->post('/goals/{id}/archive', fn (Request $r): mixed => $goalController->archive($r));
+$router->post('/goals/{id}/reactivate', fn (Request $r): mixed => $goalController->reactivate($r));
+
+$debtController = new DebtController();
+$router->get('/debt', fn (): mixed => $debtController->index());
 
 $categoryController = new CategoryController();
 $router->get('/settings/categories', fn (): mixed => $categoryController->index());

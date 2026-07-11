@@ -13,6 +13,9 @@
 /** @var list<array{label: string, assets: string, liabilities: string, netWorth: string}> $netWorthTrend */
 /** @var list<array{label: string, income: string, expenses: string}> $incomeVsSpending */
 /** @var list<array{name: string, color: string|null, amount: string}> $spendingByCategory */
+/** @var array $topGoals */
+/** @var int $activeGoalCount */
+/** @var array{totalBalance: string, totalMinimumPayment: string, weightedAverageRate: float|null, count: int} $debtSummary */
 /** @var list<string> $widgetOrder */
 /** @var list<string> $hiddenWidgets */
 /** @var list<string> $wideWidgets */
@@ -62,6 +65,9 @@ use App\Support\View;
                                     'netWorthTrend' => $netWorthTrend,
                                     'incomeVsSpending' => $incomeVsSpending,
                                     'spendingByCategory' => $spendingByCategory,
+                                    'topGoals' => $topGoals,
+                                    'activeGoalCount' => $activeGoalCount,
+                                    'debtSummary' => $debtSummary,
                                 ]); ?>
                             <?php else: ?>
                                 <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>

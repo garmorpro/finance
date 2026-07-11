@@ -9,10 +9,13 @@ use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AccountRepository;
 use App\Repositories\BudgetRepository;
+use App\Repositories\GoalRepository;
 use App\Repositories\HouseholdRepository;
 use App\Repositories\RecurringItemRepository;
 use App\Repositories\TransactionRepository;
 use App\Repositories\UserRepository;
+use App\Services\DebtService;
+use App\Services\GoalService;
 use App\Services\ReportingService;
 use App\Support\Csrf;
 use App\Support\DashboardWidgets;
@@ -46,6 +49,21 @@ final class DashboardController
         $incomeVsSpending = $householdId !== null ? $reportingService->incomeVsSpending($householdId) : [];
         $spendingByCategory = $householdId !== null ? $reportingService->spendingByCategory($householdId, gmdate('Y-m-01')) : [];
 
+        $goalService = new GoalService();
+        $activeGoals = $householdId !== null
+            ? array_values(array_filter((new GoalRepository())->listForHousehold($householdId), fn (array $g): bool => $g['status'] === 'active'))
+            : [];
+        $topGoals = array_map(
+            fn (array $g): array => [...$g, 'progressPercent' => $goalService->progressPercent($g['current_amount'], $g['target_amount'])],
+            array_slice($activeGoals, 0, 3)
+        );
+
+        $debtService = new DebtService();
+        $debtAccounts = $householdId !== null
+            ? array_values(array_filter($accountRepo->listForHousehold($householdId), fn (array $a): bool => AccountRepository::isLiability($a['account_type'])))
+            : [];
+        $debtSummary = $debtService->summarize($debtAccounts);
+
         $layout = $userRepo->getDashboardLayout($userId);
         $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
         $hiddenWidgets = DashboardWidgets::filterKnown($layout['hidden']);
@@ -65,6 +83,9 @@ final class DashboardController
             'netWorthTrend' => $netWorthTrend,
             'incomeVsSpending' => $incomeVsSpending,
             'spendingByCategory' => $spendingByCategory,
+            'topGoals' => $topGoals,
+            'activeGoalCount' => count($activeGoals),
+            'debtSummary' => $debtSummary,
             'widgetOrder' => $widgetOrder,
             'hiddenWidgets' => $hiddenWidgets,
             'wideWidgets' => $wideWidgets,
