@@ -7,7 +7,11 @@ use Dotenv\Dotenv;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
-Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
+// APP_ENV=testing php bin/migrate.php applies migrations to the test
+// database instead of production — used by `composer test` / CI, and
+// for setting up a fresh test database by hand. See docs/testing.md.
+$envFile = getenv('APP_ENV') === 'testing' ? '.env.testing' : '.env';
+Dotenv::createImmutable(dirname(__DIR__), $envFile)->safeLoad();
 
 $pdo = Connection::get();
 

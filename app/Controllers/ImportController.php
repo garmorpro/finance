@@ -94,6 +94,19 @@ final class ImportController
             return;
         }
 
+        // The extension alone is client-controlled and trivially spoofed
+        // (rename anything.exe to anything.csv) — this checks what the
+        // file actually looks like. CSV has no reliable magic-byte
+        // signature, so the whitelist is deliberately permissive rather
+        // than trying to pin down one exact MIME type; the real
+        // structural validation happens next, in CsvParser::parse().
+        $mimeType = mime_content_type($file['tmp_name']);
+        $allowedMimeTypes = ['text/csv', 'text/plain', 'application/csv', 'text/x-csv', 'application/vnd.ms-excel', 'application/octet-stream'];
+        if ($mimeType === false || !in_array($mimeType, $allowedMimeTypes, true)) {
+            $redirectBack('That file does not look like a CSV file.');
+            return;
+        }
+
         // Never trust the uploaded filename for the storage path — the
         // token is our own securely-random name, decoupled from anything
         // the client sent, which also rules out path traversal.

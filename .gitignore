@@ -6,6 +6,7 @@
 .env
 .env.*
 !.env.example
+!.env.testing.example
 
 # Storage
 /storage/logs/*
@@ -14,6 +15,8 @@
 !/storage/attachments/.gitkeep
 /storage/imports/*
 !/storage/imports/.gitkeep
+/storage/backups/*
+!/storage/backups/.gitkeep
 
 # IDE / OS
 .DS_Store

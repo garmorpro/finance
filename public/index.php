@@ -23,6 +23,7 @@ use App\Http\Request;
 use App\Http\Response;
 use App\Http\Router;
 use App\Support\ErrorHandler;
+use App\Support\SecurityHeaders;
 use App\Support\View;
 use Dotenv\Dotenv;
 
@@ -35,11 +36,14 @@ date_default_timezone_set($appConfig['timezone']);
 
 ErrorHandler::register($appConfig['debug']);
 
+$isHttps = str_starts_with($appConfig['url'], 'https://');
+SecurityHeaders::apply($isHttps);
+
 session_set_cookie_params([
     'lifetime' => 0,
     'path' => '/',
     'httponly' => true,
-    'secure' => str_starts_with($appConfig['url'], 'https://'),
+    'secure' => $isHttps,
     'samesite' => 'Lax',
 ]);
 session_start();

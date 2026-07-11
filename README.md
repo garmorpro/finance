@@ -4,9 +4,11 @@ A self-hosted, manual-entry personal finance dashboard built for household use. 
 
 ## Status
 
-Phase 2 (Authentication and Household Access) and Phase 3 (Financial Accounts) complete. Phase 4 (Transactions) is in progress: income/expense CRUD with categories, search/filter/pagination, and automatic account balance adjustment are done; transfers, splits, CSV import/export, and bulk editing are the next increment. Auth: login/logout, secure sessions, CSRF protection, login rate limiting, audit logging, password reset (email stubbed — see below), user profile management, and household invitations with role-based access (Owner/Administrator/Member/Viewer). Registration is invite-only — there is no public sign-up route. Accounts: manual account CRUD across all standard types, archive/restore, and balance adjustments with full history (balances are never silently overwritten). A real Tailwind CSS design system replaces the earlier inline-styled pages. Following the phased roadmap in `CLAUDE.md`.
+Every core feature phase from `CLAUDE.md`'s roadmap is built: authentication and household access (invite-only, role-based — Owner/Administrator/Member/Viewer), manual accounts with full balance history, transactions (income/expense/transfers, search/filter, CSV import/export, a daily review queue), monthly budgets with user-defined sections, recurring bills and subscriptions, a dashboard with real charts (net worth trend, income vs. spending, spending by category), savings goals, a debt overview, a cash flow page, and a configurable reports page with CSV export. Phase 8 (production hardening — security headers, automated tests, backups, this documentation) is also in place; see `docs/security.md`'s "Known limitations" for what's intentionally deferred.
 
-Password reset and household invitation emails are **stubbed**: instead of sending real email, the link is written to `storage/logs/app-*.log`. Real SMTP is a deliberate follow-up, not done yet.
+Deliberately **not** built, per `CLAUDE.md`'s Manual-Only Data Policy: any bank connection, account-aggregation service, or automatic transaction sync. This is a fully manual finance tracker and will stay that way.
+
+Not yet built: split transactions, tags (the `tags`/`transaction_tags` tables exist but aren't wired to any feature — see `docs/database.md`), two-factor authentication, and real SMTP (password reset and invitation links are logged instead of emailed — see below).
 
 ## First-time setup
 
@@ -28,7 +30,7 @@ php bin/create-owner.php
 1. Clone the repo.
 2. Copy `.env.example` to `.env` and fill in real values (never commit `.env`).
 3. Install PHP dependencies: `composer install`.
-4. Create the database and a least-privilege app user (see `CLAUDE.md` for the recommended `GRANT` statements).
+4. Create the database and a least-privilege app user (see `docs/deployment.md` for the recommended `GRANT` statements).
 5. Run migrations: `composer run migrate` (or `php bin/migrate.php`).
 6. Point Apache's document root at `public/`.
 7. Verify with `curl https://your-domain/health` — should return `{"status":"ok","database":"ok",...}`.
@@ -49,11 +51,29 @@ composer install
 composer test
 ```
 
+Runs the full pure-unit-test suite (validation, calculations, rounding —
+no database needed) plus a database-backed integration suite that
+skips itself if no test database is configured. See
+[docs/testing.md](docs/testing.md) for setting one up (required to
+actually exercise household isolation, transfers, and budget/net-worth
+calculations, not just skip past them).
+
+## Backups
+
+Not automatic — `bin/backup.sh` needs to be put on a cron schedule. See
+[docs/backup-and-recovery.md](docs/backup-and-recovery.md).
+
 ## Documentation
 
 - [CLAUDE.md](CLAUDE.md) — full product requirements, architecture rules, and manual-only data policy
-- `docs/` — architecture, database, API, security, deployment, and backup docs (added as each area is built)
+- [docs/architecture.md](docs/architecture.md) — layers, request lifecycle, the atomic-write pattern used everywhere money is mutated
+- [docs/database.md](docs/database.md) — every table and how they relate
+- [docs/api.md](docs/api.md) — the handful of internal JSON endpoints (this is not an API-first app)
+- [docs/security.md](docs/security.md) — what's implemented, and known limitations
+- [docs/deployment.md](docs/deployment.md) — first-time server setup, production PHP settings, update/rollback procedure
+- [docs/backup-and-recovery.md](docs/backup-and-recovery.md) — backup setup and restore steps
+- [docs/testing.md](docs/testing.md) — running and extending the test suite
 
 ## Security
 
-This application handles sensitive household financial data. See the Security Requirements and Manual-Only Data Policy sections in [CLAUDE.md](CLAUDE.md) before contributing.
+This application handles sensitive household financial data. See [docs/security.md](docs/security.md) for what's actually implemented, and the Security Requirements and Manual-Only Data Policy sections in [CLAUDE.md](CLAUDE.md) for the governing rules.
