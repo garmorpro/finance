@@ -4,7 +4,7 @@ A self-hosted, manual-entry personal finance dashboard built for household use. 
 
 ## Status
 
-Early scaffold — no functional features yet. Following the phased roadmap in `CLAUDE.md`.
+Phase 1 (Project Foundation) complete: environment config, database connection, migration runner, base routing, error handling, and logging. No user-facing features yet — auth is Phase 2. Following the phased roadmap in `CLAUDE.md`.
 
 ## Tech stack
 
@@ -13,13 +13,22 @@ Early scaffold — no functional features yet. Following the phased roadmap in `
 - **Database:** MySQL 8.0
 - **Server:** Apache + mod_php, self-hosted on a home server
 
-## Local / server setup
+## Setup
 
 1. Clone the repo.
 2. Copy `.env.example` to `.env` and fill in real values (never commit `.env`).
 3. Install PHP dependencies: `composer install`.
-4. Create the database and run migrations (migration tooling TBD — see `database/migrations/`).
-5. Point Apache's document root at `public/`.
+4. Create the database and a least-privilege app user (see `CLAUDE.md` for the recommended `GRANT` statements).
+5. Run migrations: `composer run migrate` (or `php bin/migrate.php`).
+6. Point Apache's document root at `public/`.
+7. Verify with `curl https://your-domain/health` — should return `{"status":"ok","database":"ok",...}`.
+
+## Testing
+
+```
+composer install
+composer test
+```
 
 ## Documentation
 
