@@ -9,10 +9,10 @@
 </head>
 <body class="auth-shell">
     <div class="auth-card text-center">
-        <h1 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">This invitation is invalid, expired, or already used</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">
+        <h1 class="text-lg font-semibold text-stone-900 dark:text-white mb-2">This invitation is invalid, expired, or already used</h1>
+        <p class="text-sm text-stone-500 dark:text-stone-400">
             Ask whoever invited you to send a new one, or
-            <a href="/login" class="text-blue-600 dark:text-blue-400 hover:underline">log in</a>
+            <a href="/login" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">log in</a>
             if you already have an account.
         </p>
     </div>

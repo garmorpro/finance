@@ -17,7 +17,7 @@ use App\Support\View;
 </head>
 <body class="auth-shell">
     <div class="auth-card">
-        <h1 class="text-xl font-semibold text-slate-900 dark:text-white mb-6">Reset password</h1>
+        <h1 class="text-xl font-semibold text-stone-900 dark:text-white mb-6">Reset password</h1>
 
         <?php if (!empty($error)): ?>
             <div class="alert-error mb-4"><?= View::e($error) ?></div>

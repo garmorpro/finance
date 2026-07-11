@@ -28,9 +28,9 @@ use App\Support\View;
         <div class="app-content">
             <main class="page-main-wide">
                 <div class="flex items-end justify-between">
-                    <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Hello, <?= View::e(explode(' ', $user['name'])[0]) ?>!</h1>
+                    <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Hello, <?= View::e(explode(' ', $user['name'])[0]) ?>!</h1>
                     <div class="flex items-center gap-4">
-                        <p class="text-xs text-slate-400 dark:text-slate-600">Drag tiles to rearrange</p>
+                        <p class="text-xs text-stone-400 dark:text-stone-600">Drag tiles to rearrange</p>
                         <button type="button" id="customize-open" class="btn-secondary">Customize</button>
                     </div>
                 </div>
@@ -55,34 +55,34 @@ use App\Support\View;
                     <div class="flex items-start justify-between">
                         <div>
                             <div class="label-text">Household</div>
-                            <div class="text-base text-slate-900 dark:text-white"><?= View::e($household['name']) ?></div>
+                            <div class="text-base text-stone-900 dark:text-white"><?= View::e($household['name']) ?></div>
                         </div>
                         <span class="<?= $role === 'owner' ? 'badge-owner' : 'badge' ?>"><?= View::e(ucfirst((string) $role)) ?></span>
                     </div>
-                    <a href="/household" class="inline-block mt-4 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Manage household &rarr;</a>
+                    <a href="/household" class="inline-block mt-4 text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Manage household &rarr;</a>
                 </div>
                 <?php endif; ?>
             </main>
         </div>
     </div>
 
-    <div id="customize-modal" class="hidden fixed inset-0 z-30 items-center justify-center bg-slate-900/50 px-4">
+    <div id="customize-modal" class="hidden fixed inset-0 z-30 items-center justify-center bg-stone-900/50 px-4">
         <div class="card w-full max-w-md max-h-[80vh] overflow-y-auto">
             <div class="flex items-start justify-between mb-1">
-                <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Customize dashboard</h2>
-                <button type="button" id="customize-close" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Close">&times;</button>
+                <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Customize dashboard</h2>
+                <button type="button" id="customize-close" class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200" aria-label="Close">&times;</button>
             </div>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Choose which tiles appear on your overview.</p>
+            <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Choose which tiles appear on your overview.</p>
 
             <div id="customize-list" class="space-y-1" data-csrf-token="<?= View::e($csrfToken) ?>">
                 <?php foreach ($widgetOrder as $widgetKey): ?>
                     <?php $isHidden = in_array($widgetKey, $hiddenWidgets, true); ?>
-                    <label class="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
-                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300"><?= View::e(DashboardWidgets::title($widgetKey)) ?></span>
+                    <label class="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer">
+                        <span class="text-sm font-medium text-stone-700 dark:text-stone-300"><?= View::e(DashboardWidgets::title($widgetKey)) ?></span>
                         <span class="relative inline-flex items-center">
                             <input type="checkbox" data-widget-toggle="<?= View::e($widgetKey) ?>" class="sr-only peer" <?= $isHidden ? '' : 'checked' ?>>
-                            <span class="w-11 h-6 bg-slate-300 dark:bg-slate-700 rounded-full peer-checked:bg-blue-600 transition-colors"></span>
-                            <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></span>
+                            <span class="w-11 h-6 bg-stone-300 dark:bg-stone-700 rounded-full peer-checked:bg-terracotta-600 transition-colors"></span>
+                            <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:transtone-x-5"></span>
                         </span>
                     </label>
                 <?php endforeach; ?>

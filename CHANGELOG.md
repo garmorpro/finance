@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- New color theme: terracotta accent (replaces blue) on a warm stone neutral base (replaces cool slate). Added a custom `terracotta` ramp to `tailwind.config.js`; every accent/neutral utility class across all views and `app.css` updated. Semantic colors (red for errors/debt, emerald for success/assets) are unchanged — only brand accent and neutral tones moved.
 - "Customize dashboard" modal: toggle switches to show/hide individual tiles, separate from drag-to-reorder. `users.dashboard_layout` now stores `{"order": [...], "hidden": [...]}` instead of a flat array; order and visibility save through independent endpoints (`/dashboard/layout`, `/dashboard/widgets`) so one action can't clobber the other's latest change. Both validate every key against the widget registry server-side.
 - Dashboard grid: 2 columns instead of 3, wider tiles.
 - Fixed left sidebar layout (`resources/views/partials/sidebar.php`, replaces the old top nav bar) — stays in place while page content scrolls, matching CLAUDE.md's suggested layout. Shows real nav items (Overview, Accounts, Household) plus greyed-out preview items for unbuilt sections (Transactions, Cash Flow, Budgets, Recurring, Goals, Reports), and a user identity + log out footer. User's name/email are now cached in the session (`AuthMiddleware::setUserIdentity()`, refreshed on login, invite-acceptance, and profile updates) so every page can render the sidebar footer without an extra DB query.

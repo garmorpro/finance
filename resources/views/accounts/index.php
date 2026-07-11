@@ -25,8 +25,8 @@ use App\Support\View;
         <main class="page-main">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Accounts</h1>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Manually tracked balances for your household.</p>
+                <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Accounts</h1>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Manually tracked balances for your household.</p>
             </div>
             <a href="/accounts/create" class="btn-primary">Add account</a>
         </div>
@@ -37,8 +37,8 @@ use App\Support\View;
 
         <?php if ($accounts === []): ?>
             <div class="card text-center py-12">
-                <p class="text-slate-500 dark:text-slate-400">No accounts yet.</p>
-                <a href="/accounts/create" class="inline-block mt-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Add your first account &rarr;</a>
+                <p class="text-stone-500 dark:text-stone-400">No accounts yet.</p>
+                <a href="/accounts/create" class="inline-block mt-3 text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add your first account &rarr;</a>
             </div>
         <?php else: ?>
             <div class="card">
@@ -49,7 +49,7 @@ use App\Support\View;
                     <tbody>
                         <?php foreach ($accounts as $account): ?>
                             <tr class="<?= $account['status'] === 'archived' ? 'opacity-50' : '' ?>">
-                                <td class="font-medium text-slate-900 dark:text-white">
+                                <td class="font-medium text-stone-900 dark:text-white">
                                     <?php if (!empty($account['color'])): ?>
                                         <span class="inline-block w-2 h-2 rounded-full mr-2" style="background-color: <?= View::e($account['color']) ?>"></span>
                                     <?php endif; ?>
@@ -59,10 +59,10 @@ use App\Support\View;
                                     <?php endif; ?>
                                 </td>
                                 <td><?= View::e(AccountTypeLabels::label($account['account_type'])) ?></td>
-                                <td class="text-slate-500 dark:text-slate-400"><?= View::e($account['institution_name'] ?? '—') ?></td>
-                                <td class="text-right font-medium text-slate-900 dark:text-white"><?= Money::format($account['current_balance']) ?></td>
+                                <td class="text-stone-500 dark:text-stone-400"><?= View::e($account['institution_name'] ?? '—') ?></td>
+                                <td class="text-right font-medium text-stone-900 dark:text-white"><?= Money::format($account['current_balance']) ?></td>
                                 <td class="text-right">
-                                    <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Edit</a>
+                                    <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Edit</a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

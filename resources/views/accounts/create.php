@@ -24,8 +24,8 @@ use App\Support\View;
         <div class="app-content">
         <main class="page-main">
         <div>
-            <a href="/accounts" class="text-sm text-slate-500 dark:text-slate-400 hover:underline">&larr; Accounts</a>
-            <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white mt-1">Add account</h1>
+            <a href="/accounts" class="text-sm text-stone-500 dark:text-stone-400 hover:underline">&larr; Accounts</a>
+            <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white mt-1">Add account</h1>
         </div>
 
         <?php if (!empty($error)): ?>
@@ -88,7 +88,7 @@ use App\Support\View;
                 </div>
                 <div>
                     <label for="color" class="field-label">Color (optional)</label>
-                    <input type="color" id="color" name="color" value="<?= View::e($old['color'] ?? '#3b82f6') ?>" class="field-input h-10">
+                    <input type="color" id="color" name="color" value="<?= View::e($old['color'] ?? '#e2694b') ?>" class="field-input h-10">
                 </div>
             </div>
 
@@ -98,12 +98,12 @@ use App\Support\View;
             </div>
 
             <div class="flex items-center gap-6">
-                <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                    <input type="checkbox" name="include_in_net_worth" value="1" checked class="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500">
+                <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+                    <input type="checkbox" name="include_in_net_worth" value="1" checked class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
                     Include in net worth
                 </label>
-                <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                    <input type="checkbox" name="include_in_budget" value="1" checked class="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500">
+                <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+                    <input type="checkbox" name="include_in_budget" value="1" checked class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
                     Include in budgets
                 </label>
             </div>

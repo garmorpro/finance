@@ -26,8 +26,8 @@ use App\Support\View;
         <div class="app-content">
         <main class="page-main">
         <div>
-            <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white"><?= View::e($household['name'] ?? 'Household') ?></h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Members and pending invitations for your household.</p>
+            <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white"><?= View::e($household['name'] ?? 'Household') ?></h1>
+            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Members and pending invitations for your household.</p>
         </div>
 
         <?php if (!empty($error)): ?>
@@ -38,7 +38,7 @@ use App\Support\View;
         <?php endif; ?>
 
         <div class="card">
-            <h2 class="font-medium text-slate-900 dark:text-white mb-4">Members</h2>
+            <h2 class="font-medium text-stone-900 dark:text-white mb-4">Members</h2>
             <table class="table-base">
                 <thead>
                     <tr><th>Name</th><th>Email</th><th>Role</th></tr>
@@ -46,7 +46,7 @@ use App\Support\View;
                 <tbody>
                     <?php foreach ($members as $member): ?>
                         <tr>
-                            <td class="font-medium text-slate-900 dark:text-white"><?= View::e($member['name']) ?></td>
+                            <td class="font-medium text-stone-900 dark:text-white"><?= View::e($member['name']) ?></td>
                             <td><?= View::e($member['email']) ?></td>
                             <td><span class="<?= $member['role'] === 'owner' ? 'badge-owner' : 'badge' ?>"><?= View::e(ucfirst($member['role'])) ?></span></td>
                         </tr>
@@ -58,7 +58,7 @@ use App\Support\View;
         <?php if ($canManage): ?>
             <?php if ($pendingInvitations !== []): ?>
             <div class="card">
-                <h2 class="font-medium text-slate-900 dark:text-white mb-4">Pending invitations</h2>
+                <h2 class="font-medium text-stone-900 dark:text-white mb-4">Pending invitations</h2>
                 <table class="table-base">
                     <thead>
                         <tr><th>Email</th><th>Role</th><th>Expires</th></tr>
@@ -68,7 +68,7 @@ use App\Support\View;
                             <tr>
                                 <td><?= View::e($invite['email']) ?></td>
                                 <td><span class="badge"><?= View::e(ucfirst($invite['role'])) ?></span></td>
-                                <td class="text-slate-500 dark:text-slate-400"><?= View::e($invite['expires_at']) ?></td>
+                                <td class="text-stone-500 dark:text-stone-400"><?= View::e($invite['expires_at']) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -77,7 +77,7 @@ use App\Support\View;
             <?php endif; ?>
 
             <div class="card">
-                <h2 class="font-medium text-slate-900 dark:text-white mb-4">Invite someone</h2>
+                <h2 class="font-medium text-stone-900 dark:text-white mb-4">Invite someone</h2>
                 <form method="POST" action="/household/invite" class="space-y-4">
                     <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                     <div>

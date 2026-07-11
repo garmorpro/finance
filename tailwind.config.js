@@ -5,9 +5,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        surface: {
-          light: '#ffffff',
-          dark: '#0f172a',
+        terracotta: {
+          50: '#fdf4f2',
+          100: '#fbe4dc',
+          200: '#f7c9b9',
+          300: '#f0a488',
+          400: '#e88562',
+          500: '#e2694b',
+          600: '#c94f32',
+          700: '#a53d27',
+          800: '#832f1e',
+          900: '#692817',
+          950: '#38130a',
         },
       },
       fontFamily: {

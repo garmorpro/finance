@@ -9,9 +9,9 @@
 </head>
 <body class="auth-shell">
     <div class="auth-card text-center">
-        <h1 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">This link is invalid or has expired</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-            <a href="/forgot-password" class="text-blue-600 dark:text-blue-400 hover:underline">Request a new reset link</a>
+        <h1 class="text-lg font-semibold text-stone-900 dark:text-white mb-2">This link is invalid or has expired</h1>
+        <p class="text-sm text-stone-500 dark:text-stone-400">
+            <a href="/forgot-password" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">Request a new reset link</a>
         </p>
     </div>
 </body>

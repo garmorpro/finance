@@ -23,8 +23,8 @@ use App\Support\View;
         <div class="app-content">
         <main class="page-main">
         <div>
-            <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Profile</h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your account details and password.</p>
+            <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Profile</h1>
+            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Manage your account details and password.</p>
         </div>
 
         <?php if (!empty($error)): ?>
@@ -35,7 +35,7 @@ use App\Support\View;
         <?php endif; ?>
 
         <div class="card">
-            <h2 class="font-medium text-slate-900 dark:text-white mb-4">Your info</h2>
+            <h2 class="font-medium text-stone-900 dark:text-white mb-4">Your info</h2>
             <form method="POST" action="/profile" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                 <div>
@@ -51,7 +51,7 @@ use App\Support\View;
         </div>
 
         <div class="card">
-            <h2 class="font-medium text-slate-900 dark:text-white mb-4">Change password</h2>
+            <h2 class="font-medium text-stone-900 dark:text-white mb-4">Change password</h2>
             <form method="POST" action="/profile/password" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                 <div>

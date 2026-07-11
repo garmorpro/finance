@@ -28,12 +28,12 @@ use App\Support\View;
         <main class="page-main">
         <div class="flex items-center justify-between">
             <div>
-                <a href="/accounts" class="text-sm text-slate-500 dark:text-slate-400 hover:underline">&larr; Accounts</a>
-                <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white mt-1"><?= View::e($account['name']) ?></h1>
+                <a href="/accounts" class="text-sm text-stone-500 dark:text-stone-400 hover:underline">&larr; Accounts</a>
+                <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white mt-1"><?= View::e($account['name']) ?></h1>
             </div>
             <div class="text-right">
                 <div class="label-text">Current balance</div>
-                <div class="text-xl font-semibold text-slate-900 dark:text-white"><?= Money::format($account['current_balance']) ?></div>
+                <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($account['current_balance']) ?></div>
             </div>
         </div>
 
@@ -45,7 +45,7 @@ use App\Support\View;
         <?php endif; ?>
 
         <div class="card">
-            <h2 class="font-medium text-slate-900 dark:text-white mb-4">Adjust balance</h2>
+            <h2 class="font-medium text-stone-900 dark:text-white mb-4">Adjust balance</h2>
             <form method="POST" action="/accounts/<?= (int) $account['id'] ?>/balance" class="flex flex-wrap items-end gap-4">
                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                 <div>
@@ -69,11 +69,11 @@ use App\Support\View;
                     <tbody>
                         <?php foreach ($history as $entry): ?>
                             <tr>
-                                <td class="text-slate-500 dark:text-slate-400"><?= View::e($entry['created_at']) ?></td>
+                                <td class="text-stone-500 dark:text-stone-400"><?= View::e($entry['created_at']) ?></td>
                                 <td><?= View::e($entry['changed_by_name']) ?></td>
                                 <td class="text-right"><?= Money::format($entry['previous_balance']) ?></td>
-                                <td class="text-right font-medium text-slate-900 dark:text-white"><?= Money::format($entry['new_balance']) ?></td>
-                                <td class="text-slate-500 dark:text-slate-400"><?= View::e($entry['note'] ?? '—') ?></td>
+                                <td class="text-right font-medium text-stone-900 dark:text-white"><?= Money::format($entry['new_balance']) ?></td>
+                                <td class="text-stone-500 dark:text-stone-400"><?= View::e($entry['note'] ?? '—') ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -84,7 +84,7 @@ use App\Support\View;
 
         <form method="POST" action="/accounts/<?= (int) $account['id'] ?>" class="card space-y-5">
             <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-            <h2 class="font-medium text-slate-900 dark:text-white">Account details</h2>
+            <h2 class="font-medium text-stone-900 dark:text-white">Account details</h2>
 
             <div class="grid grid-cols-2 gap-4">
                 <div class="col-span-2">
@@ -134,7 +134,7 @@ use App\Support\View;
                 </div>
                 <div>
                     <label for="color" class="field-label">Color (optional)</label>
-                    <input type="color" id="color" name="color" value="<?= View::e($account['color'] ?? '#3b82f6') ?>" class="field-input h-10">
+                    <input type="color" id="color" name="color" value="<?= View::e($account['color'] ?? '#e2694b') ?>" class="field-input h-10">
                 </div>
             </div>
 
@@ -144,12 +144,12 @@ use App\Support\View;
             </div>
 
             <div class="flex items-center gap-6">
-                <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                    <input type="checkbox" name="include_in_net_worth" value="1" <?= $account['include_in_net_worth'] ? 'checked' : '' ?> class="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500">
+                <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+                    <input type="checkbox" name="include_in_net_worth" value="1" <?= $account['include_in_net_worth'] ? 'checked' : '' ?> class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
                     Include in net worth
                 </label>
-                <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                    <input type="checkbox" name="include_in_budget" value="1" <?= $account['include_in_budget'] ? 'checked' : '' ?> class="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500">
+                <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+                    <input type="checkbox" name="include_in_budget" value="1" <?= $account['include_in_budget'] ? 'checked' : '' ?> class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
                     Include in budgets
                 </label>
             </div>
@@ -158,10 +158,10 @@ use App\Support\View;
         </form>
 
         <div class="card">
-            <h2 class="font-medium text-slate-900 dark:text-white mb-2">
+            <h2 class="font-medium text-stone-900 dark:text-white mb-2">
                 <?= $account['status'] === 'archived' ? 'Restore account' : 'Archive account' ?>
             </h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+            <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">
                 <?= $account['status'] === 'archived'
                     ? 'This account is archived and hidden from your active accounts list.'
                     : 'Archiving hides this account from your active list without deleting its history.' ?>

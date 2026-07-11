@@ -16,8 +16,8 @@ use App\Support\View;
 </head>
 <body class="auth-shell">
     <div class="auth-card">
-        <h1 class="text-xl font-semibold text-slate-900 dark:text-white mb-1">Forgot password</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Enter your account email and we'll generate a reset link.</p>
+        <h1 class="text-xl font-semibold text-stone-900 dark:text-white mb-1">Forgot password</h1>
+        <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Enter your account email and we'll generate a reset link.</p>
 
         <?php if (!empty($notice)): ?>
             <div class="alert-success mb-4"><?= View::e($notice) ?></div>
@@ -32,7 +32,7 @@ use App\Support\View;
             <button type="submit" class="btn-primary btn-block">Send reset link</button>
         </form>
         <p class="mt-4 text-sm text-center">
-            <a href="/login" class="text-blue-600 dark:text-blue-400 hover:underline">Back to login</a>
+            <a href="/login" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">Back to login</a>
         </p>
     </div>
 </body>

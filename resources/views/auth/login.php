@@ -17,7 +17,7 @@ use App\Support\View;
 </head>
 <body class="auth-shell">
     <div class="auth-card">
-        <h1 class="text-xl font-semibold text-slate-900 dark:text-white mb-6">Log in</h1>
+        <h1 class="text-xl font-semibold text-stone-900 dark:text-white mb-6">Log in</h1>
 
         <?php if (!empty($error)): ?>
             <div class="alert-error mb-4"><?= View::e($error) ?></div>
@@ -39,7 +39,7 @@ use App\Support\View;
             <button type="submit" class="btn-primary btn-block">Log in</button>
         </form>
         <p class="mt-4 text-sm text-center">
-            <a href="/forgot-password" class="text-blue-600 dark:text-blue-400 hover:underline">Forgot password?</a>
+            <a href="/forgot-password" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">Forgot password?</a>
         </p>
     </div>
 </body>

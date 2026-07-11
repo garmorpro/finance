@@ -19,8 +19,8 @@ use App\Support\View;
 </head>
 <body class="auth-shell">
     <div class="auth-card">
-        <h1 class="text-xl font-semibold text-slate-900 dark:text-white mb-1">Join as <?= View::e(ucfirst($role)) ?></h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6"><?= View::e($email) ?></p>
+        <h1 class="text-xl font-semibold text-stone-900 dark:text-white mb-1">Join as <?= View::e(ucfirst($role)) ?></h1>
+        <p class="text-sm text-stone-500 dark:text-stone-400 mb-6"><?= View::e($email) ?></p>
 
         <?php if (!empty($error)): ?>
             <div class="alert-error mb-4"><?= View::e($error) ?></div>

@@ -12,7 +12,7 @@ use App\Support\Money;
 <?php if ($netWorth === null): ?>
     <div class="tile-placeholder"><p class="text-sm">No household found.</p></div>
 <?php else: ?>
-    <div class="text-2xl font-semibold text-slate-900 dark:text-white"><?= Money::format($netWorth['net']) ?></div>
+    <div class="text-2xl font-semibold text-stone-900 dark:text-white"><?= Money::format($netWorth['net']) ?></div>
     <div class="flex items-center gap-4 mt-3 text-sm">
         <span class="text-emerald-600 dark:text-emerald-400">Assets <?= Money::format($netWorth['assets']) ?></span>
         <span class="text-red-600 dark:text-red-400">Debt <?= Money::format($netWorth['liabilities']) ?></span>
