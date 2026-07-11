@@ -62,15 +62,16 @@ $router->get('/reset-password', fn (Request $r): mixed => $passwordResetControll
 $router->post('/reset-password', fn (Request $r): mixed => $passwordResetController->resetPassword($r));
 
 $householdController = new HouseholdController();
-$router->get('/household', fn (): mixed => $householdController->showMembers());
-$router->post('/household/invite', fn (Request $r): mixed => $householdController->sendInvite($r));
+$router->get('/settings/household', fn (): mixed => $householdController->showMembers());
+$router->post('/settings/household/invite', fn (Request $r): mixed => $householdController->sendInvite($r));
 $router->get('/accept-invite', fn (): mixed => $householdController->showAcceptForm());
 $router->post('/accept-invite', fn (Request $r): mixed => $householdController->acceptInvite($r));
 
 $profileController = new ProfileController();
-$router->get('/profile', fn (): mixed => $profileController->show());
-$router->post('/profile', fn (Request $r): mixed => $profileController->updateProfile($r));
-$router->post('/profile/password', fn (Request $r): mixed => $profileController->updatePassword($r));
+$router->get('/settings/profile', fn (): mixed => $profileController->show());
+$router->post('/settings/profile', fn (Request $r): mixed => $profileController->updateProfile($r));
+$router->get('/settings/security', fn (): mixed => $profileController->showSecurity());
+$router->post('/settings/security', fn (Request $r): mixed => $profileController->updatePassword($r));
 
 $accountController = new AccountController();
 $router->get('/accounts', fn (): mixed => $accountController->index());

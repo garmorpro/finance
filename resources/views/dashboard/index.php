@@ -85,7 +85,7 @@ use App\Support\View;
                         </div>
                         <span class="<?= $role === 'owner' ? 'badge-owner' : 'badge' ?>"><?= View::e(ucfirst((string) $role)) ?></span>
                     </div>
-                    <a href="/household" class="inline-block mt-4 text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Manage household &rarr;</a>
+                    <a href="/settings/household" class="inline-block mt-4 text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Manage household &rarr;</a>
                 </div>
                 <?php endif; ?>
             </main>

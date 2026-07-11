@@ -62,6 +62,29 @@
     @apply inline-flex items-center justify-center w-8 h-8 rounded-lg text-stone-300 dark:text-stone-700 cursor-default;
   }
 
+  .settings-layout {
+    @apply grid grid-cols-1 gap-6 items-start;
+    grid-template-columns: 1fr;
+  }
+
+  @screen lg {
+    .settings-layout {
+      grid-template-columns: 240px minmax(0, 1fr);
+    }
+  }
+
+  .settings-nav-heading {
+    @apply text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-600 mb-2 px-3;
+  }
+
+  .settings-nav-link {
+    @apply block px-3 py-2 rounded-lg text-sm font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-white transition-colors;
+  }
+
+  .settings-nav-link-active {
+    @apply settings-nav-link bg-terracotta-50 text-terracotta-700 hover:bg-terracotta-50 hover:text-terracotta-700 dark:bg-terracotta-950/50 dark:text-terracotta-300 dark:hover:bg-terracotta-950/50 dark:hover:text-terracotta-300;
+  }
+
   .sidebar-icon-btn svg {
     @apply w-[18px] h-[18px];
   }

@@ -34,7 +34,7 @@ final class HouseholdController
 
         $householdRepo = new HouseholdRepository();
 
-        Response::html(View::render('household/members', [
+        Response::html(View::render('settings/household', [
             'household' => $householdRepo->findById($householdId),
             'members' => $householdRepo->listMembers($householdId),
             'pendingInvitations' => (new InvitationRepository())->listPendingForHousehold($householdId),
@@ -57,7 +57,7 @@ final class HouseholdController
 
         $redirectBack = function (string $message): void {
             $_SESSION['_flash_error'] = $message;
-            header('Location: /household');
+            header('Location: /settings/household');
         };
 
         if (!Csrf::verify($request->post('csrf_token'))) {
@@ -127,7 +127,7 @@ final class HouseholdController
         );
 
         $_SESSION['_flash_notice'] = "Invitation created for {$email}.";
-        header('Location: /household');
+        header('Location: /settings/household');
     }
 
     public function showAcceptForm(): void

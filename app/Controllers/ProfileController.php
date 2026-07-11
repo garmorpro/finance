@@ -21,8 +21,21 @@ final class ProfileController
 
         $user = (new UserRepository())->findById((int) AuthMiddleware::userId());
 
-        Response::html(View::render('profile/edit', [
+        Response::html(View::render('settings/profile', [
             'user' => $user,
+            'csrfToken' => Csrf::token(),
+            'error' => $_SESSION['_flash_error'] ?? null,
+            'notice' => $_SESSION['_flash_notice'] ?? null,
+        ]));
+
+        unset($_SESSION['_flash_error'], $_SESSION['_flash_notice']);
+    }
+
+    public function showSecurity(): void
+    {
+        AuthMiddleware::requireAuth();
+
+        Response::html(View::render('settings/security', [
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,
@@ -41,7 +54,7 @@ final class ProfileController
 
         $redirectBack = function (string $message): void {
             $_SESSION['_flash_error'] = $message;
-            header('Location: /profile');
+            header('Location: /settings/profile');
         };
 
         if (!Csrf::verify($request->post('csrf_token'))) {
@@ -80,7 +93,7 @@ final class ProfileController
         );
 
         $_SESSION['_flash_notice'] = 'Profile updated.';
-        header('Location: /profile');
+        header('Location: /settings/profile');
     }
 
     public function updatePassword(Request $request): void
@@ -94,7 +107,7 @@ final class ProfileController
 
         $redirectBack = function (string $message): void {
             $_SESSION['_flash_error'] = $message;
-            header('Location: /profile');
+            header('Location: /settings/security');
         };
 
         if (!Csrf::verify($request->post('csrf_token'))) {
@@ -132,6 +145,6 @@ final class ProfileController
         );
 
         $_SESSION['_flash_notice'] = 'Password updated.';
-        header('Location: /profile');
+        header('Location: /settings/security');
     }
 }

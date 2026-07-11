@@ -69,7 +69,7 @@ $renderGroupRow = function (array $group) use ($csrfToken): void {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Categories · Finance</title>
+    <title>Categories · Settings · Finance</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body>
@@ -77,9 +77,15 @@ $renderGroupRow = function (array $group) use ($csrfToken): void {
         <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'settings']); ?>
 
         <div class="app-content">
-            <main class="page-main">
+            <main class="page-main-wide">
+                <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white mb-6">Settings</h1>
+
+                <div class="settings-layout">
+                    <?php View::partial('settings/_nav', ['active' => 'categories']); ?>
+
+                    <div class="space-y-6">
                 <div>
-                    <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Categories</h1>
+                    <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Categories</h2>
                     <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Manage the categories used for transactions, and the sections that organize them on the Budgets page.</p>
                 </div>
 
@@ -167,6 +173,8 @@ $renderGroupRow = function (array $group) use ($csrfToken): void {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+                    </div>
                 </div>
             </main>
         </div>
