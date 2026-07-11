@@ -26,7 +26,7 @@
   }
 
   .page-main-wide {
-    @apply max-w-6xl mx-auto px-6 py-10 space-y-6;
+    @apply w-full px-8 py-10 space-y-6;
   }
 
   /* Fixed sidebar layout — sidebar stays put; only .app-content scrolls. */
