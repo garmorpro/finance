@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Controllers\AccountController;
 use App\Controllers\AuthController;
+use App\Controllers\CategoryController;
 use App\Controllers\DashboardController;
 use App\Controllers\HouseholdController;
 use App\Controllers\PasswordResetController;
@@ -76,6 +77,13 @@ $router->post('/transactions', fn (Request $r): mixed => $transactionController-
 $router->get('/transactions/{id}/edit', fn (Request $r): mixed => $transactionController->showEditForm($r));
 $router->post('/transactions/{id}', fn (Request $r): mixed => $transactionController->update($r));
 $router->post('/transactions/{id}/delete', fn (Request $r): mixed => $transactionController->destroy($r));
+
+$categoryController = new CategoryController();
+$router->get('/settings/categories', fn (): mixed => $categoryController->index());
+$router->post('/settings/categories', fn (Request $r): mixed => $categoryController->store($r));
+$router->post('/settings/categories/{id}', fn (Request $r): mixed => $categoryController->update($r));
+$router->post('/settings/categories/{id}/archive', fn (Request $r): mixed => $categoryController->archive($r));
+$router->post('/settings/categories/{id}/restore', fn (Request $r): mixed => $categoryController->restore($r));
 
 $dashboardController = new DashboardController();
 $router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardController->saveLayout($r));

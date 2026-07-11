@@ -86,6 +86,23 @@ final class CategoryRepository
         return $stmt->fetchAll();
     }
 
+    public function update(int $categoryId, int $householdId, string $name, string $type, ?string $color): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE categories SET name = :name, type = :type, color = :color, updated_at = :updated_at
+             WHERE id = :id AND household_id = :household_id'
+        );
+
+        $stmt->execute([
+            'name' => $name,
+            'type' => $type,
+            'color' => $color,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $categoryId,
+            'household_id' => $householdId,
+        ]);
+    }
+
     public function archive(int $categoryId, int $householdId): void
     {
         $stmt = Connection::get()->prepare(
@@ -95,6 +112,20 @@ final class CategoryRepository
 
         $stmt->execute([
             'archived_at' => gmdate('Y-m-d H:i:s'),
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $categoryId,
+            'household_id' => $householdId,
+        ]);
+    }
+
+    public function restore(int $categoryId, int $householdId): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE categories SET archived_at = NULL, updated_at = :updated_at
+             WHERE id = :id AND household_id = :household_id'
+        );
+
+        $stmt->execute([
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $categoryId,
             'household_id' => $householdId,
