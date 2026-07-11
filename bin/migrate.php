@@ -38,9 +38,10 @@ foreach ($files as $file) {
 
     echo "Applying {$name}... ";
 
-    $pdo->beginTransaction();
-
     try {
+        // MySQL DDL statements (CREATE TABLE, etc.) commit implicitly, so an
+        // explicit transaction here would not actually make this atomic —
+        // it would only make failures harder to diagnose.
         $pdo->exec($sql);
 
         $stmt = $pdo->prepare('INSERT INTO migrations (migration, applied_at) VALUES (:migration, :applied_at)');
@@ -49,11 +50,9 @@ foreach ($files as $file) {
             'applied_at' => gmdate('Y-m-d H:i:s'),
         ]);
 
-        $pdo->commit();
         echo "done.\n";
         $ran++;
     } catch (\Throwable $e) {
-        $pdo->rollBack();
         echo "FAILED: {$e->getMessage()}\n";
         exit(1);
     }
