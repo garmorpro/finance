@@ -15,6 +15,7 @@ use App\Repositories\CategoryRepository;
 use App\Repositories\ImportRepository;
 use App\Repositories\ImportRowRepository;
 use App\Repositories\TransactionRepository;
+use App\Services\RuleMatchingService;
 use App\Support\CsvParser;
 use App\Support\Csrf;
 use App\Support\View;
@@ -197,6 +198,7 @@ final class ImportController
 
         $transactionRepo = new TransactionRepository();
         $importRowRepo = new ImportRowRepository();
+        $ruleMatcher = new RuleMatchingService();
 
         $imported = 0;
         $skipped = 0;
@@ -246,10 +248,12 @@ final class ImportController
 
                 $notes = $notesCol !== '' ? (trim($row[(int) $notesCol] ?? '') ?: null) : null;
 
+                $transactionType = bccomp($amount, '0', 2) < 0 ? 'expense' : 'income';
+
                 $transactionId = $transactionRepo->create($householdId, $userId, [
                     'account_id' => $accountId,
                     'category_id' => $categoryId,
-                    'transaction_type' => bccomp($amount, '0', 2) < 0 ? 'expense' : 'income',
+                    'transaction_type' => $transactionType,
                     'transaction_date' => $date,
                     'payee' => $payee,
                     'notes' => $notes,
@@ -257,6 +261,14 @@ final class ImportController
                     'exclude_from_budget' => false,
                     'exclude_from_reports' => false,
                     'signed_amount' => $amount,
+                ]);
+
+                $ruleMatcher->applyToTransaction($householdId, $transactionId, [
+                    'payee' => $payee,
+                    'notes' => $notes,
+                    'amount' => $amount,
+                    'account_id' => $accountId,
+                    'transaction_type' => $transactionType,
                 ]);
 
                 $importRowRepo->record($importId, $rowNumber, $rawData, 'imported', $transactionId, null);

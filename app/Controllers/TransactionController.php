@@ -14,6 +14,7 @@ use App\Repositories\AuditLogRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\TagRepository;
 use App\Repositories\TransactionRepository;
+use App\Services\RuleMatchingService;
 use App\Support\Csrf;
 use App\Support\View;
 use App\Validation\MoneyInput;
@@ -224,6 +225,14 @@ final class TransactionController
             ]);
 
             (new TagRepository())->setTagsForTransaction($transactionId, $input['tag_ids']);
+
+            (new RuleMatchingService())->applyToTransaction($householdId, $transactionId, [
+                'payee' => $input['payee'],
+                'notes' => $input['notes'],
+                'amount' => $signedAmount,
+                'account_id' => (int) $input['account_id'],
+                'transaction_type' => $input['transaction_type'],
+            ]);
 
             $newBalance = bcadd($account['current_balance'], $signedAmount, 2);
 

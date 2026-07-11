@@ -139,6 +139,29 @@ final class TagRepository
     }
 
     /**
+     * Adds tags to a transaction without disturbing ones already there —
+     * unlike setTagsForTransaction(), this is additive, for rule
+     * application where the user's own tag choices at creation time must
+     * be preserved alongside whatever a matching rule adds.
+     *
+     * @param list<int> $tagIds
+     */
+    public function addTagsToTransaction(int $transactionId, array $tagIds): void
+    {
+        if ($tagIds === []) {
+            return;
+        }
+
+        $insert = Connection::get()->prepare(
+            'INSERT IGNORE INTO transaction_tags (transaction_id, tag_id) VALUES (:transaction_id, :tag_id)'
+        );
+
+        foreach (array_unique($tagIds) as $tagId) {
+            $insert->execute(['transaction_id' => $transactionId, 'tag_id' => $tagId]);
+        }
+    }
+
+    /**
      * @return array<int, list<array>> tags keyed by transaction_id
      */
     public function listForTransactions(array $transactionIds): array

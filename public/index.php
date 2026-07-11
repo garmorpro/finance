@@ -18,6 +18,7 @@ use App\Controllers\PasswordResetController;
 use App\Controllers\ProfileController;
 use App\Controllers\RecurringController;
 use App\Controllers\ReportController;
+use App\Controllers\RuleController;
 use App\Controllers\TagController;
 use App\Controllers\TransactionController;
 use App\Database\Connection;
@@ -164,6 +165,17 @@ $notificationController = new NotificationController();
 $router->get('/notifications', fn (): mixed => $notificationController->index());
 $router->get('/settings/notifications', fn (): mixed => $notificationController->settings());
 $router->post('/settings/notifications', fn (Request $r): mixed => $notificationController->updatePreferences($r));
+
+$ruleController = new RuleController();
+$router->get('/settings/rules', fn (): mixed => $ruleController->index());
+$router->get('/settings/rules/create', fn (): mixed => $ruleController->showCreateForm());
+$router->post('/settings/rules', fn (Request $r): mixed => $ruleController->store($r));
+$router->get('/settings/rules/{id}/edit', fn (Request $r): mixed => $ruleController->showEditForm($r));
+$router->post('/settings/rules/{id}', fn (Request $r): mixed => $ruleController->update($r));
+$router->post('/settings/rules/{id}/toggle', fn (Request $r): mixed => $ruleController->toggleActive($r));
+$router->post('/settings/rules/{id}/delete', fn (Request $r): mixed => $ruleController->destroy($r));
+$router->get('/settings/rules/{id}/apply', fn (Request $r): mixed => $ruleController->previewApply($r));
+$router->post('/settings/rules/{id}/apply', fn (Request $r): mixed => $ruleController->applyToExisting($r));
 
 $dashboardController = new DashboardController();
 $router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardController->saveLayout($r));

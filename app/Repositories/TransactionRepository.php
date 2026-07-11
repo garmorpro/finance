@@ -104,6 +104,72 @@ final class TransactionRepository
     }
 
     /**
+     * Every non-deleted, non-transfer transaction for the household —
+     * used only for rule matching (live application against new
+     * transactions reads one row at a time via findById(); this bulk read
+     * backs the "preview and apply to existing transactions" flow, which
+     * needs the full set to evaluate in PHP since matching logic isn't
+     * expressible as SQL WHERE clauses). Transfers are excluded: their
+     * payee/notes are system-generated ("Transfer to X") and rewriting
+     * them via a rule would break the paired-transaction display.
+     */
+    public function listMatchableForHousehold(int $householdId): array
+    {
+        $stmt = Connection::get()->prepare(
+            "SELECT * FROM transactions
+             WHERE household_id = :household_id AND deleted_at IS NULL AND transaction_type != 'transfer'
+             ORDER BY id"
+        );
+
+        $stmt->execute(['household_id' => $householdId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Applies rule-derived overrides to a transaction. Deliberately
+     * narrower than update(): only touches the fields a rule can actually
+     * set, only writes fields that have a value (so multiple rules can
+     * layer without one blanking out what another set), and is monotonic
+     * for the boolean flags (a rule can turn is_reviewed/exclude_from_reports
+     * on, never back off).
+     */
+    public function applyRuleActions(int $transactionId, int $householdId, ?int $categoryId, ?string $payee, bool $markReviewed, bool $excludeFromReports): void
+    {
+        $sets = ['updated_at = :updated_at'];
+        $params = [
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $transactionId,
+            'household_id' => $householdId,
+        ];
+
+        if ($categoryId !== null) {
+            $sets[] = 'category_id = :category_id';
+            $params['category_id'] = $categoryId;
+        }
+
+        if ($payee !== null) {
+            $sets[] = 'payee = :payee';
+            $params['payee'] = $payee;
+        }
+
+        if ($markReviewed) {
+            $sets[] = 'is_reviewed = 1';
+        }
+
+        if ($excludeFromReports) {
+            $sets[] = 'exclude_from_reports = 1';
+        }
+
+        if (count($sets) === 1) {
+            return;
+        }
+
+        $sql = 'UPDATE transactions SET ' . implode(', ', $sets) . ' WHERE id = :id AND household_id = :household_id';
+        Connection::get()->prepare($sql)->execute($params);
+    }
+
+    /**
      * Heuristic duplicate check for CSV import: same account, date, amount,
      * and payee already exists. Not foolproof (a household could
      * legitimately buy coffee at the same place twice in one day for the

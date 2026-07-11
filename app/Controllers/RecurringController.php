@@ -14,6 +14,7 @@ use App\Repositories\AuditLogRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\RecurringItemRepository;
 use App\Repositories\TransactionRepository;
+use App\Services\RuleMatchingService;
 use App\Support\Csrf;
 use App\Support\View;
 use App\Validation\MoneyInput;
@@ -270,6 +271,14 @@ final class RecurringController
             ]);
 
             $transactionRepo->linkRecurringItem($transactionId, $householdId, $recurringId);
+
+            (new RuleMatchingService())->applyToTransaction($householdId, $transactionId, [
+                'payee' => $item['name'],
+                'notes' => 'Recurring: ' . $item['name'],
+                'amount' => $signedAmount,
+                'account_id' => (int) $item['account_id'],
+                'transaction_type' => $item['recurring_type'],
+            ]);
 
             $newBalance = bcadd($account['current_balance'], $signedAmount, 2);
             (new AccountBalanceHistoryRepository())->record(
