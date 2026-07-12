@@ -457,6 +457,77 @@ final class TransactionRepository
     }
 
     /**
+     * Bulk category assignment. Split transactions are silently excluded
+     * from the WHERE clause (is_split = 0) — their category_id is a
+     * derived "primary display" value (see
+     * TransactionController::primaryCategoryFromSplits()), not something
+     * a blanket bulk action should overwrite; the caller reports how many
+     * rows were actually touched so it can tell the user if some were
+     * skipped for that reason.
+     *
+     * @param list<int> $transactionIds
+     * @return int rows actually updated
+     */
+    public function bulkSetCategory(array $transactionIds, int $householdId, int $categoryId): int
+    {
+        if ($transactionIds === []) {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($transactionIds), '?'));
+        $stmt = Connection::get()->prepare(
+            "UPDATE transactions SET category_id = ?, updated_at = ?
+             WHERE household_id = ? AND is_split = 0 AND deleted_at IS NULL AND id IN ({$placeholders})"
+        );
+        $stmt->execute([$categoryId, gmdate('Y-m-d H:i:s'), $householdId, ...$transactionIds]);
+
+        return $stmt->rowCount();
+    }
+
+    /**
+     * @param list<int> $transactionIds
+     * @return int rows actually updated
+     */
+    public function bulkMarkReviewed(array $transactionIds, int $householdId, int $userId): int
+    {
+        if ($transactionIds === []) {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($transactionIds), '?'));
+        $stmt = Connection::get()->prepare(
+            "UPDATE transactions SET is_reviewed = 1, last_edited_by_user_id = ?, updated_at = ?
+             WHERE household_id = ? AND deleted_at IS NULL AND id IN ({$placeholders})"
+        );
+        $stmt->execute([$userId, gmdate('Y-m-d H:i:s'), $householdId, ...$transactionIds]);
+
+        return $stmt->rowCount();
+    }
+
+    /**
+     * Every non-deleted transaction among the given IDs that actually
+     * belongs to this household — the authorization check for bulk
+     * actions, since client-supplied IDs are never trusted on their own.
+     *
+     * @param list<int> $transactionIds
+     * @return list<array>
+     */
+    public function findManyById(array $transactionIds, int $householdId): array
+    {
+        if ($transactionIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($transactionIds), '?'));
+        $stmt = Connection::get()->prepare(
+            "SELECT * FROM transactions WHERE household_id = ? AND deleted_at IS NULL AND id IN ({$placeholders})"
+        );
+        $stmt->execute([$householdId, ...$transactionIds]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
      * @param array<string, mixed> $filters
      * @return array{0: string, 1: array<string, mixed>}
      */

@@ -57,13 +57,15 @@ final class TransactionController
             'perPage' => $result['perPage'],
             'accounts' => $accountRepo->listForHousehold($householdId, true),
             'categories' => (new CategoryRepository())->listForHousehold($householdId),
+            'tags' => (new TagRepository())->listForHousehold($householdId),
             'filters' => $filters,
             'unreviewedCount' => $transactionRepo->unreviewedCounts($householdId)['total'],
             'csrfToken' => Csrf::token(),
             'notice' => $_SESSION['_flash_notice'] ?? null,
+            'error' => $_SESSION['_flash_error'] ?? null,
         ]));
 
-        unset($_SESSION['_flash_notice']);
+        unset($_SESSION['_flash_notice'], $_SESSION['_flash_error']);
     }
 
     /**
@@ -508,6 +510,172 @@ final class TransactionController
 
         $_SESSION['_flash_notice'] = $pair !== null ? 'Transfer deleted.' : 'Transaction deleted.';
         header('Location: /transactions');
+    }
+
+    /**
+     * Applies one action to every selected row from the transactions list
+     * at once — set category, add a tag, mark reviewed, or delete.
+     * Selection is scoped to the current (paginated) page's checkboxes,
+     * not a cross-page "select everything matching this filter."
+     */
+    public function bulkAction(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $householdId = (int) AuthMiddleware::householdId();
+        $userId = (int) AuthMiddleware::userId();
+        $returnQuery = $request->post('return_query');
+        $returnUrl = '/transactions' . ($returnQuery !== '' ? '?' . $returnQuery : '');
+
+        $redirectBack = function (string $message, bool $isError = true) use ($returnUrl): void {
+            $_SESSION[$isError ? '_flash_error' : '_flash_notice'] = $message;
+            header('Location: ' . $returnUrl);
+        };
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $redirectBack('Your session expired. Please try again.');
+            return;
+        }
+
+        $requestedIds = $request->postIntList('transaction_ids');
+        if ($requestedIds === []) {
+            $redirectBack('Please select at least one transaction.');
+            return;
+        }
+
+        $transactionRepo = new TransactionRepository();
+
+        // Never trust client-supplied IDs on their own — only IDs that
+        // actually resolve to a transaction in this household are used
+        // from here on.
+        $validTransactions = $transactionRepo->findManyById($requestedIds, $householdId);
+        $validIds = array_map(fn (array $t): int => (int) $t['id'], $validTransactions);
+
+        if ($validIds === []) {
+            $redirectBack('Please select at least one valid transaction.');
+            return;
+        }
+
+        $action = $request->post('action');
+
+        switch ($action) {
+            case 'set_category':
+                $categoryId = $request->post('category_id');
+                if ($categoryId === '') {
+                    $redirectBack('Please choose a category.');
+                    return;
+                }
+                if ((new CategoryRepository())->findById((int) $categoryId, $householdId) === null) {
+                    $redirectBack('Please choose a valid category.');
+                    return;
+                }
+
+                $updated = $transactionRepo->bulkSetCategory($validIds, $householdId, (int) $categoryId);
+                $skipped = count($validIds) - $updated;
+
+                (new AuditLogRepository())->log($userId, $householdId, 'transaction.bulk_category_set', 'transaction', $categoryId, $request->ip(), ['count' => $updated]);
+
+                $message = "Category set on {$updated} transaction" . ($updated === 1 ? '' : 's') . '.';
+                if ($skipped > 0) {
+                    $message .= " {$skipped} split transaction" . ($skipped === 1 ? '' : 's') . " skipped — edit " . ($skipped === 1 ? 'it' : 'them') . " individually.";
+                }
+                $redirectBack($message, false);
+                return;
+
+            case 'add_tag':
+                $tagId = $request->post('tag_id');
+                if ($tagId === '') {
+                    $redirectBack('Please choose a tag.');
+                    return;
+                }
+                if ((new TagRepository())->findById((int) $tagId, $householdId) === null) {
+                    $redirectBack('Please choose a valid tag.');
+                    return;
+                }
+
+                $tagRepo = new TagRepository();
+                foreach ($validIds as $id) {
+                    $tagRepo->addTagsToTransaction($id, [(int) $tagId]);
+                }
+
+                (new AuditLogRepository())->log($userId, $householdId, 'transaction.bulk_tag_added', 'transaction', (int) $tagId, $request->ip(), ['count' => count($validIds)]);
+
+                $redirectBack('Tag added to ' . count($validIds) . ' transaction' . (count($validIds) === 1 ? '' : 's') . '.', false);
+                return;
+
+            case 'mark_reviewed':
+                $updated = $transactionRepo->bulkMarkReviewed($validIds, $householdId, $userId);
+
+                (new AuditLogRepository())->log($userId, $householdId, 'transaction.bulk_marked_reviewed', 'transaction', null, $request->ip(), ['count' => $updated]);
+
+                $redirectBack("Marked {$updated} transaction" . ($updated === 1 ? '' : 's') . ' as reviewed.', false);
+                return;
+
+            case 'delete':
+                [$message, $isError] = $this->bulkDelete($validTransactions, $householdId, $userId, $request->ip());
+                $redirectBack($message, $isError);
+                return;
+
+            default:
+                $redirectBack('Please choose a bulk action.');
+                return;
+        }
+    }
+
+    /**
+     * @param list<array> $transactions already household-verified
+     * @return array{0: string, 1: bool} the flash message, and whether it's an error
+     */
+    private function bulkDelete(array $transactions, int $householdId, int $userId, string $ip): array
+    {
+        $accountRepo = new AccountRepository();
+        $historyRepo = new AccountBalanceHistoryRepository();
+        $auditRepo = new AuditLogRepository();
+        $transactionRepo = new TransactionRepository();
+
+        $pdo = Connection::get();
+        $pdo->beginTransaction();
+
+        $processedIds = [];
+        $deletedCount = 0;
+
+        try {
+            foreach ($transactions as $transaction) {
+                $id = (int) $transaction['id'];
+                if (in_array($id, $processedIds, true)) {
+                    continue;
+                }
+
+                // Re-fetch: an earlier iteration of this same loop may
+                // already have deleted this row as another transaction's
+                // transfer pair.
+                $current = $transactionRepo->findById($id, $householdId);
+                if ($current === null) {
+                    continue;
+                }
+
+                $this->deleteOneSideAndReverseBalance($transactionRepo, $accountRepo, $historyRepo, $auditRepo, $current, $householdId, $userId, $ip);
+                $processedIds[] = $id;
+                $deletedCount++;
+
+                if ($current['transfer_pair_id'] !== null) {
+                    $pair = $transactionRepo->findById((int) $current['transfer_pair_id'], $householdId);
+                    if ($pair !== null) {
+                        $this->deleteOneSideAndReverseBalance($transactionRepo, $accountRepo, $historyRepo, $auditRepo, $pair, $householdId, $userId, $ip);
+                        $processedIds[] = (int) $pair['id'];
+                        $deletedCount++;
+                    }
+                }
+            }
+
+            $pdo->commit();
+
+            return ["Deleted {$deletedCount} transaction" . ($deletedCount === 1 ? '' : 's') . '.', false];
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+
+            return ['Something went wrong deleting those transactions. Please try again.', true];
+        }
     }
 
     private function deleteOneSideAndReverseBalance(

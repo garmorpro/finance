@@ -97,6 +97,7 @@ $router->get('/transactions/transfer', fn (): mixed => $transactionController->s
 $router->post('/transactions/transfer', fn (Request $r): mixed => $transactionController->storeTransfer($r));
 $router->get('/transactions/review', fn (): mixed => $transactionController->review());
 $router->post('/transactions/review/mark-all', fn (Request $r): mixed => $transactionController->markAllReviewed($r));
+$router->post('/transactions/bulk', fn (Request $r): mixed => $transactionController->bulkAction($r));
 $router->get('/transactions/{id}/edit', fn (Request $r): mixed => $transactionController->showEditForm($r));
 $router->post('/transactions/{id}', fn (Request $r): mixed => $transactionController->update($r));
 $router->post('/transactions/{id}/delete', fn (Request $r): mixed => $transactionController->destroy($r));
