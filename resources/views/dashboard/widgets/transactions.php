@@ -21,9 +21,9 @@ View::partial('dashboard/widgets/_header', ['title' => 'Recent Transactions', 'w
             <li class="flex items-center justify-between text-sm">
                 <div class="truncate">
                     <div class="text-stone-700 dark:text-stone-300 truncate"><?= View::e($transaction['payee']) ?></div>
-                    <div class="text-xs text-stone-400 dark:text-stone-600"><?= View::e($transaction['transaction_date']) ?></div>
+                    <div class="text-xs text-stone-500 dark:text-stone-400"><?= View::e($transaction['transaction_date']) ?></div>
                 </div>
-                <span class="font-medium <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
+                <span class="font-medium <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
                     <?= Money::format($transaction['amount']) ?>
                 </span>
             </li>

@@ -88,7 +88,7 @@ $groupLabel = function (string $date) use ($today, $yesterday): string {
                                             </div>
                                         </div>
                                         <div class="flex items-center gap-4 shrink-0">
-                                            <span class="font-medium <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
+                                            <span class="font-medium <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
                                                 <?= Money::format($transaction['amount']) ?>
                                             </span>
                                             <a href="/transactions/<?= (int) $transaction['id'] ?>/edit" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Edit</a>

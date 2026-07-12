@@ -81,6 +81,20 @@
     @apply px-5 py-5 font-semibold text-lg tracking-tight text-stone-900 dark:text-white;
   }
 
+  /*
+   * Standard skip-link pattern: off-screen until keyboard-focused, then
+   * jumps above everything so it's the first thing a keyboard/screen
+   * reader user encounters — lets them bypass the sidebar's ~10 nav
+   * links without tabbing through all of them on every single page.
+   */
+  .skip-link {
+    @apply fixed left-4 top-4 z-50 -translate-y-24 rounded-lg bg-white dark:bg-stone-900 px-4 py-2 text-sm font-medium text-stone-900 dark:text-white shadow-lg border border-stone-200 dark:border-stone-800 transition-transform;
+  }
+
+  .skip-link:focus {
+    @apply translate-y-0;
+  }
+
   .sidebar-nav {
     @apply flex-1 px-3 space-y-1 overflow-y-auto;
   }

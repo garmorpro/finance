@@ -39,7 +39,7 @@ $renderCard = function (array $goal) use ($goalTypeLabel): void {
         <div class="flex items-center justify-between text-sm">
             <span class="text-stone-500 dark:text-stone-400"><?= Money::format($goal['current_amount']) ?> of <?= Money::format($goal['target_amount']) ?></span>
             <?php if ($goal['target_date'] !== null): ?>
-                <span class="text-stone-400 dark:text-stone-600">by <?= View::e($goal['target_date']) ?></span>
+                <span class="text-stone-500 dark:text-stone-400">by <?= View::e($goal['target_date']) ?></span>
             <?php endif; ?>
         </div>
     </a>

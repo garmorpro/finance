@@ -103,7 +103,7 @@ $renderSection = function (array $section, string $type) use ($renderRow, $rowGr
         </summary>
         <div class="px-6 pb-4 border-t border-stone-100 dark:border-stone-800">
             <?php if ($section['rows'] === []): ?>
-                <p class="text-sm text-stone-400 dark:text-stone-600 py-4">No categories in this section yet.</p>
+                <p class="text-sm text-stone-500 dark:text-stone-400 py-4">No categories in this section yet.</p>
             <?php else: ?>
                 <?php foreach ($section['rows'] as $row): ?>
                     <?php $renderRow($row, $type); ?>
@@ -126,7 +126,7 @@ $summaryBar = function (string $label, string $planned, string $actual, string $
         </div>
         <div class="flex items-baseline justify-between text-xs">
             <span class="text-stone-500 dark:text-stone-400"><?= Money::format($actual) ?> <?= View::e($earnedOrSpentLabel) ?></span>
-            <span class="font-medium <?= bccomp($remaining, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' ?>"><?= Money::format($remaining) ?> remaining</span>
+            <span class="font-medium <?= bccomp($remaining, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400' ?>"><?= Money::format($remaining) ?> remaining</span>
         </div>
     </div>
     <?php

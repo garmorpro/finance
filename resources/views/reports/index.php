@@ -91,7 +91,7 @@ if ($filters['tag_ids'] !== []) {
                     <h1 class="text-2xl font-semibold text-stone-900">Finance Report</h1>
                     <p class="text-sm text-stone-600"><?= View::e($filters['date_from']) ?> to <?= View::e($filters['date_to']) ?></p>
                     <p class="text-sm text-stone-600"><?= View::e(implode(' · ', $filterSummaryParts)) ?></p>
-                    <p class="text-xs text-stone-400 mt-1">Printed <?= View::e(date('Y-m-d')) ?></p>
+                    <p class="text-xs text-stone-500 mt-1">Printed <?= View::e(date('Y-m-d')) ?></p>
                 </div>
 
                 <form method="GET" action="/reports" class="card space-y-4 no-print">
@@ -155,7 +155,7 @@ if ($filters['tag_ids'] !== []) {
                         <div>
                             <label for="tag_ids" class="field-label">Tags (leave empty for all)</label>
                             <?php if ($tags === []): ?>
-                                <p class="text-sm text-stone-400 dark:text-stone-600 mt-2">No tags yet — <a href="/settings/tags" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">create one</a>.</p>
+                                <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">No tags yet — <a href="/settings/tags" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">create one</a>.</p>
                             <?php else: ?>
                                 <select id="tag_ids" name="tag_ids[]" multiple class="field-input" size="4">
                                     <?php foreach ($tags as $tag): ?>
@@ -171,7 +171,7 @@ if ($filters['tag_ids'] !== []) {
                     <div class="grid grid-cols-2 sm:grid-cols-5 gap-6">
                         <div>
                             <div class="label-text">Income</div>
-                            <div class="text-xl font-semibold text-emerald-600 dark:text-emerald-400"><?= Money::format($totals['income']) ?></div>
+                            <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($totals['income']) ?></div>
                         </div>
                         <div>
                             <div class="label-text">Expenses</div>
@@ -183,7 +183,7 @@ if ($filters['tag_ids'] !== []) {
                         </div>
                         <div>
                             <div class="label-text">Net</div>
-                            <div class="text-xl font-semibold <?= bccomp($totals['net'], '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' ?>"><?= Money::format($totals['net']) ?></div>
+                            <div class="text-xl font-semibold <?= bccomp($totals['net'], '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400' ?>"><?= Money::format($totals['net']) ?></div>
                         </div>
                         <div>
                             <div class="label-text">Transactions</div>
@@ -213,7 +213,7 @@ if ($filters['tag_ids'] !== []) {
                                 <?php foreach ($rows as $row): ?>
                                     <tr>
                                         <td class="font-medium text-stone-900 dark:text-white"><?= View::e($row['label']) ?></td>
-                                        <td class="text-right text-emerald-600 dark:text-emerald-400"><?= Money::format($row['income']) ?></td>
+                                        <td class="text-right text-emerald-700 dark:text-emerald-400"><?= Money::format($row['income']) ?></td>
                                         <td class="text-right"><?= Money::format($row['expense']) ?></td>
                                         <td class="text-right text-stone-500 dark:text-stone-400"><?= Money::format($row['transfer']) ?></td>
                                         <td class="text-right font-medium <?= bccomp($row['net'], '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white' ?>"><?= Money::format($row['net']) ?></td>

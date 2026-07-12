@@ -13,7 +13,7 @@ $navLink = function (string $key, string $href, string $label) use ($active): st
 <div class="space-y-4">
     <div class="card">
         <h2 class="settings-nav-heading">Account</h2>
-        <nav class="space-y-0.5">
+        <nav class="space-y-0.5" aria-label="Account settings">
             <?= $navLink('profile', '/settings/profile', 'Profile') ?>
             <?= $navLink('notifications', '/settings/notifications', 'Notifications') ?>
             <?= $navLink('security', '/settings/security', 'Security') ?>
@@ -21,7 +21,7 @@ $navLink = function (string $key, string $href, string $label) use ($active): st
     </div>
     <div class="card">
         <h2 class="settings-nav-heading">Household</h2>
-        <nav class="space-y-0.5">
+        <nav class="space-y-0.5" aria-label="Household settings">
             <?= $navLink('household', '/settings/household', 'Members') ?>
             <?= $navLink('categories', '/settings/categories', 'Categories') ?>
             <?= $navLink('rules', '/settings/rules', 'Rules') ?>

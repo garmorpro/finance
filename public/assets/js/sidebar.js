@@ -1,6 +1,15 @@
 (function () {
   'use strict';
 
+  // The "Skip to main content" link (in this same partial, so it's on
+  // every authenticated page) targets #main-content — there's no shared
+  // layout wrapper in this app to add that id to <main> once, so it's
+  // set here at runtime instead of on every individual view.
+  var main = document.querySelector('main');
+  if (main && !main.id) {
+    main.id = 'main-content';
+  }
+
   var sidebar = document.getElementById('sidebar');
   var overlay = document.getElementById('sidebar-overlay');
   var openBtn = document.getElementById('sidebar-open');

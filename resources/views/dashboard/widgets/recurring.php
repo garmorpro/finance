@@ -29,9 +29,9 @@ View::partial('dashboard/widgets/_header', ['title' => 'Recurring Bills', 'widge
             <li class="flex items-center justify-between text-sm">
                 <div class="truncate">
                     <div class="text-stone-700 dark:text-stone-300 truncate"><?= View::e($item['name']) ?></div>
-                    <div class="text-xs <?= $item['next_due_date'] < $today ? 'text-red-600 dark:text-red-400' : 'text-stone-400 dark:text-stone-600' ?>"><?= View::e($item['next_due_date']) ?></div>
+                    <div class="text-xs <?= $item['next_due_date'] < $today ? 'text-red-600 dark:text-red-400' : 'text-stone-500 dark:text-stone-400' ?>"><?= View::e($item['next_due_date']) ?></div>
                 </div>
-                <span class="font-medium <?= $item['recurring_type'] === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
+                <span class="font-medium <?= $item['recurring_type'] === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
                     <?= Money::format($item['expected_amount']) ?>
                 </span>
             </li>

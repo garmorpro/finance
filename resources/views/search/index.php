@@ -52,7 +52,7 @@ $hasAnyResults = $results !== null && (
                                             <div class="font-medium text-stone-900 dark:text-white truncate"><?= View::e($transaction['payee']) ?></div>
                                             <div class="text-sm text-stone-500 dark:text-stone-400"><?= View::e($transaction['transaction_date']) ?> &middot; <?= View::e($transaction['account_name']) ?><?= $transaction['category_name'] !== null ? ' · ' . View::e($transaction['category_name']) : '' ?></div>
                                         </div>
-                                        <span class="font-medium text-right shrink-0 <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>"><?= Money::format($transaction['amount']) ?></span>
+                                        <span class="font-medium text-right shrink-0 <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>"><?= Money::format($transaction['amount']) ?></span>
                                     </a>
                                 <?php endforeach; ?>
                             </div>

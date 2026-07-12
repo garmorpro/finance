@@ -248,7 +248,6 @@ the drift that compounds across many transactions).
   convention, not a structural guarantee. A router-level default-deny
   guard (explicitly allow-listing the few public routes) would close
   this and is a reasonable follow-up.
-- **No two-factor authentication.**
 - **No automated dependency vulnerability scanning** (e.g. `composer audit`
   in CI) — this app has very few dependencies (`vlucas/phpdotenv`,
   `phpunit/phpunit` dev-only), which limits exposure, but nothing
@@ -257,3 +256,9 @@ the drift that compounds across many transactions).
   (see `docs/testing.md`'s "not covered" section) — `AuthMiddleware::requireRole()`
   calls `exit()` directly, which isn't unit-testable without a refactor
   that was out of scope for this pass.
+- **Dashboard tile drag-to-reorder has no keyboard equivalent.** Every
+  other dashboard control (resize, show/hide, the customize dialog) is
+  fully keyboard-operable; reordering tiles is mouse/touch-only. Found
+  during the accessibility pass, not fixed in it — a real fix needs
+  keyboard-driven "move up"/"move down" controls per tile, not just an
+  ARIA annotation on the existing drag handle.

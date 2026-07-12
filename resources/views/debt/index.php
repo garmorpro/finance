@@ -72,7 +72,7 @@ $typeLabel = [
                         <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Snowball (smallest balance first, for quick wins) vs. avalanche (highest interest rate first, minimizes total interest) — paying every debt's minimum plus any extra thrown at whichever debt is up next. Estimates only: assumes today's rates and balances stay fixed, payments are made on time, and nothing new is charged.</p>
 
                         <?php if ($comparableDebtCount < 2): ?>
-                            <p class="text-sm text-stone-400 dark:text-stone-600">Add a second debt account to compare payoff strategies.</p>
+                            <p class="text-sm text-stone-500 dark:text-stone-400">Add a second debt account to compare payoff strategies.</p>
                         <?php else: ?>
                             <form method="GET" action="/debt" class="flex items-end gap-3 mb-6">
                                 <div>
@@ -102,7 +102,7 @@ $typeLabel = [
                                                     <span class="font-medium text-stone-900 dark:text-white"><?= Money::format((string) $result['totalInterest']) ?></span>
                                                 </div>
                                             </div>
-                                            <div class="text-xs text-stone-400 dark:text-stone-600 uppercase tracking-wide mb-1">Payoff order</div>
+                                            <div class="text-xs text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-1">Payoff order</div>
                                             <ol class="text-sm text-stone-700 dark:text-stone-300 space-y-0.5">
                                                 <?php foreach ($result['payoffOrder'] as $i => $debt): ?>
                                                     <li><?= $i + 1 ?>. <?= View::e($debt['name']) ?> &mdash; <?= $debt['month'] !== null ? 'month ' . $debt['month'] : 'not paid off' ?></li>
@@ -139,25 +139,25 @@ $typeLabel = [
 
                                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                                     <div>
-                                        <div class="text-xs text-stone-400 dark:text-stone-600">Interest rate</div>
+                                        <div class="text-xs text-stone-500 dark:text-stone-400">Interest rate</div>
                                         <div class="text-stone-700 dark:text-stone-300"><?= $account['interest_rate'] !== null ? $account['interest_rate'] . '%' : '—' ?></div>
                                     </div>
                                     <div>
-                                        <div class="text-xs text-stone-400 dark:text-stone-600">Minimum payment</div>
+                                        <div class="text-xs text-stone-500 dark:text-stone-400">Minimum payment</div>
                                         <div class="text-stone-700 dark:text-stone-300"><?= $account['minimum_payment'] !== null ? Money::format($account['minimum_payment']) : '—' ?></div>
                                     </div>
                                     <div>
-                                        <div class="text-xs text-stone-400 dark:text-stone-600">Due day</div>
+                                        <div class="text-xs text-stone-500 dark:text-stone-400">Due day</div>
                                         <div class="text-stone-700 dark:text-stone-300"><?= $account['payment_due_day'] !== null ? 'Day ' . (int) $account['payment_due_day'] : '—' ?></div>
                                     </div>
                                     <?php if ($row['utilization'] !== null): ?>
                                         <div>
-                                            <div class="text-xs text-stone-400 dark:text-stone-600">Credit utilization</div>
+                                            <div class="text-xs text-stone-500 dark:text-stone-400">Credit utilization</div>
                                             <div class="<?= $row['utilization'] >= 30 ? 'text-red-600 dark:text-red-400' : 'text-stone-700 dark:text-stone-300' ?>"><?= $row['utilization'] ?>%</div>
                                         </div>
                                     <?php else: ?>
                                         <div>
-                                            <div class="text-xs text-stone-400 dark:text-stone-600">Est. payoff</div>
+                                            <div class="text-xs text-stone-500 dark:text-stone-400">Est. payoff</div>
                                             <div class="text-stone-700 dark:text-stone-300">
                                                 <?php if ($payoff === null): ?>
                                                     —

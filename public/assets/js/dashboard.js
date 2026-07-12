@@ -160,15 +160,61 @@
   var list = document.getElementById('customize-list');
 
   if (modal && openBtn && closeBtn && list) {
+    var lastFocused = null;
+
+    function focusableElements() {
+      return Array.prototype.slice.call(
+        modal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')
+      );
+    }
+
     var openModal = function () {
+      lastFocused = document.activeElement;
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+      closeBtn.focus();
+      document.addEventListener('keydown', onModalKeydown);
     };
 
     var closeModal = function () {
       modal.classList.add('hidden');
       modal.classList.remove('flex');
+      document.removeEventListener('keydown', onModalKeydown);
+      if (lastFocused) {
+        lastFocused.focus();
+      }
     };
+
+    // Escape closes the modal; Tab/Shift+Tab wrap within it instead of
+    // escaping into the page behind it, since this is a modal dialog —
+    // a sighted keyboard user tabbing past the last control shouldn't
+    // land back on the dashboard grid underneath.
+    function onModalKeydown(event) {
+      if (event.key === 'Escape') {
+        closeModal();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      var focusable = focusableElements();
+      if (focusable.length === 0) {
+        return;
+      }
+
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
 
     openBtn.addEventListener('click', openModal);
     closeBtn.addEventListener('click', closeModal);

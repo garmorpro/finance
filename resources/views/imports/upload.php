@@ -79,7 +79,7 @@ use App\Support\View;
                                     <td class="text-stone-900 dark:text-white"><?= View::e($import['filename']) ?></td>
                                     <td class="text-stone-500 dark:text-stone-400"><?= View::e($import['account_name']) ?></td>
                                     <td class="text-stone-500 dark:text-stone-400"><?= View::e($import['imported_by_name']) ?></td>
-                                    <td class="text-right text-emerald-600 dark:text-emerald-400"><?= (int) $import['imported_count'] ?></td>
+                                    <td class="text-right text-emerald-700 dark:text-emerald-400"><?= (int) $import['imported_count'] ?></td>
                                     <td class="text-right text-stone-500 dark:text-stone-400"><?= (int) $import['skipped_count'] ?></td>
                                     <td class="text-right text-red-600 dark:text-red-400"><?= (int) $import['rejected_count'] ?></td>
                                 </tr>

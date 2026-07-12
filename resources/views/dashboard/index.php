@@ -42,7 +42,7 @@ use App\Support\View;
                 <div class="flex items-end justify-between">
                     <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Hello, <?= View::e(explode(' ', $user['name'])[0]) ?>!</h1>
                     <div class="flex items-center gap-4">
-                        <p class="text-xs text-stone-400 dark:text-stone-600">Drag tiles to rearrange</p>
+                        <p class="text-xs text-stone-500 dark:text-stone-400">Drag tiles to rearrange</p>
                         <button type="button" id="customize-open" class="btn-secondary">Customize</button>
                     </div>
                 </div>
@@ -94,11 +94,11 @@ use App\Support\View;
         </div>
     </div>
 
-    <div id="customize-modal" class="hidden fixed inset-0 z-30 items-center justify-center bg-stone-900/50 px-4">
+    <div id="customize-modal" class="hidden fixed inset-0 z-30 items-center justify-center bg-stone-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="customize-modal-title">
         <div class="card w-full max-w-md max-h-[80vh] overflow-y-auto">
             <div class="flex items-start justify-between mb-1">
-                <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Customize dashboard</h2>
-                <button type="button" id="customize-close" class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200" aria-label="Close">&times;</button>
+                <h2 id="customize-modal-title" class="text-lg font-semibold text-stone-900 dark:text-white">Customize dashboard</h2>
+                <button type="button" id="customize-close" class="text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200" aria-label="Close">&times;</button>
             </div>
             <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Choose which tiles appear on your overview.</p>
 

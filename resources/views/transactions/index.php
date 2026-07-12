@@ -151,7 +151,7 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                                                     <span class="badge ml-2"><?= View::e($tag['name']) ?></span>
                                                 <?php endforeach; ?>
                                                 <?php if (($attachmentsByTransaction[(int) $transaction['id']] ?? []) !== []): ?>
-                                                    <span class="inline-block align-middle ml-2 text-stone-400 dark:text-stone-600" title="Has attachments">
+                                                    <span class="inline-block align-middle ml-2 text-stone-500 dark:text-stone-400" title="Has attachments">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Has attachments"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                                                     </span>
                                                 <?php endif; ?>
@@ -167,7 +167,7 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['account_name']) ?></td>
-                                            <td class="text-right font-medium <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
+                                            <td class="text-right font-medium <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
                                                 <?= Money::format($transaction['amount']) ?>
                                             </td>
                                             <td class="text-right">

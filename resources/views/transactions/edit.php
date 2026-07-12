@@ -167,10 +167,10 @@ $formatFileSize = function (int $bytes): string {
                                         <?= View::e($attachment['original_filename']) ?>
                                     </a>
                                     <div class="flex items-center gap-3 shrink-0">
-                                        <span class="text-xs text-stone-400 dark:text-stone-600"><?= $formatFileSize((int) $attachment['file_size']) ?></span>
+                                        <span class="text-xs text-stone-500 dark:text-stone-400"><?= $formatFileSize((int) $attachment['file_size']) ?></span>
                                         <form method="POST" action="/transactions/<?= (int) $transaction['id'] ?>/attachments/<?= (int) $attachment['id'] ?>/delete" onsubmit="return confirm('Remove this attachment?');">
                                             <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                                            <button type="submit" class="text-xs font-medium text-stone-400 dark:text-stone-600 hover:text-red-600 dark:hover:text-red-400">Remove</button>
+                                            <button type="submit" class="text-xs font-medium text-stone-500 dark:text-stone-400 hover:text-red-600 dark:hover:text-red-400">Remove</button>
                                         </form>
                                     </div>
                                 </li>

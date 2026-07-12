@@ -66,7 +66,7 @@ $renderSections = function (array $sections) use ($csrfToken, $renderCategoryRow
                 <?php endif; ?>
             </div>
             <?php if ($section['categories'] === []): ?>
-                <p class="text-sm text-stone-400 dark:text-stone-600 py-2">No categories yet.</p>
+                <p class="text-sm text-stone-500 dark:text-stone-400 py-2">No categories yet.</p>
             <?php else: ?>
                 <div class="divide-y divide-stone-100 dark:divide-stone-800">
                     <?php foreach ($section['categories'] as $category): ?>

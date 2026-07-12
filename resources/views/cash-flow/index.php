@@ -61,7 +61,7 @@ $chartPayload = [
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                             <div>
                                 <div class="label-text">Total income</div>
-                                <div class="text-xl font-semibold text-emerald-600 dark:text-emerald-400"><?= Money::format($totalIncome) ?></div>
+                                <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($totalIncome) ?></div>
                             </div>
                             <div>
                                 <div class="label-text">Total expenses</div>
@@ -69,7 +69,7 @@ $chartPayload = [
                             </div>
                             <div>
                                 <div class="label-text">Net cash flow</div>
-                                <div class="text-xl font-semibold <?= bccomp($netCashFlow, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' ?>"><?= Money::format($netCashFlow) ?></div>
+                                <div class="text-xl font-semibold <?= bccomp($netCashFlow, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400' ?>"><?= Money::format($netCashFlow) ?></div>
                             </div>
                         </div>
                     </div>
@@ -90,7 +90,7 @@ $chartPayload = [
                                 <?php foreach (array_reverse($series) as $row): ?>
                                     <tr>
                                         <td><?= View::e($row['label']) ?></td>
-                                        <td class="text-right text-emerald-600 dark:text-emerald-400"><?= Money::format($row['income']) ?></td>
+                                        <td class="text-right text-emerald-700 dark:text-emerald-400"><?= Money::format($row['income']) ?></td>
                                         <td class="text-right"><?= Money::format($row['expenses']) ?></td>
                                         <td class="text-right font-medium <?= bccomp($row['net'], '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white' ?>"><?= Money::format($row['net']) ?></td>
                                         <td class="text-right text-stone-500 dark:text-stone-400"><?= Money::format($row['cumulative']) ?></td>

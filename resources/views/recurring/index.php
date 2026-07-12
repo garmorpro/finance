@@ -53,7 +53,7 @@ $renderRow = function (array $item, bool $isOverdue) use ($csrfToken, $frequency
             </div>
             <div class="flex items-center gap-4 shrink-0">
                 <div class="text-right">
-                    <div class="font-medium <?= $item['recurring_type'] === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
+                    <div class="font-medium <?= $item['recurring_type'] === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
                         <?= Money::format($item['expected_amount']) ?>
                     </div>
                     <div class="text-xs <?= $isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-stone-500 dark:text-stone-400' ?>">

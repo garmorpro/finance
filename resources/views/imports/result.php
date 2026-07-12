@@ -22,7 +22,7 @@ use App\Support\View;
 
         <div class="grid grid-cols-3 gap-3 mb-4">
             <div>
-                <div class="text-2xl font-semibold text-emerald-600 dark:text-emerald-400"><?= $imported ?></div>
+                <div class="text-2xl font-semibold text-emerald-700 dark:text-emerald-400"><?= $imported ?></div>
                 <div class="label-text">Imported</div>
             </div>
             <div>
