@@ -34,8 +34,47 @@
     @apply min-h-screen;
   }
 
+  /*
+   * Fixed and always visible at lg+ (desktop). Below that (tablet and
+   * mobile), it's a slide-in drawer instead — translated fully off-screen
+   * by default, toggled via .sidebar-open by sidebar.js in response to
+   * the hamburger button in .mobile-topbar. One drawer mechanism covers
+   * both "collapsible on tablets" and "compact menu on mobile" rather
+   * than building a separate icon-rail and bottom-nav treatment.
+   */
   .sidebar {
-    @apply fixed inset-y-0 left-0 z-20 w-60 flex flex-col border-r border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900;
+    @apply fixed inset-y-0 left-0 z-40 w-60 flex flex-col border-r border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 transition-transform duration-200;
+    transform: translateX(-100%);
+  }
+
+  @screen lg {
+    .sidebar {
+      transform: translateX(0);
+    }
+  }
+
+  .sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    @apply fixed inset-0 bg-stone-900/50 z-30;
+  }
+
+  @screen lg {
+    .sidebar-overlay {
+      display: none;
+    }
+  }
+
+  .mobile-topbar {
+    @apply flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 sticky top-0 z-20;
+  }
+
+  @screen lg {
+    .mobile-topbar {
+      display: none;
+    }
   }
 
   .sidebar-brand {
@@ -114,7 +153,7 @@
   }
 
   .app-content {
-    @apply ml-60;
+    @apply lg:ml-60;
   }
 
   /*
@@ -227,6 +266,18 @@
 
   .badge-owner {
     @apply badge bg-terracotta-100 text-terracotta-800 dark:bg-terracotta-950 dark:text-terracotta-300;
+  }
+
+  /*
+   * A data-dense table naturally overflows a narrow (phone-width)
+   * viewport — without this, the whole page would gain a horizontal
+   * scrollbar instead of just the table area. Scoped to :has() rather
+   * than adding an overflow wrapper div to every view that renders a
+   * table, since every .table-base in this app is already the sole or
+   * primary content of its .card.
+   */
+  .card:has(.table-base) {
+    @apply overflow-x-auto;
   }
 
   .table-base {

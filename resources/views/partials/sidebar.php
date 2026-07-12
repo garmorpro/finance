@@ -17,8 +17,23 @@ $link = function (string $key, string $href, string $label) use ($active): strin
 $notificationCount = (new NotificationService())->badgeCount((int) AuthMiddleware::householdId(), (int) AuthMiddleware::userId());
 
 ?>
-<aside class="sidebar">
-    <div class="sidebar-brand">Finance</div>
+<header class="mobile-topbar">
+    <button type="button" id="sidebar-open" class="sidebar-icon-btn cursor-pointer text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <span class="font-semibold text-lg tracking-tight text-stone-900 dark:text-white">Finance</span>
+    <span class="w-8" aria-hidden="true"></span>
+</header>
+
+<div id="sidebar-overlay" class="hidden sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand flex items-center justify-between">
+        Finance
+        <button type="button" id="sidebar-close" class="sidebar-icon-btn lg:hidden cursor-pointer text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800" aria-label="Close menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
 
     <div class="flex items-center gap-1 px-4 pb-3">
         <a href="/search" class="sidebar-icon-btn cursor-pointer text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 <?= $active === 'search' ? 'text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800' : '' ?>" title="Search">
@@ -66,3 +81,5 @@ $notificationCount = (new NotificationService())->badgeCount((int) AuthMiddlewar
         </form>
     </div>
 </aside>
+
+<script src="<?= View::asset('/assets/js/sidebar.js') ?>" defer></script>
