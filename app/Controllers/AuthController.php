@@ -10,6 +10,7 @@ use App\Middleware\AuthMiddleware;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\HouseholdRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\UserSessionRepository;
 use App\Support\Csrf;
 use App\Support\RateLimiter;
 use App\Support\Totp;
@@ -177,6 +178,16 @@ final class AuthController
             $_SESSION['role'] = $membership['role'];
         }
 
+        $sessionId = session_id();
+        if ($sessionId !== false && $sessionId !== '') {
+            (new UserSessionRepository())->recordSession(
+                (int) $user['id'],
+                $sessionId,
+                $request->ip(),
+                $_SERVER['HTTP_USER_AGENT'] ?? null
+            );
+        }
+
         $auditLog->log(
             (int) $user['id'],
             $_SESSION['household_id'] ?? null,
@@ -198,9 +209,14 @@ final class AuthController
 
         $userId = $_SESSION['user_id'] ?? null;
         $householdId = $_SESSION['household_id'] ?? null;
+        $sessionId = session_id();
 
         if ($userId !== null) {
             (new AuditLogRepository())->log((int) $userId, $householdId, 'logout', 'user', (int) $userId, $request->ip());
+        }
+
+        if ($sessionId !== false && $sessionId !== '') {
+            (new UserSessionRepository())->revokeBySessionId($sessionId);
         }
 
         $_SESSION = [];

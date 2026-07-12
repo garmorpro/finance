@@ -9,8 +9,10 @@ use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\UserSessionRepository;
 use App\Support\Csrf;
 use App\Support\Totp;
+use App\Support\UserAgent;
 use App\Support\View;
 use App\Validation\PasswordPolicy;
 
@@ -36,16 +38,78 @@ final class ProfileController
     {
         AuthMiddleware::requireAuth();
 
-        $user = (new UserRepository())->findById((int) AuthMiddleware::userId());
+        $userId = (int) AuthMiddleware::userId();
+        $user = (new UserRepository())->findById($userId);
+        $currentSessionId = session_id();
+
+        $sessions = array_map(function (array $session) use ($currentSessionId): array {
+            return [
+                'id' => (int) $session['id'],
+                'label' => UserAgent::describe($session['user_agent']),
+                'ip_address' => $session['ip_address'],
+                'last_active_at' => $session['last_active_at'],
+                'is_current' => $currentSessionId !== false && $session['session_id'] === $currentSessionId,
+            ];
+        }, (new UserSessionRepository())->listActiveForUser($userId));
+
+        // Current session first, then most-recently-active.
+        usort($sessions, fn (array $a, array $b): int => $b['is_current'] <=> $a['is_current']);
 
         Response::html(View::render('settings/security', [
             'twoFactorEnabled' => $user !== null && $user['two_factor_enabled_at'] !== null,
+            'sessions' => $sessions,
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,
         ]));
 
         unset($_SESSION['_flash_error'], $_SESSION['_flash_notice']);
+    }
+
+    public function revokeSession(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $userId = (int) AuthMiddleware::userId();
+        $sessionRowId = (int) $request->param('id');
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
+            header('Location: /settings/security');
+            return;
+        }
+
+        (new UserSessionRepository())->revoke($sessionRowId, $userId);
+
+        (new AuditLogRepository())->log($userId, AuthMiddleware::householdId(), 'session.revoked', 'user_session', $sessionRowId, $request->ip());
+
+        $_SESSION['_flash_notice'] = 'That session was logged out.';
+        header('Location: /settings/security');
+    }
+
+    public function revokeAllOtherSessions(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $userId = (int) AuthMiddleware::userId();
+        $currentSessionId = session_id();
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
+            header('Location: /settings/security');
+            return;
+        }
+
+        $revoked = $currentSessionId !== false
+            ? (new UserSessionRepository())->revokeAllExcept($userId, $currentSessionId)
+            : 0;
+
+        (new AuditLogRepository())->log($userId, AuthMiddleware::householdId(), 'session.revoked_all_others', 'user', $userId, $request->ip(), ['count' => $revoked]);
+
+        $_SESSION['_flash_notice'] = $revoked > 0
+            ? "Logged out {$revoked} other session" . ($revoked === 1 ? '' : 's') . '.'
+            : 'No other active sessions to log out.';
+        header('Location: /settings/security');
     }
 
     public function showTwoFactorSetup(): void

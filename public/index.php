@@ -83,6 +83,8 @@ $router->get('/settings/security/2fa/setup', fn (): mixed => $profileController-
 $router->post('/settings/security/2fa/enable', fn (Request $r): mixed => $profileController->enableTwoFactor($r));
 $router->get('/settings/security/2fa/recovery-codes', fn (): mixed => $profileController->showRecoveryCodes());
 $router->post('/settings/security/2fa/disable', fn (Request $r): mixed => $profileController->disableTwoFactor($r));
+$router->post('/settings/security/sessions/{id}/revoke', fn (Request $r): mixed => $profileController->revokeSession($r));
+$router->post('/settings/security/sessions/revoke-all', fn (Request $r): mixed => $profileController->revokeAllOtherSessions($r));
 
 $accountController = new AccountController();
 $router->get('/accounts', fn (): mixed => $accountController->index());

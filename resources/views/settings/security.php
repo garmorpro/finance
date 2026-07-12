@@ -1,6 +1,7 @@
 <?php
 
 /** @var bool $twoFactorEnabled */
+/** @var list<array{id: int, label: string, ip_address: ?string, last_active_at: string, is_current: bool}> $sessions */
 /** @var string $csrfToken */
 /** @var string|null $error */
 /** @var string|null $notice */
@@ -82,6 +83,43 @@ use App\Support\View;
                             <?php else: ?>
                                 <a href="/settings/security/2fa/setup" class="btn-primary inline-block">Set up two-factor authentication</a>
                             <?php endif; ?>
+                        </div>
+
+                        <div class="card max-w-lg">
+                            <div class="flex items-start justify-between gap-4 mb-1">
+                                <h2 class="font-medium text-stone-900 dark:text-white">Active sessions</h2>
+                                <?php if (count($sessions) > 1): ?>
+                                    <form method="POST" action="/settings/security/sessions/revoke-all" onsubmit="return confirm('Log out every other session? Each will need to sign in again.');">
+                                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                                        <button type="submit" class="text-sm font-medium text-red-600 dark:text-red-400 hover:underline">Log out other sessions</button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Where you're currently signed in. Revoking a session takes effect the next time it loads a page.</p>
+
+                            <div class="divide-y divide-stone-100 dark:divide-stone-800">
+                                <?php foreach ($sessions as $session): ?>
+                                    <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                                        <div class="min-w-0">
+                                            <div class="text-sm font-medium text-stone-900 dark:text-white">
+                                                <?= View::e($session['label']) ?>
+                                                <?php if ($session['is_current']): ?>
+                                                    <span class="badge-owner ml-1">This device</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="text-xs text-stone-500 dark:text-stone-400">
+                                                <?= View::e($session['ip_address'] ?? 'Unknown IP') ?> &middot; last active <?= View::e($session['last_active_at']) ?>
+                                            </div>
+                                        </div>
+                                        <?php if (!$session['is_current']): ?>
+                                            <form method="POST" action="/settings/security/sessions/<?= $session['id'] ?>/revoke" class="shrink-0">
+                                                <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                                                <button type="submit" class="btn-secondary">Log out</button>
+                                            </form>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     </div>
                 </div>

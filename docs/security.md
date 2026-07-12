@@ -68,6 +68,37 @@ Authenticator, Authy, 1Password, etc.), enabled from Settings → Security.
   it isn't one, since that flow only ever creates a brand-new user
   account, which by definition has no 2FA configured yet.
 
+## Active session management
+
+Settings → Security lists every device currently signed in and can log
+any of them out individually or all at once.
+
+- PHP's native file-based session storage has no concept of listing or
+  revoking a session from outside the browser that holds it — the new
+  `user_sessions` table tracks each one (a rough browser/OS label
+  parsed from the user agent, IP, last-active time) so this is possible
+  at all.
+- `AuthMiddleware::check()` re-verifies the current request's session
+  against this table on *every* authenticated page load. A session
+  whose row is marked `revoked_at` is force-logged-out
+  (`$_SESSION = []; session_destroy();`) the next time it loads
+  anything — there's no way to keep using a revoked session by not
+  refreshing, since every protected page re-checks.
+- A session with **no** tracked row at all — every session that existed
+  before this feature was deployed — is treated as valid and backfilled
+  into the table on the spot, rather than force-logged-out. The
+  alternative (requiring a row to exist) would silently sign out every
+  already-logged-in household member the moment this migration runs.
+  Once a row exists for a session, from then on an explicit revocation
+  does take effect.
+- `last_active_at` is only written roughly once a minute per session
+  (checked in PHP against the previously-fetched row, not a separate
+  query), not on every single request, to keep this cheap.
+- Revoking a session only ever takes effect for *future* requests from
+  that browser — there's no server-push mechanism to force an
+  already-open tab to react instantly. This is the same limitation
+  essentially every non-realtime web app has.
+
 ## Authorization
 
 - Every controller method (except the intentionally public `AuthController`
