@@ -150,7 +150,7 @@ $router->post('/goals/{id}/archive', fn (Request $r): mixed => $goalController->
 $router->post('/goals/{id}/reactivate', fn (Request $r): mixed => $goalController->reactivate($r));
 
 $debtController = new DebtController();
-$router->get('/debt', fn (): mixed => $debtController->index());
+$router->get('/debt', fn (Request $r): mixed => $debtController->index($r));
 
 $cashFlowController = new CashFlowController();
 $router->get('/cash-flow', fn (Request $r): mixed => $cashFlowController->index($r));

@@ -4,10 +4,16 @@
 /** @var string $totalBalance */
 /** @var string $totalMinimumPayment */
 /** @var float|null $weightedAverageRate */
+/** @var float $extraMonthly */
+/** @var array{snowball: array, avalanche: array}|null $comparison */
+/** @var int $comparableDebtCount */
 /** @var string $csrfToken */
 
 use App\Support\Money;
 use App\Support\View;
+
+$strategyLabels = ['snowball' => 'Snowball', 'avalanche' => 'Avalanche'];
+$strategyBlurbs = ['snowball' => 'Smallest balance first', 'avalanche' => 'Highest interest rate first'];
 
 $typeLabel = [
     'credit_card' => 'Credit Card',
@@ -59,6 +65,61 @@ $typeLabel = [
                                 <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= $weightedAverageRate !== null ? $weightedAverageRate . '%' : '—' ?></div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="font-medium text-stone-900 dark:text-white mb-1">Payoff comparison</h2>
+                        <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Snowball (smallest balance first, for quick wins) vs. avalanche (highest interest rate first, minimizes total interest) — paying every debt's minimum plus any extra thrown at whichever debt is up next. Estimates only: assumes today's rates and balances stay fixed, payments are made on time, and nothing new is charged.</p>
+
+                        <?php if ($comparableDebtCount < 2): ?>
+                            <p class="text-sm text-stone-400 dark:text-stone-600">Add a second debt account to compare payoff strategies.</p>
+                        <?php else: ?>
+                            <form method="GET" action="/debt" class="flex items-end gap-3 mb-6">
+                                <div>
+                                    <label for="extra" class="field-label">Extra monthly payment</label>
+                                    <input type="text" inputmode="decimal" id="extra" name="extra" value="<?= View::e(number_format($extraMonthly, 2, '.', '')) ?>" class="field-input" placeholder="0.00">
+                                </div>
+                                <button type="submit" class="btn-secondary">Recalculate</button>
+                            </form>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <?php foreach ($strategyLabels as $key => $label): ?>
+                                    <?php $result = $comparison[$key]; ?>
+                                    <div class="rounded-xl border border-stone-200 dark:border-stone-800 p-4">
+                                        <h3 class="font-semibold text-stone-900 dark:text-white mb-1"><?= View::e($label) ?></h3>
+                                        <p class="text-xs text-stone-500 dark:text-stone-400 mb-3"><?= View::e($strategyBlurbs[$key]) ?></p>
+
+                                        <?php if (!$result['converged']): ?>
+                                            <p class="text-sm text-red-600 dark:text-red-400">At this payment level, this won't be fully paid off within 50 years. Try a larger extra payment.</p>
+                                        <?php else: ?>
+                                            <div class="space-y-2 mb-3">
+                                                <div class="flex justify-between text-sm">
+                                                    <span class="text-stone-500 dark:text-stone-400">Debt-free in</span>
+                                                    <span class="font-medium text-stone-900 dark:text-white"><?= $result['totalMonths'] ?> mo. (<?= View::e(date('M Y', strtotime('+' . $result['totalMonths'] . ' months'))) ?>, est.)</span>
+                                                </div>
+                                                <div class="flex justify-between text-sm">
+                                                    <span class="text-stone-500 dark:text-stone-400">Total interest (est.)</span>
+                                                    <span class="font-medium text-stone-900 dark:text-white"><?= Money::format((string) $result['totalInterest']) ?></span>
+                                                </div>
+                                            </div>
+                                            <div class="text-xs text-stone-400 dark:text-stone-600 uppercase tracking-wide mb-1">Payoff order</div>
+                                            <ol class="text-sm text-stone-700 dark:text-stone-300 space-y-0.5">
+                                                <?php foreach ($result['payoffOrder'] as $i => $debt): ?>
+                                                    <li><?= $i + 1 ?>. <?= View::e($debt['name']) ?> &mdash; <?= $debt['month'] !== null ? 'month ' . $debt['month'] : 'not paid off' ?></li>
+                                                <?php endforeach; ?>
+                                            </ol>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <?php if ($comparison['snowball']['converged'] && $comparison['avalanche']['converged']): ?>
+                                <?php $interestDiff = $comparison['snowball']['totalInterest'] - $comparison['avalanche']['totalInterest']; ?>
+                                <?php if ($interestDiff > 0.01): ?>
+                                    <p class="text-sm text-emerald-700 dark:text-emerald-400 mt-4">Avalanche saves an estimated <?= Money::format((string) $interestDiff) ?> in interest versus snowball, for this household's current balances and rates.</p>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        <?php endif; ?>
                     </div>
 
                     <div class="card divide-y divide-stone-100 dark:divide-stone-800">
