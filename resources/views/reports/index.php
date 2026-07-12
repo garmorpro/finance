@@ -32,6 +32,35 @@ $exportQuery = http_build_query([
     'group_by' => $groupBy,
 ]);
 
+// The interactive filter form is hidden when printing (.no-print) since
+// its <select>/<input> controls aren't meaningful on paper — this
+// renders the same filters as plain text instead, so a printed report
+// still says what it covers.
+$memberName = null;
+if ($filters['user_id'] !== null) {
+    foreach ($members as $member) {
+        if ((int) $member['id'] === $filters['user_id']) {
+            $memberName = $member['name'];
+            break;
+        }
+    }
+}
+
+$filterSummaryParts = [
+    'Group by ' . $groupLabels[$groupBy],
+    'Type: ' . ($filters['type'] !== '' ? ucfirst($filters['type']) : 'All'),
+    'Member: ' . ($memberName ?? 'Everyone'),
+];
+if ($filters['account_ids'] !== []) {
+    $filterSummaryParts[] = count($filters['account_ids']) . ' account' . (count($filters['account_ids']) === 1 ? '' : 's') . ' selected';
+}
+if ($filters['category_ids'] !== []) {
+    $filterSummaryParts[] = count($filters['category_ids']) . ' categor' . (count($filters['category_ids']) === 1 ? 'y' : 'ies') . ' selected';
+}
+if ($filters['tag_ids'] !== []) {
+    $filterSummaryParts[] = count($filters['tag_ids']) . ' tag' . (count($filters['tag_ids']) === 1 ? '' : 's') . ' selected';
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -47,15 +76,25 @@ $exportQuery = http_build_query([
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div class="flex items-end justify-between">
+                <div class="flex items-end justify-between no-print">
                     <div>
                         <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Reports</h1>
                         <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Filter and group your transactions any way you need.</p>
                     </div>
-                    <a href="/reports/export?<?= $exportQuery ?>" class="btn-secondary">Export CSV</a>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="window.print()" class="btn-secondary">Print report</button>
+                        <a href="/reports/export?<?= $exportQuery ?>" class="btn-secondary">Export CSV</a>
+                    </div>
                 </div>
 
-                <form method="GET" action="/reports" class="card space-y-4">
+                <div class="print-only mb-6">
+                    <h1 class="text-2xl font-semibold text-stone-900">Finance Report</h1>
+                    <p class="text-sm text-stone-600"><?= View::e($filters['date_from']) ?> to <?= View::e($filters['date_to']) ?></p>
+                    <p class="text-sm text-stone-600"><?= View::e(implode(' · ', $filterSummaryParts)) ?></p>
+                    <p class="text-xs text-stone-400 mt-1">Printed <?= View::e(date('Y-m-d')) ?></p>
+                </div>
+
+                <form method="GET" action="/reports" class="card space-y-4 no-print">
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                         <div>
                             <label for="date_from" class="field-label">From</label>
