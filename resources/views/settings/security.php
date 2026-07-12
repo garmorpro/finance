@@ -1,5 +1,6 @@
 <?php
 
+/** @var bool $twoFactorEnabled */
 /** @var string $csrfToken */
 /** @var string|null $error */
 /** @var string|null $notice */
@@ -57,6 +58,30 @@ use App\Support\View;
                                 </div>
                                 <button type="submit" class="btn-primary">Update password</button>
                             </form>
+                        </div>
+
+                        <div class="card max-w-lg">
+                            <div class="flex items-start justify-between gap-4 mb-1">
+                                <h2 class="font-medium text-stone-900 dark:text-white">Two-factor authentication</h2>
+                                <span class="<?= $twoFactorEnabled ? 'badge-owner' : 'badge' ?>"><?= $twoFactorEnabled ? 'On' : 'Off' ?></span>
+                            </div>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Require a code from an authenticator app in addition to your password when signing in.</p>
+
+                            <?php if ($twoFactorEnabled): ?>
+                                <details>
+                                    <summary class="cursor-pointer text-sm font-medium text-red-600 dark:text-red-400 hover:underline">Turn off two-factor authentication</summary>
+                                    <form method="POST" action="/settings/security/2fa/disable" class="mt-3 space-y-3" onsubmit="return confirm('Turn off two-factor authentication? Your account will only need a password to sign in.');">
+                                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                                        <div>
+                                            <label for="disable_2fa_password" class="field-label">Confirm your password</label>
+                                            <input type="password" id="disable_2fa_password" name="current_password" required autocomplete="current-password" class="field-input">
+                                        </div>
+                                        <button type="submit" class="btn-secondary">Turn off</button>
+                                    </form>
+                                </details>
+                            <?php else: ?>
+                                <a href="/settings/security/2fa/setup" class="btn-primary inline-block">Set up two-factor authentication</a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

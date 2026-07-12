@@ -12,6 +12,7 @@ use App\Repositories\HouseholdRepository;
 use App\Repositories\UserRepository;
 use App\Support\Csrf;
 use App\Support\RateLimiter;
+use App\Support\Totp;
 use App\Support\View;
 
 final class AuthController
@@ -63,8 +64,109 @@ final class AuthController
         }
 
         RateLimiter::recordAttempt($email, $ip, true);
-        $userRepo->updateLastLogin((int) $user['id']);
 
+        // Password is correct, but two-factor isn't satisfied yet — hold
+        // off on establishing a real session. A pending, unauthenticated
+        // marker only (regenerated session ID, no user_id) until the code
+        // step succeeds.
+        if ($user['two_factor_enabled_at'] !== null) {
+            session_regenerate_id(true);
+            $_SESSION['pending_2fa_user_id'] = (int) $user['id'];
+            $_SESSION['pending_2fa_email'] = $email;
+            header('Location: /login/verify');
+            return;
+        }
+
+        $userRepo->updateLastLogin((int) $user['id']);
+        $this->completeLogin($user, $request, $householdRepo, $auditLog);
+    }
+
+    public function showTwoFactorChallenge(): void
+    {
+        if (empty($_SESSION['pending_2fa_user_id'])) {
+            header('Location: /login');
+            return;
+        }
+
+        Response::html(View::render('auth/two-factor', [
+            'csrfToken' => Csrf::token(),
+            'error' => $_SESSION['_flash_error'] ?? null,
+        ]));
+
+        unset($_SESSION['_flash_error']);
+    }
+
+    public function verifyTwoFactor(Request $request): void
+    {
+        $userId = $_SESSION['pending_2fa_user_id'] ?? null;
+        $email = $_SESSION['pending_2fa_email'] ?? '';
+        $ip = $request->ip();
+
+        if ($userId === null) {
+            header('Location: /login');
+            return;
+        }
+
+        $redirectBack = function (string $message): void {
+            $_SESSION['_flash_error'] = $message;
+            header('Location: /login/verify');
+        };
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $redirectBack('Your session expired. Please try again.');
+            return;
+        }
+
+        if (RateLimiter::tooManyAttempts($email, $ip)) {
+            (new AuditLogRepository())->log((int) $userId, null, 'login.rate_limited', 'user', (int) $userId, $ip);
+            $redirectBack('Too many failed attempts. Please wait 15 minutes and try again.');
+            return;
+        }
+
+        $userRepo = new UserRepository();
+        $user = $userRepo->findById((int) $userId);
+
+        if ($user === null || $user['two_factor_enabled_at'] === null) {
+            // Shouldn't happen outside of the account being changed
+            // mid-flow (e.g. 2FA disabled in another tab) — fail safe
+            // back to a completely fresh login rather than half-trusting
+            // a pending session that no longer makes sense.
+            $_SESSION = [];
+            session_destroy();
+            header('Location: /login');
+            return;
+        }
+
+        $code = trim($request->post('code'));
+        // Recovery codes are formatted with a dash (XXXX-XXXX); TOTP
+        // codes are always 6 plain digits — enough to tell them apart
+        // without a separate form field.
+        $isRecoveryCode = str_contains($code, '-');
+
+        $verified = $isRecoveryCode
+            ? $userRepo->consumeRecoveryCode((int) $user['id'], $code)
+            : Totp::verify($user['two_factor_secret'], $code);
+
+        if (!$verified) {
+            RateLimiter::recordAttempt($email, $ip, false);
+            (new AuditLogRepository())->log((int) $user['id'], null, 'login.2fa_failed', 'user', (int) $user['id'], $ip);
+            $redirectBack('Invalid code. Please try again.');
+            return;
+        }
+
+        RateLimiter::recordAttempt($email, $ip, true);
+        unset($_SESSION['pending_2fa_user_id'], $_SESSION['pending_2fa_email']);
+
+        if ($isRecoveryCode) {
+            $_SESSION['_flash_notice'] = 'Signed in with a recovery code. Consider regenerating your recovery codes in Settings → Security.';
+        }
+
+        $userRepo->updateLastLogin((int) $user['id']);
+        $this->completeLogin($user, $request, new HouseholdRepository(), new AuditLogRepository());
+    }
+
+    private function completeLogin(array $user, Request $request, HouseholdRepository $householdRepo, AuditLogRepository $auditLog): void
+    {
         session_regenerate_id(true);
         $_SESSION['user_id'] = (int) $user['id'];
         AuthMiddleware::setUserIdentity($user['name'], $user['email']);
@@ -81,7 +183,7 @@ final class AuthController
             'login.success',
             'user',
             (int) $user['id'],
-            $ip
+            $request->ip()
         );
 
         header('Location: /');

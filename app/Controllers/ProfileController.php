@@ -10,6 +10,7 @@ use App\Middleware\AuthMiddleware;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\UserRepository;
 use App\Support\Csrf;
+use App\Support\Totp;
 use App\Support\View;
 use App\Validation\PasswordPolicy;
 
@@ -35,13 +36,153 @@ final class ProfileController
     {
         AuthMiddleware::requireAuth();
 
+        $user = (new UserRepository())->findById((int) AuthMiddleware::userId());
+
         Response::html(View::render('settings/security', [
+            'twoFactorEnabled' => $user !== null && $user['two_factor_enabled_at'] !== null,
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,
         ]));
 
         unset($_SESSION['_flash_error'], $_SESSION['_flash_notice']);
+    }
+
+    public function showTwoFactorSetup(): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $userId = (int) AuthMiddleware::userId();
+        $user = (new UserRepository())->findById($userId);
+
+        if ($user !== null && $user['two_factor_enabled_at'] !== null) {
+            header('Location: /settings/security');
+            return;
+        }
+
+        // A fresh secret each time this page loads avoids ever committing
+        // to one the user never actually confirmed — nothing is written
+        // to the database until enableTwoFactor() verifies a real code
+        // against it.
+        $secret = Totp::generateSecret();
+        $_SESSION['pending_totp_secret'] = $secret;
+
+        Response::html(View::render('settings/two-factor-setup', [
+            'secretFormatted' => trim((string) chunk_split($secret, 4, ' ')),
+            'csrfToken' => Csrf::token(),
+            'error' => $_SESSION['_flash_error'] ?? null,
+        ]));
+
+        unset($_SESSION['_flash_error']);
+    }
+
+    public function enableTwoFactor(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $userId = (int) AuthMiddleware::userId();
+
+        $redirectBack = function (string $message): void {
+            $_SESSION['_flash_error'] = $message;
+            header('Location: /settings/security/2fa/setup');
+        };
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $redirectBack('Your session expired. Please try again.');
+            return;
+        }
+
+        $secret = $_SESSION['pending_totp_secret'] ?? null;
+        if (!is_string($secret)) {
+            $redirectBack('Your setup session expired. Please start again.');
+            return;
+        }
+
+        $code = trim($request->post('code'));
+        if (!Totp::verify($secret, $code)) {
+            $redirectBack("That code doesn't match. Please check your authenticator app and try again.");
+            return;
+        }
+
+        $recoveryCodes = $this->generateRecoveryCodes();
+        $hashes = array_map(static fn (string $c): string => password_hash($c, PASSWORD_DEFAULT), $recoveryCodes);
+
+        (new UserRepository())->enableTwoFactor($userId, $secret, $hashes);
+        unset($_SESSION['pending_totp_secret']);
+
+        (new AuditLogRepository())->log($userId, AuthMiddleware::householdId(), '2fa.enabled', 'user', $userId, $request->ip());
+
+        // Recovery codes are stored hashed — this session flash is the
+        // only chance the user gets to see the plaintext values, so the
+        // next page renders them once and they're gone.
+        $_SESSION['_flash_recovery_codes'] = $recoveryCodes;
+        header('Location: /settings/security/2fa/recovery-codes');
+    }
+
+    public function showRecoveryCodes(): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $codes = $_SESSION['_flash_recovery_codes'] ?? null;
+        if (!is_array($codes)) {
+            header('Location: /settings/security');
+            return;
+        }
+
+        unset($_SESSION['_flash_recovery_codes']);
+
+        Response::html(View::render('settings/two-factor-recovery-codes', [
+            'codes' => $codes,
+            'csrfToken' => Csrf::token(),
+        ]));
+    }
+
+    public function disableTwoFactor(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $userId = (int) AuthMiddleware::userId();
+
+        $redirectBack = function (string $message): void {
+            $_SESSION['_flash_error'] = $message;
+            header('Location: /settings/security');
+        };
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $redirectBack('Your session expired. Please try again.');
+            return;
+        }
+
+        $userRepo = new UserRepository();
+        $user = $userRepo->findById($userId);
+
+        // Critical account action — require password confirmation, per
+        // CLAUDE.md, so a hijacked-but-still-logged-in session (e.g. an
+        // unlocked laptop) can't silently turn off 2FA.
+        if ($user === null || !password_verify($request->post('current_password'), $user['password_hash'])) {
+            $redirectBack('Current password is incorrect.');
+            return;
+        }
+
+        $userRepo->disableTwoFactor($userId);
+
+        (new AuditLogRepository())->log($userId, AuthMiddleware::householdId(), '2fa.disabled', 'user', $userId, $request->ip());
+
+        $_SESSION['_flash_notice'] = 'Two-factor authentication turned off.';
+        header('Location: /settings/security');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function generateRecoveryCodes(int $count = 8): array
+    {
+        $codes = [];
+        for ($i = 0; $i < $count; $i++) {
+            $codes[] = strtoupper(bin2hex(random_bytes(2))) . '-' . strtoupper(bin2hex(random_bytes(2)));
+        }
+
+        return $codes;
     }
 
     public function updateProfile(Request $request): void

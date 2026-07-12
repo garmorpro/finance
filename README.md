@@ -4,11 +4,11 @@ A self-hosted, manual-entry personal finance dashboard built for household use. 
 
 ## Status
 
-Every core feature phase from `CLAUDE.md`'s roadmap is built: authentication and household access (invite-only, role-based — Owner/Administrator/Member/Viewer), manual accounts with full balance history, transactions (income/expense/transfers, search/filter, CSV import/export, a daily review queue), monthly budgets with user-defined sections, recurring bills and subscriptions, a dashboard with real charts (net worth trend, income vs. spending, spending by category), savings goals, a debt overview, a cash flow page, and a configurable reports page with CSV export. Phase 8 (production hardening — security headers, automated tests, backups, this documentation) is also in place; see `docs/security.md`'s "Known limitations" for what's intentionally deferred.
+Every core feature phase from `CLAUDE.md`'s roadmap is built and then some: authentication and household access (invite-only, role-based — Owner/Administrator/Member/Viewer — with optional TOTP two-factor authentication), manual accounts with full balance history, transactions (income/expense/transfers, split transactions, receipt/PDF attachments, tags, bulk editing, search/filter, CSV import/export, a daily review queue, a global search across transactions/accounts/categories/tags), monthly budgets with user-defined sections, a full transaction rules engine (auto-categorize/tag/rename on creation, with a preview-and-confirm retroactive apply), recurring bills and subscriptions, in-app notifications, a dashboard with real charts (net worth trend, income vs. spending, spending by category) and a responsive mobile/tablet nav, savings goals, a debt overview, a cash flow page, and a configurable reports page with CSV export. Phase 8 (production hardening — security headers, automated tests, backups, this documentation) is also in place; see `docs/security.md`'s "Known limitations" for what's intentionally deferred.
 
 Deliberately **not** built, per `CLAUDE.md`'s Manual-Only Data Policy: any bank connection, account-aggregation service, or automatic transaction sync. This is a fully manual finance tracker and will stay that way.
 
-Not yet built: split transactions, tags (the `tags`/`transaction_tags` tables exist but aren't wired to any feature — see `docs/database.md`), two-factor authentication, and real SMTP (password reset and invitation links are logged instead of emailed — see below).
+Not yet built: real SMTP (password reset and invitation links are logged instead of emailed — see below), active session management (view/revoke individual logins), and debt payoff-order comparisons (snowball vs. avalanche).
 
 ## First-time setup
 

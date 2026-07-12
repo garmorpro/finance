@@ -58,6 +58,8 @@ $router = new Router();
 $authController = new AuthController();
 $router->get('/login', fn (): mixed => $authController->showLogin());
 $router->post('/login', fn (Request $r): mixed => $authController->login($r));
+$router->get('/login/verify', fn (): mixed => $authController->showTwoFactorChallenge());
+$router->post('/login/verify', fn (Request $r): mixed => $authController->verifyTwoFactor($r));
 $router->post('/logout', fn (Request $r): mixed => $authController->logout($r));
 
 $passwordResetController = new PasswordResetController();
@@ -77,6 +79,10 @@ $router->get('/settings/profile', fn (): mixed => $profileController->show());
 $router->post('/settings/profile', fn (Request $r): mixed => $profileController->updateProfile($r));
 $router->get('/settings/security', fn (): mixed => $profileController->showSecurity());
 $router->post('/settings/security', fn (Request $r): mixed => $profileController->updatePassword($r));
+$router->get('/settings/security/2fa/setup', fn (): mixed => $profileController->showTwoFactorSetup());
+$router->post('/settings/security/2fa/enable', fn (Request $r): mixed => $profileController->enableTwoFactor($r));
+$router->get('/settings/security/2fa/recovery-codes', fn (): mixed => $profileController->showRecoveryCodes());
+$router->post('/settings/security/2fa/disable', fn (Request $r): mixed => $profileController->disableTwoFactor($r));
 
 $accountController = new AccountController();
 $router->get('/accounts', fn (): mixed => $accountController->index());

@@ -26,8 +26,47 @@ this doc, not just one of them.
   integration by design — see the README). Anyone with server log access
   can already reach the database directly, so this isn't a meaningfully
   larger trust boundary for a self-hosted single-server deployment.
-- Two-factor authentication is not implemented. Noted in CLAUDE.md as a
-  possible later phase, not done yet.
+
+## Two-factor authentication
+
+Optional per-user, TOTP (RFC 6238 — the algorithm behind Google
+Authenticator, Authy, 1Password, etc.), enabled from Settings → Security.
+
+- `App\Support\Totp` implements the algorithm directly (HMAC-SHA1,
+  30-second period, 6 digits) rather than adding a Composer dependency
+  for it — it's straightforward math, verified against the RFC 6238
+  reference test vector during development.
+- No QR code is generated (that would need an image-generation
+  dependency this app doesn't otherwise need); the setup page shows the
+  secret as text for manual entry, which every mainstream authenticator
+  app supports.
+- The secret is held only in the session during setup
+  (`$_SESSION['pending_totp_secret']`) and never written to the database
+  until the user proves their app is generating matching codes — nobody
+  can end up "enrolled" in 2FA with a secret they never actually
+  configured.
+- Login becomes two steps once enabled: a correct password sets only a
+  `pending_2fa_user_id` session marker (session ID regenerated, but
+  `AuthMiddleware::check()` looks at `user_id` specifically, which isn't
+  set yet) and redirects to `/login/verify`; only a correct code (or
+  recovery code) completes the login and establishes the real session,
+  with its own second `session_regenerate_id(true)`.
+- The 2FA code step is rate-limited the same way the password step is
+  (`RateLimiter`, keyed by email/IP, backed by the same `login_attempts`
+  table) — a stolen password alone doesn't get unlimited guesses at the
+  6-digit code.
+- 8 single-use recovery codes are generated when 2FA is enabled, shown
+  once (`$_SESSION['_flash_recovery_codes']`, cleared immediately after
+  that one render), and stored hashed (`password_hash()`, same as the
+  account password) — never in plaintext at rest.
+- Turning 2FA off requires the current password, per CLAUDE.md's
+  "critical account actions should require password confirmation" —
+  a logged-in-but-unattended session can't silently disable it.
+- The household-invitation acceptance flow (`HouseholdController`)
+  establishes a session directly rather than going through
+  `AuthController::login()`, which looks like a 2FA bypass at a glance —
+  it isn't one, since that flow only ever creates a brand-new user
+  account, which by definition has no 2FA configured yet.
 
 ## Authorization
 

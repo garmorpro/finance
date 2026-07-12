@@ -96,6 +96,79 @@ final class UserRepository
     }
 
     /**
+     * @param list<string> $recoveryCodeHashes already password_hash()'d —
+     *     recovery codes are stored the same way passwords are, never
+     *     in plaintext.
+     */
+    public function enableTwoFactor(int $userId, string $secret, array $recoveryCodeHashes): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET two_factor_secret = :secret, two_factor_enabled_at = :enabled_at,
+                two_factor_recovery_codes = :codes, updated_at = :updated_at
+             WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'secret' => $secret,
+            'enabled_at' => gmdate('Y-m-d H:i:s'),
+            'codes' => json_encode(array_values($recoveryCodeHashes)),
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+    }
+
+    public function disableTwoFactor(int $userId): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET two_factor_secret = NULL, two_factor_enabled_at = NULL,
+                two_factor_recovery_codes = NULL, updated_at = :updated_at
+             WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+    }
+
+    /**
+     * Checks a submitted recovery code against the stored (hashed) set
+     * and, if it matches, removes it so it can't be used a second time.
+     * Returns false without side effects on no match.
+     */
+    public function consumeRecoveryCode(int $userId, string $code): bool
+    {
+        $user = $this->findById($userId);
+        if ($user === null || $user['two_factor_recovery_codes'] === null) {
+            return false;
+        }
+
+        $hashes = json_decode($user['two_factor_recovery_codes'], true);
+        if (!is_array($hashes)) {
+            return false;
+        }
+
+        foreach ($hashes as $index => $hash) {
+            if (is_string($hash) && password_verify($code, $hash)) {
+                unset($hashes[$index]);
+
+                $stmt = Connection::get()->prepare(
+                    'UPDATE users SET two_factor_recovery_codes = :codes, updated_at = :updated_at WHERE id = :id'
+                );
+                $stmt->execute([
+                    'codes' => json_encode(array_values($hashes)),
+                    'updated_at' => gmdate('Y-m-d H:i:s'),
+                    'id' => $userId,
+                ]);
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * `wide` is null when the user has never touched tile widths — the
      * caller falls back to each widget's own default width in that case.
      * Once saved, it's the complete authoritative set of wide tiles (same
