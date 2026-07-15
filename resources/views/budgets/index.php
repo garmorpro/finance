@@ -59,7 +59,7 @@ $renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, 
                 <span class="budget-item-status text-xs text-stone-500 dark:text-stone-400 mr-1.5" aria-live="polite"></span>
                 <input type="text" inputmode="decimal" name="planned_amount" placeholder="0.00" value="<?= $planned !== null ? View::e($planned) : '' ?>" class="field-input w-20 text-right text-sm py-1.5 px-2 budget-item-input" aria-label="Planned amount for <?= View::e($category['name']) ?>">
 
-                <div class="budget-item-history card hidden absolute" style="top: 100%; right: 0; margin-top: 0.5rem; width: 19rem; z-index: 30;" role="dialog" aria-label="Spending history for <?= View::e($category['name']) ?>">
+                <div class="budget-item-history card hidden" style="position: fixed; width: 19rem; z-index: 30;" role="dialog" aria-label="Spending history for <?= View::e($category['name']) ?>">
                     <div class="p-4">
                         <h3 class="text-sm font-semibold text-stone-900 dark:text-white mb-3">History</h3>
                         <div class="grid grid-cols-2 gap-2 mb-3">

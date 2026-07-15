@@ -137,11 +137,35 @@
         });
     };
 
+    // Positioned with fixed (viewport-relative) coordinates computed here,
+    // rather than CSS absolute/top-100%, because the section cards use
+    // overflow-hidden for their rounded corners — an absolutely positioned
+    // popover would get clipped by that the moment it extends past the
+    // card's edge.
+    var positionHistory = function () {
+      var rect = input.getBoundingClientRect();
+      var popoverWidth = 304; // matches the 19rem inline width below
+      var popoverHeight = historyBox.offsetHeight || 260;
+
+      var left = Math.min(rect.right - popoverWidth, window.innerWidth - popoverWidth - 8);
+      left = Math.max(left, 8);
+
+      var top = rect.bottom + 8;
+      if (top + popoverHeight > window.innerHeight - 8) {
+        top = rect.top - popoverHeight - 8;
+      }
+      top = Math.max(top, 8);
+
+      historyBox.style.left = left + 'px';
+      historyBox.style.top = top + 'px';
+    };
+
     var openHistory = function () {
       if (!historyBox) {
         return;
       }
       historyBox.classList.remove('hidden');
+      positionHistory();
       updateApplyLabel();
       loadHistory();
     };
