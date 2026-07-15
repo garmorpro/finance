@@ -27,9 +27,11 @@
     }
 
     var lastSaved = input.value;
+    var applyCheckbox = form.querySelector('.budget-item-apply-future');
 
     var save = function () {
-      if (input.value === lastSaved) {
+      var applying = applyCheckbox !== null && applyCheckbox.checked;
+      if (input.value === lastSaved && !applying) {
         return;
       }
       lastSaved = input.value;
