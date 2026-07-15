@@ -74,7 +74,6 @@
     var historyBox = form.querySelector('.budget-item-history');
     var historyLast = form.querySelector('.budget-item-history-last');
     var historyAvg = form.querySelector('.budget-item-history-avg');
-    var historyCanvas = form.querySelector('.budget-item-history-chart');
     var applyLabel = form.querySelector('.budget-item-apply-future-label');
     var categoryIdInput = form.querySelector('input[name="category_id"]');
     var periodMonthInput = form.querySelector('input[name="period_month"]');
@@ -112,19 +111,6 @@
           }
           if (historyAvg) {
             historyAvg.textContent = money.format(parseFloat(data.average));
-          }
-          if (historyCanvas && window.FinanceCharts && window.FinanceCharts.bar && data.months.length > 0) {
-            window.FinanceCharts.bar(historyCanvas, {
-              labels: data.months.map(function (m) {
-                return m.label.toUpperCase();
-              }),
-              datasets: [{
-                label: 'Actual',
-                data: data.months.map(function (m) {
-                  return parseFloat(m.amount);
-                }),
-              }],
-            });
           }
         })
         .catch(function () {

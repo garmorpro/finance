@@ -218,11 +218,6 @@ final class BudgetController
 
         Response::json([
             'success' => true,
-            'months' => array_map(
-                fn (string $ym, string $amount): array => ['label' => date('M', strtotime($ym . '-01')), 'amount' => $amount],
-                array_keys($byMonth),
-                array_values($byMonth)
-            ),
             'lastMonth' => $lastMonth,
             'average' => $average,
         ]);

@@ -252,9 +252,9 @@ final class BudgetRepository
      * Actual activity for a single category over a trailing window of
      * whole months, keyed by "Y-m" and zero-filled for months with no
      * activity — feeds the Budgets page's per-category history popover
-     * (last month, monthly average, a small bar chart). $beforeMonth is
-     * the first day of the currently-viewed month, exclusive, so the
-     * window is always whole, already-completed months.
+     * (last month spent, monthly average). $beforeMonth is the first day
+     * of the currently-viewed month, exclusive, so the window is always
+     * whole, already-completed months.
      *
      * @return array<string, string>
      */

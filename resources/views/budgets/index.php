@@ -72,9 +72,6 @@ $renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, 
                                 <div class="text-xs text-stone-500 dark:text-stone-400">Monthly average</div>
                             </div>
                         </div>
-                        <div style="height: 120px;">
-                            <canvas class="budget-item-history-chart" aria-label="Actual amounts for <?= View::e($category['name']) ?> over the last 6 months" role="img"></canvas>
-                        </div>
                         <label class="flex items-center gap-2 mt-3 border-t border-stone-100 dark:border-stone-800 text-xs text-stone-700 dark:text-stone-300 cursor-pointer" style="padding-top: 0.75rem;">
                             <input type="checkbox" name="apply_to_future" value="1" class="budget-item-apply-future">
                             <span class="budget-item-apply-future-label">Apply to all future months</span>
@@ -268,8 +265,6 @@ $summaryBar = function (string $label, string $planned, string $actual, string $
             </main>
         </div>
     </div>
-    <script src="<?= View::asset('/assets/js/vendor/chart.umd.min.js') ?>" defer></script>
-    <script src="<?= View::asset('/assets/js/charts.js') ?>" defer></script>
     <script src="<?= View::asset('/assets/js/budgets.js') ?>" defer></script>
 </body>
 </html>

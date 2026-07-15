@@ -141,11 +141,6 @@
 
   var builders = { line: buildLineChart, bar: buildBarChart, doughnut: buildDoughnutChart, cashflow: buildCashFlowChart };
 
-  // Exposed so pages that fetch chart data dynamically (e.g. the Budgets
-  // page's per-category history popover) can reuse the same builders and
-  // styling instead of duplicating a second Chart.js setup.
-  window.FinanceCharts = builders;
-
   document.querySelectorAll('[data-chart]').forEach(function (canvas) {
     var dataScript = document.getElementById(canvas.id + '-data');
     if (!dataScript) {
