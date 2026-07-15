@@ -70,12 +70,10 @@ final class BudgetController
         $actualGoalContributions = $goalRepo->totalContributionsForRange($householdId, $periodMonth, $monthEnd);
 
         // "Left to budget" mirrors the common envelope-budgeting framing:
-        // actual income received so far this month minus everything
-        // already earmarked (planned expense budgets and planned goal
-        // contributions). Income itself is never budgeted in this app, so
-        // this is deliberately actual income, not a planned figure — not
-        // the same as actual surplus, which nets actual spending too.
-        $leftToBudget = bcsub(bcsub($incomeTotals['actual'], $expenseTotals['planned'], 2), $plannedGoalContributions, 2);
+        // planned income minus everything already earmarked (expenses and
+        // planned goal contributions) — not the same as actual surplus,
+        // which is what's really left over regardless of the plan.
+        $leftToBudget = bcsub(bcsub($incomeTotals['planned'], $expenseTotals['planned'], 2), $plannedGoalContributions, 2);
 
         Response::html(View::render('budgets/index', [
             'periodMonth' => $periodMonth,
@@ -111,20 +109,29 @@ final class BudgetController
         $periodMonth = $this->resolveMonth($request->post('period_month'));
         $categoryId = (int) $request->post('category_id');
         $rawAmount = trim($request->post('planned_amount'));
+        $isAjax = $request->isAjax();
 
-        $redirectBack = function (string $message) use ($periodMonth): void {
-            $_SESSION['_flash_error'] = $message;
+        // The row inputs autosave via fetch() and expect JSON back; a
+        // plain form post (no JS, or JS disabled) still gets the
+        // traditional flash-message redirect.
+        $respond = function (bool $success, string $message) use ($isAjax, $periodMonth): void {
+            if ($isAjax) {
+                Response::json(['success' => $success, 'message' => $message], $success ? 200 : 422);
+                return;
+            }
+
+            $_SESSION[$success ? '_flash_notice' : '_flash_error'] = $message;
             header('Location: /budgets?month=' . substr($periodMonth, 0, 7));
         };
 
         if (!Csrf::verify($request->post('csrf_token'))) {
-            $redirectBack('Your session expired. Please try again.');
+            $respond(false, 'Your session expired. Please try again.');
             return;
         }
 
         $category = (new CategoryRepository())->findById($categoryId, $householdId);
         if ($category === null || $category['archived_at'] !== null) {
-            $redirectBack('Please choose a valid category.');
+            $respond(false, 'Please choose a valid category.');
             return;
         }
 
@@ -138,13 +145,12 @@ final class BudgetController
                 $budgetRepo->deleteItem((int) $budget['id'], $categoryId);
             }
 
-            $_SESSION['_flash_notice'] = 'Budget line cleared.';
-            header('Location: /budgets?month=' . substr($periodMonth, 0, 7));
+            $respond(true, 'Budget line cleared.');
             return;
         }
 
         if (!MoneyInput::isValid($rawAmount) || bccomp($rawAmount, '0', 2) < 0) {
-            $redirectBack('Please enter a valid amount of zero or more.');
+            $respond(false, 'Please enter a valid amount of zero or more.');
             return;
         }
 
@@ -161,8 +167,7 @@ final class BudgetController
             ['category_id' => $categoryId, 'planned_amount' => MoneyInput::normalize($rawAmount)]
         );
 
-        $_SESSION['_flash_notice'] = 'Budget updated.';
-        header('Location: /budgets?month=' . substr($periodMonth, 0, 7));
+        $respond(true, 'Budget updated.');
     }
 
     public function copyPrevious(Request $request): void

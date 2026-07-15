@@ -104,6 +104,16 @@ final class Request
     }
 
     /**
+     * Distinguishes a fetch()-driven autosave call from a plain form post,
+     * so a handler can return JSON instead of a redirect without needing a
+     * separate route.
+     */
+    public function isAjax(): bool
+    {
+        return ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
+    }
+
+    /**
      * @return array{name: string, type: string, tmp_name: string, error: int, size: int}|null
      */
     public function file(string $key): ?array
