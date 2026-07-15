@@ -52,12 +52,35 @@ $renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, 
             <span class="text-sm text-stone-900 dark:text-white truncate"><?= View::e($category['name']) ?></span>
         </div>
         <?php if ($canManage): ?>
-            <form method="POST" action="/budgets/items" class="budget-item-form flex items-center justify-self-end" data-autosave="budget-item">
+            <form method="POST" action="/budgets/items" class="budget-item-form relative flex items-center justify-self-end" data-autosave="budget-item">
                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                 <input type="hidden" name="period_month" value="<?= View::e($periodMonth) ?>">
                 <input type="hidden" name="category_id" value="<?= $categoryId ?>">
                 <span class="budget-item-status text-xs text-stone-500 dark:text-stone-400 mr-1.5" aria-live="polite"></span>
-                <input type="text" inputmode="decimal" name="planned_amount" placeholder="0.00" value="<?= $planned !== null ? View::e($planned) : '' ?>" class="field-input w-20 text-right text-sm py-1.5 px-2" aria-label="Planned amount for <?= View::e($category['name']) ?>">
+                <input type="text" inputmode="decimal" name="planned_amount" placeholder="0.00" value="<?= $planned !== null ? View::e($planned) : '' ?>" class="field-input w-20 text-right text-sm py-1.5 px-2 budget-item-input" aria-label="Planned amount for <?= View::e($category['name']) ?>">
+
+                <div class="budget-item-history card hidden absolute" style="top: 100%; right: 0; margin-top: 0.5rem; width: 19rem; z-index: 30;" role="dialog" aria-label="Spending history for <?= View::e($category['name']) ?>">
+                    <div class="p-4">
+                        <h3 class="text-sm font-semibold text-stone-900 dark:text-white mb-3">History</h3>
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div class="rounded-lg bg-stone-50 dark:bg-stone-800" style="padding: 0.5rem;">
+                                <div class="budget-item-history-last text-sm font-semibold text-stone-900 dark:text-white">&mdash;</div>
+                                <div class="text-xs text-stone-500 dark:text-stone-400">Spent last month</div>
+                            </div>
+                            <div class="rounded-lg bg-stone-50 dark:bg-stone-800" style="padding: 0.5rem;">
+                                <div class="budget-item-history-avg text-sm font-semibold text-stone-900 dark:text-white">&mdash;</div>
+                                <div class="text-xs text-stone-500 dark:text-stone-400">Monthly average</div>
+                            </div>
+                        </div>
+                        <div style="height: 120px;">
+                            <canvas class="budget-item-history-chart" aria-label="Actual amounts for <?= View::e($category['name']) ?> over the last 6 months" role="img"></canvas>
+                        </div>
+                        <label class="flex items-center gap-2 mt-3 border-t border-stone-100 dark:border-stone-800 text-xs text-stone-700 dark:text-stone-300 cursor-pointer" style="padding-top: 0.75rem;">
+                            <input type="checkbox" name="apply_to_future" value="1" class="budget-item-apply-future">
+                            <span class="budget-item-apply-future-label">Apply to all future months</span>
+                        </label>
+                    </div>
+                </div>
             </form>
         <?php else: ?>
             <span class="text-sm text-stone-500 dark:text-stone-400 text-right"><?= $planned !== null ? Money::format($planned) : '—' ?></span>
@@ -245,6 +268,8 @@ $summaryBar = function (string $label, string $planned, string $actual, string $
             </main>
         </div>
     </div>
+    <script src="<?= View::asset('/assets/js/vendor/chart.umd.min.js') ?>" defer></script>
+    <script src="<?= View::asset('/assets/js/charts.js') ?>" defer></script>
     <script src="<?= View::asset('/assets/js/budgets.js') ?>" defer></script>
 </body>
 </html>

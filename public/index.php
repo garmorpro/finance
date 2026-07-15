@@ -123,6 +123,7 @@ $router->post('/transactions/import/confirm', fn (Request $r): mixed => $importC
 
 $budgetController = new BudgetController();
 $router->get('/budgets', fn (Request $r): mixed => $budgetController->index($r));
+$router->get('/budgets/category-history', fn (Request $r): mixed => $budgetController->categoryHistory($r));
 $router->post('/budgets/items', fn (Request $r): mixed => $budgetController->saveItem($r));
 $router->post('/budgets/copy-previous', fn (Request $r): mixed => $budgetController->copyPrevious($r));
 

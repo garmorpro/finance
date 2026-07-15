@@ -175,4 +175,89 @@ final class BudgetRepositoryTest extends DatabaseTestCase
         $this->assertSame('400.00', $byCategory[$categoryA]);
         $this->assertSame('1500.00', $byCategory[$categoryB], 'Existing target amount must not be overwritten by the copy.');
     }
+
+    public function test_find_or_create_for_month_seeds_new_budget_from_category_defaults(): void
+    {
+        $household = $this->makeHousehold();
+        $categoryId = $this->makeCategory($household['household_id'], 'expense', 'Groceries');
+
+        $budgetRepo = new BudgetRepository();
+        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '450.00');
+
+        $budget = $budgetRepo->findOrCreateForMonth($household['household_id'], gmdate('Y-m-01'));
+        $items = $budgetRepo->listItemsForBudget((int) $budget['id']);
+
+        $this->assertCount(1, $items);
+        $this->assertSame($categoryId, (int) $items[0]['category_id']);
+        $this->assertSame('450.00', $items[0]['planned_amount']);
+    }
+
+    public function test_find_or_create_for_month_does_not_reseed_an_already_existing_budget(): void
+    {
+        $household = $this->makeHousehold();
+        $categoryId = $this->makeCategory($household['household_id'], 'expense', 'Groceries');
+
+        $budgetRepo = new BudgetRepository();
+        $month = gmdate('Y-m-01');
+
+        $budget = $budgetRepo->findOrCreateForMonth($household['household_id'], $month);
+        $this->assertSame([], $budgetRepo->listItemsForBudget((int) $budget['id']));
+
+        // A default set after the month already exists must not
+        // retroactively populate it.
+        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '450.00');
+        $budgetAgain = $budgetRepo->findOrCreateForMonth($household['household_id'], $month);
+
+        $this->assertSame((int) $budget['id'], (int) $budgetAgain['id']);
+        $this->assertSame([], $budgetRepo->listItemsForBudget((int) $budgetAgain['id']));
+    }
+
+    public function test_upsert_default_replaces_the_previous_default_for_the_same_category(): void
+    {
+        $household = $this->makeHousehold();
+        $categoryId = $this->makeCategory($household['household_id'], 'expense', 'Groceries');
+
+        $budgetRepo = new BudgetRepository();
+        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '450.00');
+        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '500.00');
+
+        $defaults = $budgetRepo->defaultsForHousehold($household['household_id']);
+
+        $this->assertSame('500.00', $defaults[$categoryId]);
+    }
+
+    public function test_actuals_by_category_trailing_months_zero_fills_months_with_no_activity(): void
+    {
+        $household = $this->makeHousehold();
+        $accountId = $this->makeAccount($household['household_id'], $household['user_id']);
+        $categoryId = $this->makeCategory($household['household_id'], 'expense', 'Groceries');
+
+        $currentMonth = gmdate('Y-m-01');
+        $twoMonthsAgo = date('Y-m-d', strtotime($currentMonth . ' -2 months'));
+        $twoMonthsAgoKey = date('Y-m', strtotime($twoMonthsAgo));
+
+        (new TransactionRepository())->create($household['household_id'], $household['user_id'], $this->transactionData([
+            'account_id' => $accountId,
+            'category_id' => $categoryId,
+            'transaction_date' => date('Y-m-15', strtotime($twoMonthsAgo)),
+            'signed_amount' => '-75.00',
+        ]));
+
+        $byMonth = (new BudgetRepository())->actualsByCategoryTrailingMonths(
+            $household['household_id'],
+            $categoryId,
+            'expense',
+            $currentMonth,
+            3
+        );
+
+        $this->assertCount(3, $byMonth);
+        $this->assertSame('75.00', $byMonth[$twoMonthsAgoKey]);
+
+        foreach ($byMonth as $ym => $amount) {
+            if ($ym !== $twoMonthsAgoKey) {
+                $this->assertSame('0.00', $amount);
+            }
+        }
+    }
 }

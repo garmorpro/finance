@@ -31,8 +31,11 @@ final class BudgetController
         $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
 
         $budgetRepo = new BudgetRepository();
-        $budget = $budgetRepo->findForMonth($householdId, $periodMonth);
-        $items = $budget !== null ? $budgetRepo->listItemsForBudget((int) $budget['id']) : [];
+        // Creates (and seeds from standing category defaults) the first
+        // time this month is viewed at all, not just the first time it's
+        // edited — see BudgetRepository::findOrCreateForMonth().
+        $budget = $budgetRepo->findOrCreateForMonth($householdId, $periodMonth);
+        $items = $budgetRepo->listItemsForBudget((int) $budget['id']);
 
         $itemsByCategory = [];
         foreach ($items as $item) {
@@ -154,8 +157,18 @@ final class BudgetController
             return;
         }
 
+        $normalizedAmount = MoneyInput::normalize($rawAmount);
+
         $budget = $budgetRepo->findOrCreateForMonth($householdId, $periodMonth);
-        $budgetRepo->upsertItem((int) $budget['id'], $categoryId, MoneyInput::normalize($rawAmount));
+        $budgetRepo->upsertItem((int) $budget['id'], $categoryId, $normalizedAmount);
+
+        // "Apply to all future months" sets this as the household's
+        // standing plan for the category — every month created from now
+        // on gets seeded with it, until someone changes it again. It never
+        // retroactively touches past or already-existing months.
+        if ($request->post('apply_to_future') === '1') {
+            $budgetRepo->upsertDefault($householdId, $categoryId, $normalizedAmount);
+        }
 
         (new AuditLogRepository())->log(
             (int) AuthMiddleware::userId(),
@@ -164,10 +177,55 @@ final class BudgetController
             'budget',
             (int) $budget['id'],
             $request->ip(),
-            ['category_id' => $categoryId, 'planned_amount' => MoneyInput::normalize($rawAmount)]
+            ['category_id' => $categoryId, 'planned_amount' => $normalizedAmount]
         );
 
         $respond(true, 'Budget updated.');
+    }
+
+    public function categoryHistory(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $householdId = (int) AuthMiddleware::householdId();
+        $categoryId = (int) $request->query('category_id');
+        $periodMonth = $this->resolveMonth($request->query('month'));
+
+        $category = (new CategoryRepository())->findById($categoryId, $householdId);
+        if ($category === null) {
+            Response::notFound();
+            return;
+        }
+
+        $monthsBack = 6;
+        $byMonth = (new BudgetRepository())->actualsByCategoryTrailingMonths(
+            $householdId,
+            $categoryId,
+            $category['type'],
+            $periodMonth,
+            $monthsBack
+        );
+
+        $amounts = array_values($byMonth);
+        $lastMonth = $amounts !== [] ? end($amounts) : '0.00';
+        $average = '0.00';
+        foreach ($amounts as $amount) {
+            $average = bcadd($average, $amount, 2);
+        }
+        if ($amounts !== []) {
+            $average = bcdiv($average, (string) count($amounts), 2);
+        }
+
+        Response::json([
+            'success' => true,
+            'months' => array_map(
+                fn (string $ym, string $amount): array => ['label' => date('M', strtotime($ym . '-01')), 'amount' => $amount],
+                array_keys($byMonth),
+                array_values($byMonth)
+            ),
+            'lastMonth' => $lastMonth,
+            'average' => $average,
+        ]);
     }
 
     public function copyPrevious(Request $request): void

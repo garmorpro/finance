@@ -22,9 +22,11 @@ final class BudgetRepository
     }
 
     /**
-     * Budgets are only ever created lazily, the first time a category gets
-     * a planned amount for that month — visiting an empty month never
-     * writes a row.
+     * Budgets are created lazily, the first time a month is either edited
+     * or simply viewed — creation immediately seeds it from any standing
+     * category defaults (see upsertDefault()), so "how much can I budget
+     * this month" is answered on arrival instead of requiring the user to
+     * touch something first.
      */
     public function findOrCreateForMonth(int $householdId, string $periodMonth): array
     {
@@ -49,6 +51,10 @@ final class BudgetRepository
 
         $id = (int) Connection::get()->lastInsertId();
 
+        foreach ($this->defaultsForHousehold($householdId) as $categoryId => $plannedAmount) {
+            $this->upsertItem($id, $categoryId, $plannedAmount);
+        }
+
         return [
             'id' => $id,
             'household_id' => $householdId,
@@ -57,6 +63,51 @@ final class BudgetRepository
             'created_at' => $now,
             'updated_at' => $now,
         ];
+    }
+
+    /**
+     * The household's standing "apply to all future months" planned
+     * amounts, one per category — a fresh month's budget is seeded from
+     * this the moment it's created. Not itself month-scoped: checking the
+     * box updates this row, and it applies until someone changes it again.
+     *
+     * @return array<int, string>
+     */
+    public function defaultsForHousehold(int $householdId): array
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT category_id, planned_amount FROM budget_category_defaults WHERE household_id = :household_id'
+        );
+
+        $stmt->execute(['household_id' => $householdId]);
+
+        $defaults = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $defaults[(int) $row['category_id']] = $row['planned_amount'];
+        }
+
+        return $defaults;
+    }
+
+    public function upsertDefault(int $householdId, int $categoryId, string $plannedAmount): void
+    {
+        $now = gmdate('Y-m-d H:i:s');
+
+        $stmt = Connection::get()->prepare(
+            'INSERT INTO budget_category_defaults (household_id, category_id, planned_amount, created_at, updated_at)
+             VALUES (:household_id, :category_id, :planned_amount, :created_at, :updated_at)
+             ON DUPLICATE KEY UPDATE planned_amount = :planned_amount_update, updated_at = :updated_at_update'
+        );
+
+        $stmt->execute([
+            'household_id' => $householdId,
+            'category_id' => $categoryId,
+            'planned_amount' => $plannedAmount,
+            'created_at' => $now,
+            'updated_at' => $now,
+            'planned_amount_update' => $plannedAmount,
+            'updated_at_update' => $now,
+        ]);
     }
 
     /**
@@ -195,6 +246,64 @@ final class BudgetRepository
         }
 
         return $totals;
+    }
+
+    /**
+     * Actual activity for a single category over a trailing window of
+     * whole months, keyed by "Y-m" and zero-filled for months with no
+     * activity — feeds the Budgets page's per-category history popover
+     * (last month, monthly average, a small bar chart). $beforeMonth is
+     * the first day of the currently-viewed month, exclusive, so the
+     * window is always whole, already-completed months.
+     *
+     * @return array<string, string>
+     */
+    public function actualsByCategoryTrailingMonths(int $householdId, int $categoryId, string $categoryType, string $beforeMonth, int $monthsBack): array
+    {
+        $rangeStart = date('Y-m-d', strtotime($beforeMonth . " -{$monthsBack} months"));
+
+        $stmt = Connection::get()->prepare(
+            'SELECT ym, SUM(amount) AS amount FROM (
+                SELECT DATE_FORMAT(t.transaction_date, "%Y-%m") AS ym, t.amount AS amount
+                FROM transactions t
+                WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.exclude_from_budget = 0
+                  AND t.category_id = :category_id AND t.is_split = 0
+                  AND t.transaction_date >= :range_start AND t.transaction_date < :range_end
+                UNION ALL
+                SELECT DATE_FORMAT(t.transaction_date, "%Y-%m") AS ym, ts.amount AS amount
+                FROM transactions t
+                INNER JOIN transaction_splits ts ON ts.transaction_id = t.id
+                WHERE t.household_id = :household_id2 AND t.deleted_at IS NULL AND t.exclude_from_budget = 0
+                  AND ts.category_id = :category_id2 AND t.is_split = 1
+                  AND t.transaction_date >= :range_start2 AND t.transaction_date < :range_end2
+            ) combined
+            GROUP BY ym'
+        );
+
+        $stmt->execute([
+            'household_id' => $householdId,
+            'category_id' => $categoryId,
+            'range_start' => $rangeStart,
+            'range_end' => $beforeMonth,
+            'household_id2' => $householdId,
+            'category_id2' => $categoryId,
+            'range_start2' => $rangeStart,
+            'range_end2' => $beforeMonth,
+        ]);
+
+        $byMonth = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $amount = $categoryType === 'expense' ? bcmul($row['amount'], '-1', 2) : $row['amount'];
+            $byMonth[$row['ym']] = $amount;
+        }
+
+        $result = [];
+        for ($i = $monthsBack; $i >= 1; $i--) {
+            $ym = date('Y-m', strtotime($beforeMonth . " -{$i} months"));
+            $result[$ym] = $byMonth[$ym] ?? '0.00';
+        }
+
+        return $result;
     }
 
     /**
