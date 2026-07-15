@@ -164,31 +164,42 @@
       }
     };
 
+    var commit = function () {
+      closeHistory();
+      save();
+    };
+
     input.addEventListener('focus', openHistory);
     input.addEventListener('input', updateApplyLabel);
     input.addEventListener('keydown', function (event) {
       if (event.key === 'Enter') {
         event.preventDefault();
         input.blur();
+        commit();
       } else if (event.key === 'Escape') {
-        closeHistory();
         input.blur();
+        commit();
       }
     });
 
-    // Saving and closing the popover both happen only once focus leaves
-    // the form entirely — not on the input's own blur — so clicking the
-    // "apply to future months" checkbox (which moves focus within the
-    // same form) doesn't fire a premature save before the click finishes
-    // toggling it.
-    form.addEventListener('focusout', function () {
-      window.setTimeout(function () {
-        if (form.contains(document.activeElement)) {
-          return;
-        }
-        closeHistory();
-        save();
-      }, 0);
+    // Save and close only once the user has genuinely moved on to
+    // something outside this field's popover. This can't be done with a
+    // simple blur/focusout + document.activeElement check: Safari doesn't
+    // move keyboard focus to a checkbox (or most other non-text controls)
+    // when it's clicked with a mouse, so activeElement would already look
+    // like focus left the form the instant the checkbox is clicked, even
+    // though the click landed squarely inside it. Checking the actual
+    // event target — for both a mouse click and keyboard-driven focus
+    // changes — sidesteps that entirely.
+    document.addEventListener('mousedown', function (event) {
+      if (historyBox && !historyBox.classList.contains('hidden') && !form.contains(event.target)) {
+        commit();
+      }
+    });
+    document.addEventListener('focusin', function (event) {
+      if (historyBox && !historyBox.classList.contains('hidden') && !form.contains(event.target)) {
+        commit();
+      }
     });
   });
 })();
