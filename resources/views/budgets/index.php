@@ -51,7 +51,7 @@ $renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, 
             <span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style="background-color: <?= View::e($category['color'] ?? '#a8a29e') ?>"></span>
             <span class="text-sm text-stone-900 dark:text-white truncate"><?= View::e($category['name']) ?></span>
         </div>
-        <?php if ($canManage): ?>
+        <?php if ($canManage && $isExpense): ?>
             <form method="POST" action="/budgets/items" class="flex items-center gap-1.5 justify-self-end">
                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                 <input type="hidden" name="period_month" value="<?= View::e($periodMonth) ?>">
@@ -99,7 +99,11 @@ $renderSection = function (array $section, string $type) use ($renderRow, $rowGr
             <span class="font-semibold text-stone-900 dark:text-white truncate"><?= View::e($title) ?></span>
             <span class="text-sm font-medium text-stone-500 dark:text-stone-400 text-right"><?= Money::format($planned) ?></span>
             <span class="text-sm font-medium text-stone-500 dark:text-stone-400 text-right"><?= Money::format($actual) ?></span>
-            <span class="text-sm font-semibold text-right <?= $type === 'expense' && bccomp($remaining, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white' ?>"><?= Money::format($remaining) ?></span>
+            <?php if ($type === 'expense'): ?>
+                <span class="text-sm font-semibold text-right <?= bccomp($remaining, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white' ?>"><?= Money::format($remaining) ?></span>
+            <?php else: ?>
+                <span class="text-sm font-semibold text-stone-500 dark:text-stone-400 text-right">&mdash;</span>
+            <?php endif; ?>
         </summary>
         <div class="px-6 pb-4 border-t border-stone-100 dark:border-stone-800">
             <?php if ($section['rows'] === []): ?>
@@ -194,7 +198,7 @@ $summaryBar = function (string $label, string $planned, string $actual, string $
                                         <span class="font-semibold text-stone-900 dark:text-white">Total Income</span>
                                         <span class="text-sm font-semibold text-stone-900 dark:text-white text-right"><?= Money::format($totalPlannedIncome) ?></span>
                                         <span class="text-sm font-semibold text-stone-900 dark:text-white text-right"><?= Money::format($totalActualIncome) ?></span>
-                                        <span class="text-sm font-semibold text-stone-900 dark:text-white text-right"><?= Money::format(bcsub($totalPlannedIncome, $totalActualIncome, 2)) ?></span>
+                                        <span class="text-sm font-semibold text-stone-500 dark:text-stone-400 text-right">&mdash;</span>
                                     </div>
                                 </div>
                             <?php endif; ?>
@@ -230,7 +234,13 @@ $summaryBar = function (string $label, string $planned, string $actual, string $
                         </div>
 
                         <div class="card space-y-5">
-                            <?php $summaryBar('Income', $totalPlannedIncome, $totalActualIncome, bcsub($totalPlannedIncome, $totalActualIncome, 2), 'earned', 'bg-emerald-600'); ?>
+                            <div>
+                                <div class="flex items-baseline justify-between mb-1.5">
+                                    <span class="text-sm font-medium text-stone-900 dark:text-white">Income</span>
+                                    <span class="text-xs text-stone-500 dark:text-stone-400">actual, this month</span>
+                                </div>
+                                <div class="text-lg font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($totalActualIncome) ?></div>
+                            </div>
                             <?php $summaryBar('Expenses', $totalPlannedExpense, $totalActualExpense, bcsub($totalPlannedExpense, $totalActualExpense, 2), 'spent', 'bg-terracotta-600'); ?>
                             <?php $summaryBar('Goals', $plannedGoalContributions, $actualGoalContributions, bcsub($plannedGoalContributions, $actualGoalContributions, 2), 'contributed', 'bg-terracotta-400'); ?>
                         </div>

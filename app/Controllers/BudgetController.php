@@ -70,10 +70,12 @@ final class BudgetController
         $actualGoalContributions = $goalRepo->totalContributionsForRange($householdId, $periodMonth, $monthEnd);
 
         // "Left to budget" mirrors the common envelope-budgeting framing:
-        // planned income minus everything already earmarked (expenses and
-        // planned goal contributions) — not the same as actual surplus,
-        // which is what's really left over regardless of the plan.
-        $leftToBudget = bcsub(bcsub($incomeTotals['planned'], $expenseTotals['planned'], 2), $plannedGoalContributions, 2);
+        // actual income received so far this month minus everything
+        // already earmarked (planned expense budgets and planned goal
+        // contributions). Income itself is never budgeted in this app, so
+        // this is deliberately actual income, not a planned figure — not
+        // the same as actual surplus, which nets actual spending too.
+        $leftToBudget = bcsub(bcsub($incomeTotals['actual'], $expenseTotals['planned'], 2), $plannedGoalContributions, 2);
 
         Response::html(View::render('budgets/index', [
             'periodMonth' => $periodMonth,
@@ -267,8 +269,8 @@ final class BudgetController
             foreach ($section['rows'] as $row) {
                 if ($row['planned'] !== null) {
                     $planned = bcadd($planned, $row['planned'], 2);
-                    $actual = bcadd($actual, $row['actual'], 2);
                 }
+                $actual = bcadd($actual, $row['actual'], 2);
             }
         }
 
