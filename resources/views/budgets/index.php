@@ -37,7 +37,7 @@ $percentFor = function (string $actual, string $planned): int {
 
 $rowGrid = 'grid grid-cols-[minmax(0,1fr)_130px_100px_120px] items-center gap-3';
 
-$renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, $canManage, $rowGrid): void {
+$renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, $canManage, $rowGrid, $percentFor): void {
     $category = $row['category'];
     $categoryId = (int) $category['id'];
     $planned = $row['planned'];
