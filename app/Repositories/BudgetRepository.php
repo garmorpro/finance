@@ -22,11 +22,11 @@ final class BudgetRepository
     }
 
     /**
-     * Budgets are created lazily, the first time a month is either edited
-     * or simply viewed — creation immediately seeds it from any standing
-     * category defaults (see upsertDefault()), so "how much can I budget
-     * this month" is answered on arrival instead of requiring the user to
-     * touch something first.
+     * Budgets are only ever created lazily, the first time a category gets
+     * a planned amount for that month — visiting an empty month never
+     * writes a row. Standing category defaults (see upsertDefault()) are
+     * layered on top for display purposes wherever a month is read, not
+     * baked into budget_items here — see BudgetController::index().
      */
     public function findOrCreateForMonth(int $householdId, string $periodMonth): array
     {
@@ -51,10 +51,6 @@ final class BudgetRepository
 
         $id = (int) Connection::get()->lastInsertId();
 
-        foreach ($this->defaultsForHousehold($householdId) as $categoryId => $plannedAmount) {
-            $this->upsertItem($id, $categoryId, $plannedAmount);
-        }
-
         return [
             'id' => $id,
             'household_id' => $householdId,
@@ -67,19 +63,23 @@ final class BudgetRepository
 
     /**
      * The household's standing "apply to all future months" planned
-     * amounts, one per category — a fresh month's budget is seeded from
-     * this the moment it's created. Not itself month-scoped: checking the
-     * box updates this row, and it applies until someone changes it again.
+     * amounts, one per category, that are in effect for $forMonth (i.e.
+     * set from that month or earlier) — checking the box only ever
+     * affects the month it was checked in onward, never retroactively.
+     * BudgetController::index() layers this over whatever explicit
+     * budget_items exist for the month being displayed; an explicit item
+     * always wins over a default for that specific month.
      *
      * @return array<int, string>
      */
-    public function defaultsForHousehold(int $householdId): array
+    public function defaultsForHousehold(int $householdId, string $forMonth): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT category_id, planned_amount FROM budget_category_defaults WHERE household_id = :household_id'
+            'SELECT category_id, planned_amount FROM budget_category_defaults
+             WHERE household_id = :household_id AND effective_from_month <= :for_month'
         );
 
-        $stmt->execute(['household_id' => $householdId]);
+        $stmt->execute(['household_id' => $householdId, 'for_month' => $forMonth]);
 
         $defaults = [];
         foreach ($stmt->fetchAll() as $row) {
@@ -89,23 +89,25 @@ final class BudgetRepository
         return $defaults;
     }
 
-    public function upsertDefault(int $householdId, int $categoryId, string $plannedAmount): void
+    public function upsertDefault(int $householdId, int $categoryId, string $plannedAmount, string $effectiveFromMonth): void
     {
         $now = gmdate('Y-m-d H:i:s');
 
         $stmt = Connection::get()->prepare(
-            'INSERT INTO budget_category_defaults (household_id, category_id, planned_amount, created_at, updated_at)
-             VALUES (:household_id, :category_id, :planned_amount, :created_at, :updated_at)
-             ON DUPLICATE KEY UPDATE planned_amount = :planned_amount_update, updated_at = :updated_at_update'
+            'INSERT INTO budget_category_defaults (household_id, category_id, planned_amount, effective_from_month, created_at, updated_at)
+             VALUES (:household_id, :category_id, :planned_amount, :effective_from_month, :created_at, :updated_at)
+             ON DUPLICATE KEY UPDATE planned_amount = :planned_amount_update, effective_from_month = :effective_from_month_update, updated_at = :updated_at_update'
         );
 
         $stmt->execute([
             'household_id' => $householdId,
             'category_id' => $categoryId,
             'planned_amount' => $plannedAmount,
+            'effective_from_month' => $effectiveFromMonth,
             'created_at' => $now,
             'updated_at' => $now,
             'planned_amount_update' => $plannedAmount,
+            'effective_from_month_update' => $effectiveFromMonth,
             'updated_at_update' => $now,
         ]);
     }

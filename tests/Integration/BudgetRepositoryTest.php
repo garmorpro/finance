@@ -176,40 +176,39 @@ final class BudgetRepositoryTest extends DatabaseTestCase
         $this->assertSame('1500.00', $byCategory[$categoryB], 'Existing target amount must not be overwritten by the copy.');
     }
 
-    public function test_find_or_create_for_month_seeds_new_budget_from_category_defaults(): void
+    public function test_find_or_create_for_month_does_not_write_a_row_for_categories_with_a_default(): void
     {
+        // Defaults are layered on top for display only (see
+        // BudgetController::index()) — findOrCreateForMonth() itself must
+        // stay side-effect-free regarding budget_items, or "apply to all
+        // future months" would only ever reach months nobody had already
+        // (even passively) visited before the default was set.
         $household = $this->makeHousehold();
         $categoryId = $this->makeCategory($household['household_id'], 'expense', 'Groceries');
 
         $budgetRepo = new BudgetRepository();
-        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '450.00');
+        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '450.00', gmdate('Y-m-01'));
 
         $budget = $budgetRepo->findOrCreateForMonth($household['household_id'], gmdate('Y-m-01'));
-        $items = $budgetRepo->listItemsForBudget((int) $budget['id']);
 
-        $this->assertCount(1, $items);
-        $this->assertSame($categoryId, (int) $items[0]['category_id']);
-        $this->assertSame('450.00', $items[0]['planned_amount']);
+        $this->assertSame([], $budgetRepo->listItemsForBudget((int) $budget['id']));
     }
 
-    public function test_find_or_create_for_month_does_not_reseed_an_already_existing_budget(): void
+    public function test_defaults_for_household_excludes_defaults_not_yet_effective(): void
     {
         $household = $this->makeHousehold();
         $categoryId = $this->makeCategory($household['household_id'], 'expense', 'Groceries');
 
         $budgetRepo = new BudgetRepository();
-        $month = gmdate('Y-m-01');
+        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '450.00', '2026-03-01');
 
-        $budget = $budgetRepo->findOrCreateForMonth($household['household_id'], $month);
-        $this->assertSame([], $budgetRepo->listItemsForBudget((int) $budget['id']));
+        $before = $budgetRepo->defaultsForHousehold($household['household_id'], '2026-02-01');
+        $onMonth = $budgetRepo->defaultsForHousehold($household['household_id'], '2026-03-01');
+        $after = $budgetRepo->defaultsForHousehold($household['household_id'], '2026-04-01');
 
-        // A default set after the month already exists must not
-        // retroactively populate it.
-        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '450.00');
-        $budgetAgain = $budgetRepo->findOrCreateForMonth($household['household_id'], $month);
-
-        $this->assertSame((int) $budget['id'], (int) $budgetAgain['id']);
-        $this->assertSame([], $budgetRepo->listItemsForBudget((int) $budgetAgain['id']));
+        $this->assertArrayNotHasKey($categoryId, $before, 'A default must not apply to a month before it took effect.');
+        $this->assertSame('450.00', $onMonth[$categoryId]);
+        $this->assertSame('450.00', $after[$categoryId]);
     }
 
     public function test_upsert_default_replaces_the_previous_default_for_the_same_category(): void
@@ -218,10 +217,10 @@ final class BudgetRepositoryTest extends DatabaseTestCase
         $categoryId = $this->makeCategory($household['household_id'], 'expense', 'Groceries');
 
         $budgetRepo = new BudgetRepository();
-        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '450.00');
-        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '500.00');
+        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '450.00', '2026-01-01');
+        $budgetRepo->upsertDefault($household['household_id'], $categoryId, '500.00', '2026-03-01');
 
-        $defaults = $budgetRepo->defaultsForHousehold($household['household_id']);
+        $defaults = $budgetRepo->defaultsForHousehold($household['household_id'], '2026-03-01');
 
         $this->assertSame('500.00', $defaults[$categoryId]);
     }

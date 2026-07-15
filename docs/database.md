@@ -77,19 +77,24 @@ time, never relying on MySQL's session timezone).
 ## Budgets
 
 - **`budgets`** — one row per household per calendar month
-  (`period_month`), created lazily the first time a month is viewed or
-  edited at all, and seeded at creation time from `budget_category_defaults`.
-- **`budget_items`** — planned amount per category per budget.
+  (`period_month`), created lazily the first time a category gets a
+  planned amount for that month — visiting an empty month never writes
+  a row.
+- **`budget_items`** — planned amount per category per budget, written
+  only when someone explicitly sets an amount for that specific month.
   `category_id` is not type-restricted at the DB level; both income and
   expense categories can have a budget line (income budgeting uses the
   same table as expense budgeting).
 - **`budget_category_defaults`** — one row per household per category,
-  holding the "apply to all future months" standing planned amount. Not
-  month-scoped itself; every newly-created `budgets` row is seeded from
-  whatever rows exist here at that moment (see
-  `BudgetRepository::findOrCreateForMonth()`). Updating a category's
-  default only affects months created afterward — it never retroactively
-  rewrites existing `budget_items` rows.
+  holding the "apply to all future months" standing planned amount plus
+  `effective_from_month`. Never written into `budget_items` directly;
+  `BudgetController::index()` layers a household's defaults (filtered to
+  `effective_from_month <= the month being viewed`) over whatever
+  explicit `budget_items` exist purely for display, so it reaches every
+  future month regardless of whether that month's `budgets` row already
+  existed. An explicit `budget_items` line always wins over a default for
+  that specific month, and a default never applies to a month before it
+  took effect.
 
 ## Recurring items
 

@@ -31,15 +31,22 @@ final class BudgetController
         $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
 
         $budgetRepo = new BudgetRepository();
-        // Creates (and seeds from standing category defaults) the first
-        // time this month is viewed at all, not just the first time it's
-        // edited — see BudgetRepository::findOrCreateForMonth().
-        $budget = $budgetRepo->findOrCreateForMonth($householdId, $periodMonth);
-        $items = $budgetRepo->listItemsForBudget((int) $budget['id']);
+        $budget = $budgetRepo->findForMonth($householdId, $periodMonth);
+        $items = $budget !== null ? $budgetRepo->listItemsForBudget((int) $budget['id']) : [];
 
         $itemsByCategory = [];
         foreach ($items as $item) {
             $itemsByCategory[(int) $item['category_id']] = $item;
+        }
+
+        // Standing "apply to all future months" defaults fill in any
+        // category without an explicit line for this month — an explicit
+        // budget_items row always wins over a default, and this never
+        // writes anything; it only affects what's displayed.
+        foreach ($budgetRepo->defaultsForHousehold($householdId, $periodMonth) as $categoryId => $defaultAmount) {
+            if (!isset($itemsByCategory[$categoryId])) {
+                $itemsByCategory[$categoryId] = ['category_id' => $categoryId, 'planned_amount' => $defaultAmount];
+            }
         }
 
         $actualExpenseByCategory = $budgetRepo->actualByCategory($householdId, 'expense', $periodMonth, $monthEnd);
@@ -163,11 +170,10 @@ final class BudgetController
         $budgetRepo->upsertItem((int) $budget['id'], $categoryId, $normalizedAmount);
 
         // "Apply to all future months" sets this as the household's
-        // standing plan for the category — every month created from now
-        // on gets seeded with it, until someone changes it again. It never
-        // retroactively touches past or already-existing months.
+        // standing plan for the category from this month onward — it
+        // never retroactively affects a month before this one.
         if ($request->post('apply_to_future') === '1') {
-            $budgetRepo->upsertDefault($householdId, $categoryId, $normalizedAmount);
+            $budgetRepo->upsertDefault($householdId, $categoryId, $normalizedAmount, $periodMonth);
         }
 
         (new AuditLogRepository())->log(
