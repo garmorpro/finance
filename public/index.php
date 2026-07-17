@@ -29,6 +29,7 @@ use App\Http\Response;
 use App\Http\Router;
 use App\Support\ErrorHandler;
 use App\Support\SecurityHeaders;
+use App\Support\View;
 use Dotenv\Dotenv;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
@@ -207,7 +208,7 @@ $router->get('/', function () use ($dashboardController): void {
         return;
     }
 
-    header('Location: /login');
+    Response::html(View::render('landing'));
 });
 
 $router->get('/health', function (): void {
