@@ -30,7 +30,6 @@ final class TransactionRepositoryTest extends DatabaseTestCase
         $this->assertSame('-42.50', $transaction['amount']);
         $this->assertSame('expense', $transaction['transaction_type']);
         $this->assertSame('Grocery Store', $transaction['payee']);
-        $this->assertSame(0, (int) $transaction['is_reviewed']);
     }
 
     public function test_create_stores_a_positive_income_amount(): void
@@ -66,14 +65,12 @@ final class TransactionRepositoryTest extends DatabaseTestCase
             'account_id' => $accountId,
             'payee' => 'Updated',
             'signed_amount' => '-99.99',
-            'is_reviewed' => true,
         ]));
 
         $updated = $transactionRepo->findById($transactionId, $household['household_id']);
 
         $this->assertSame('Updated', $updated['payee']);
         $this->assertSame('-99.99', $updated['amount']);
-        $this->assertSame(1, (int) $updated['is_reviewed']);
     }
 
     public function test_soft_deleted_transactions_are_excluded_from_find(): void
@@ -158,30 +155,4 @@ final class TransactionRepositoryTest extends DatabaseTestCase
         ));
     }
 
-    public function test_unreviewed_counts_splits_by_before_today(): void
-    {
-        $household = $this->makeHousehold();
-        $accountId = $this->makeAccount($household['household_id'], $household['user_id']);
-
-        $transactionRepo = new TransactionRepository();
-        $transactionRepo->create($household['household_id'], $household['user_id'], $this->transactionData([
-            'account_id' => $accountId,
-            'transaction_date' => date('Y-m-d', strtotime('-3 days')),
-            'is_reviewed' => false,
-        ]));
-        $transactionRepo->create($household['household_id'], $household['user_id'], $this->transactionData([
-            'account_id' => $accountId,
-            'transaction_date' => gmdate('Y-m-d'),
-            'is_reviewed' => false,
-        ]));
-        $transactionRepo->create($household['household_id'], $household['user_id'], $this->transactionData([
-            'account_id' => $accountId,
-            'is_reviewed' => true,
-        ]));
-
-        $counts = $transactionRepo->unreviewedCounts($household['household_id']);
-
-        $this->assertSame(2, $counts['total']);
-        $this->assertSame(1, $counts['before_today']);
-    }
 }

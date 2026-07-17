@@ -377,10 +377,6 @@ final class RuleController
             $actions[] = ['action_type' => 'add_tag', 'value' => (string) $tagId];
         }
 
-        if ($request->post('mark_reviewed') === '1') {
-            $actions[] = ['action_type' => 'mark_reviewed', 'value' => '1'];
-        }
-
         if ($request->post('exclude_from_reports') === '1') {
             $actions[] = ['action_type' => 'exclude_from_reports', 'value' => '1'];
         }

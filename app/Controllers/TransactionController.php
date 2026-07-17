@@ -35,7 +35,6 @@ final class TransactionController
             'type' => $request->query('type'),
             'date_from' => $request->query('date_from'),
             'date_to' => $request->query('date_to'),
-            'reviewed' => $request->query('reviewed'),
             'search' => $request->query('search'),
         ];
 
@@ -59,84 +58,12 @@ final class TransactionController
             'categories' => (new CategoryRepository())->listForHousehold($householdId),
             'tags' => (new TagRepository())->listForHousehold($householdId),
             'filters' => $filters,
-            'unreviewedCount' => $transactionRepo->unreviewedCounts($householdId)['total'],
             'csrfToken' => Csrf::token(),
             'notice' => $_SESSION['_flash_notice'] ?? null,
             'error' => $_SESSION['_flash_error'] ?? null,
         ]));
 
         unset($_SESSION['_flash_notice'], $_SESSION['_flash_error']);
-    }
-
-    /**
-     * The daily review queue: every unreviewed transaction, grouped by
-     * date, so nothing from a missed day quietly falls off the bottom of
-     * the regular transactions list.
-     */
-    public function review(): void
-    {
-        AuthMiddleware::requireAuth();
-
-        $householdId = (int) AuthMiddleware::householdId();
-        $transactionRepo = new TransactionRepository();
-
-        $transactions = $transactionRepo->unreviewedForHousehold($householdId);
-        $counts = $transactionRepo->unreviewedCounts($householdId);
-
-        $groups = [];
-        foreach ($transactions as $transaction) {
-            $groups[$transaction['transaction_date']][] = $transaction;
-        }
-
-        Response::html(View::render('transactions/review', [
-            'groups' => $groups,
-            'loadedCount' => count($transactions),
-            'counts' => $counts,
-            'csrfToken' => Csrf::token(),
-            'notice' => $_SESSION['_flash_notice'] ?? null,
-        ]));
-
-        unset($_SESSION['_flash_notice']);
-    }
-
-    public function markReviewed(Request $request): void
-    {
-        AuthMiddleware::requireAuth();
-
-        $transactionId = (int) $request->param('id');
-        $householdId = (int) AuthMiddleware::householdId();
-        $userId = (int) AuthMiddleware::userId();
-
-        if (!Csrf::verify($request->post('csrf_token'))) {
-            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
-            header('Location: /transactions/review');
-            return;
-        }
-
-        (new TransactionRepository())->markReviewed($transactionId, $householdId, $userId);
-
-        header('Location: /transactions/review');
-    }
-
-    public function markAllReviewed(Request $request): void
-    {
-        AuthMiddleware::requireAuth();
-
-        $householdId = (int) AuthMiddleware::householdId();
-        $userId = (int) AuthMiddleware::userId();
-
-        if (!Csrf::verify($request->post('csrf_token'))) {
-            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
-            header('Location: /transactions/review');
-            return;
-        }
-
-        $count = (new TransactionRepository())->markAllReviewed($householdId, $userId);
-
-        $_SESSION['_flash_notice'] = $count > 0
-            ? 'Marked ' . $count . ' transaction' . ($count === 1 ? '' : 's') . ' as reviewed.'
-            : 'Nothing to review.';
-        header('Location: /transactions/review');
     }
 
     public function export(Request $request): void
@@ -151,7 +78,6 @@ final class TransactionController
             'type' => $request->query('type'),
             'date_from' => $request->query('date_from'),
             'date_to' => $request->query('date_to'),
-            'reviewed' => $request->query('reviewed'),
             'search' => $request->query('search'),
         ];
 
@@ -161,7 +87,7 @@ final class TransactionController
         header('Content-Disposition: attachment; filename="transactions-' . gmdate('Y-m-d') . '.csv"');
 
         $out = fopen('php://output', 'w');
-        fputcsv($out, ['Date', 'Payee', 'Category', 'Account', 'Type', 'Amount', 'Reviewed', 'Notes']);
+        fputcsv($out, ['Date', 'Payee', 'Category', 'Account', 'Type', 'Amount', 'Notes']);
 
         foreach ($rows as $row) {
             $category = $row['category_name'] ?? '';
@@ -176,7 +102,6 @@ final class TransactionController
                 $row['account_name'],
                 $row['transaction_type'],
                 $row['amount'],
-                (int) $row['is_reviewed'] === 1 ? 'yes' : 'no',
                 $row['notes'] ?? '',
             ]);
         }
@@ -315,7 +240,7 @@ final class TransactionController
 
         // Transfers are two linked rows — editing the amount or account on
         // just one side would desync the balances, so they get a reduced
-        // edit view (notes/reviewed only) with delete as the way to "undo."
+        // edit view (notes only) with delete as the way to "undo."
         if ($transaction['transaction_type'] === 'transfer') {
             $pairAccountName = null;
             if ($transaction['transfer_pair_id'] !== null) {
@@ -514,9 +439,9 @@ final class TransactionController
 
     /**
      * Applies one action to every selected row from the transactions list
-     * at once — set category, add a tag, mark reviewed, or delete.
-     * Selection is scoped to the current (paginated) page's checkboxes,
-     * not a cross-page "select everything matching this filter."
+     * at once — set category, add a tag, or delete. Selection is scoped
+     * to the current (paginated) page's checkboxes, not a cross-page
+     * "select everything matching this filter."
      */
     public function bulkAction(Request $request): void
     {
@@ -601,14 +526,6 @@ final class TransactionController
                 (new AuditLogRepository())->log($userId, $householdId, 'transaction.bulk_tag_added', 'transaction', (int) $tagId, $request->ip(), ['count' => count($validIds)]);
 
                 $redirectBack('Tag added to ' . count($validIds) . ' transaction' . (count($validIds) === 1 ? '' : 's') . '.', false);
-                return;
-
-            case 'mark_reviewed':
-                $updated = $transactionRepo->bulkMarkReviewed($validIds, $householdId, $userId);
-
-                (new AuditLogRepository())->log($userId, $householdId, 'transaction.bulk_marked_reviewed', 'transaction', null, $request->ip(), ['count' => $updated]);
-
-                $redirectBack("Marked {$updated} transaction" . ($updated === 1 ? '' : 's') . ' as reviewed.', false);
                 return;
 
             case 'delete':
@@ -713,12 +630,11 @@ final class TransactionController
             return;
         }
 
-        $transactionRepo->updateNotesAndReviewed(
+        $transactionRepo->updateNotes(
             $transactionId,
             $householdId,
             $userId,
-            trim($request->post('notes')) !== '' ? trim($request->post('notes')) : null,
-            $request->post('is_reviewed') === '1'
+            trim($request->post('notes')) !== '' ? trim($request->post('notes')) : null
         );
 
         (new AuditLogRepository())->log($userId, $householdId, 'transaction.updated', 'transaction', $transactionId, $request->ip());
@@ -813,7 +729,6 @@ final class TransactionController
                 'transaction_date' => $input['transaction_date'],
                 'payee' => 'Transfer to ' . $toAccount['name'],
                 'notes' => $input['notes'],
-                'is_reviewed' => false,
                 'exclude_from_budget' => true,
                 'exclude_from_reports' => true,
                 'signed_amount' => bcmul($input['amount'], '-1', 2),
@@ -826,7 +741,6 @@ final class TransactionController
                 'transaction_date' => $input['transaction_date'],
                 'payee' => 'Transfer from ' . $fromAccount['name'],
                 'notes' => $input['notes'],
-                'is_reviewed' => false,
                 'exclude_from_budget' => true,
                 'exclude_from_reports' => true,
                 'signed_amount' => $input['amount'],
@@ -895,7 +809,6 @@ final class TransactionController
             'amount' => trim($request->post('amount')),
             'payee' => trim($request->post('payee')),
             'notes' => trim($request->post('notes')) !== '' ? trim($request->post('notes')) : null,
-            'is_reviewed' => $request->post('is_reviewed') === '1',
             'exclude_from_budget' => $request->post('exclude_from_budget') === '1',
             'exclude_from_reports' => $request->post('exclude_from_reports') === '1',
             'tag_ids' => $request->postIntList('tag_ids'),

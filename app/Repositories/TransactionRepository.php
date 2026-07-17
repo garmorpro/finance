@@ -21,11 +21,11 @@ final class TransactionRepository
             'INSERT INTO transactions
                 (household_id, account_id, category_id, is_split, created_by_user_id, last_edited_by_user_id,
                  transaction_type, transaction_date, amount, payee, notes,
-                 is_reviewed, exclude_from_budget, exclude_from_reports, created_at, updated_at)
+                 exclude_from_budget, exclude_from_reports, created_at, updated_at)
              VALUES
                 (:household_id, :account_id, :category_id, :is_split, :created_by_user_id, :last_edited_by_user_id,
                  :transaction_type, :transaction_date, :amount, :payee, :notes,
-                 :is_reviewed, :exclude_from_budget, :exclude_from_reports, :created_at, :updated_at)'
+                 :exclude_from_budget, :exclude_from_reports, :created_at, :updated_at)'
         );
 
         $stmt->execute([
@@ -40,7 +40,6 @@ final class TransactionRepository
             'amount' => $data['signed_amount'],
             'payee' => $data['payee'],
             'notes' => $data['notes'],
-            'is_reviewed' => $data['is_reviewed'] ? 1 : 0,
             'exclude_from_budget' => $data['exclude_from_budget'] ? 1 : 0,
             'exclude_from_reports' => $data['exclude_from_reports'] ? 1 : 0,
             'created_at' => $now,
@@ -132,10 +131,10 @@ final class TransactionRepository
      * narrower than update(): only touches the fields a rule can actually
      * set, only writes fields that have a value (so multiple rules can
      * layer without one blanking out what another set), and is monotonic
-     * for the boolean flags (a rule can turn is_reviewed/exclude_from_reports
-     * on, never back off).
+     * for the boolean flag (a rule can turn exclude_from_reports on,
+     * never back off).
      */
-    public function applyRuleActions(int $transactionId, int $householdId, ?int $categoryId, ?string $payee, bool $markReviewed, bool $excludeFromReports): void
+    public function applyRuleActions(int $transactionId, int $householdId, ?int $categoryId, ?string $payee, bool $excludeFromReports): void
     {
         $sets = ['updated_at = :updated_at'];
         $params = [
@@ -152,10 +151,6 @@ final class TransactionRepository
         if ($payee !== null) {
             $sets[] = 'payee = :payee';
             $params['payee'] = $payee;
-        }
-
-        if ($markReviewed) {
-            $sets[] = 'is_reviewed = 1';
         }
 
         if ($excludeFromReports) {
@@ -214,7 +209,6 @@ final class TransactionRepository
                 amount = :amount,
                 payee = :payee,
                 notes = :notes,
-                is_reviewed = :is_reviewed,
                 exclude_from_budget = :exclude_from_budget,
                 exclude_from_reports = :exclude_from_reports,
                 updated_at = :updated_at
@@ -231,7 +225,6 @@ final class TransactionRepository
             'amount' => $data['signed_amount'],
             'payee' => $data['payee'],
             'notes' => $data['notes'],
-            'is_reviewed' => $data['is_reviewed'] ? 1 : 0,
             'exclude_from_budget' => $data['exclude_from_budget'] ? 1 : 0,
             'exclude_from_reports' => $data['exclude_from_reports'] ? 1 : 0,
             'updated_at' => gmdate('Y-m-d H:i:s'),
@@ -241,16 +234,15 @@ final class TransactionRepository
     }
 
     /**
-     * Narrow update used for transfers, which only allow editing notes and
-     * reviewed status — changing the amount or account on one side of a
-     * transfer without touching the other would desync both balances.
+     * Narrow update used for transfers, which only allow editing notes —
+     * changing the amount or account on one side of a transfer without
+     * touching the other would desync both balances.
      */
-    public function updateNotesAndReviewed(int $transactionId, int $householdId, int $userId, ?string $notes, bool $isReviewed): void
+    public function updateNotes(int $transactionId, int $householdId, int $userId, ?string $notes): void
     {
         $stmt = Connection::get()->prepare(
             'UPDATE transactions SET
                 notes = :notes,
-                is_reviewed = :is_reviewed,
                 last_edited_by_user_id = :last_edited_by_user_id,
                 updated_at = :updated_at
              WHERE id = :id AND household_id = :household_id'
@@ -258,7 +250,6 @@ final class TransactionRepository
 
         $stmt->execute([
             'notes' => $notes,
-            'is_reviewed' => $isReviewed ? 1 : 0,
             'last_edited_by_user_id' => $userId,
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $transactionId,
@@ -373,90 +364,6 @@ final class TransactionRepository
     }
 
     /**
-     * Every unreviewed transaction for the household, most recent first —
-     * the review queue. Capped so a household that never reviews anything
-     * can't load an unbounded result set; unreviewedCounts() reports the
-     * true total so the UI can note when the cap was hit.
-     */
-    public function unreviewedForHousehold(int $householdId, int $limit = 500): array
-    {
-        $stmt = Connection::get()->prepare(
-            'SELECT t.*, a.name AS account_name, c.name AS category_name
-             FROM transactions t
-             INNER JOIN accounts a ON a.id = t.account_id
-             LEFT JOIN categories c ON c.id = t.category_id
-             WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.is_reviewed = 0
-             ORDER BY t.transaction_date DESC, t.id DESC
-             LIMIT ' . max(1, $limit)
-        );
-
-        $stmt->execute(['household_id' => $householdId]);
-
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * @return array{total: int, before_today: int}
-     */
-    public function unreviewedCounts(int $householdId): array
-    {
-        $stmt = Connection::get()->prepare(
-            'SELECT
-                COUNT(*) AS total,
-                SUM(CASE WHEN transaction_date < :today THEN 1 ELSE 0 END) AS before_today
-             FROM transactions
-             WHERE household_id = :household_id AND deleted_at IS NULL AND is_reviewed = 0'
-        );
-
-        $stmt->execute(['household_id' => $householdId, 'today' => gmdate('Y-m-d')]);
-
-        $row = $stmt->fetch();
-
-        return [
-            'total' => (int) ($row['total'] ?? 0),
-            'before_today' => (int) ($row['before_today'] ?? 0),
-        ];
-    }
-
-    public function markReviewed(int $transactionId, int $householdId, int $userId): bool
-    {
-        $stmt = Connection::get()->prepare(
-            'UPDATE transactions SET is_reviewed = 1, last_edited_by_user_id = :user_id, updated_at = :updated_at
-             WHERE id = :id AND household_id = :household_id AND deleted_at IS NULL'
-        );
-
-        $stmt->execute([
-            'user_id' => $userId,
-            'updated_at' => gmdate('Y-m-d H:i:s'),
-            'id' => $transactionId,
-            'household_id' => $householdId,
-        ]);
-
-        return $stmt->rowCount() > 0;
-    }
-
-    /**
-     * Marks every currently-unreviewed transaction in the household as
-     * reviewed in one statement. Returns the number of rows affected so
-     * the caller can report it back to the user.
-     */
-    public function markAllReviewed(int $householdId, int $userId): int
-    {
-        $stmt = Connection::get()->prepare(
-            'UPDATE transactions SET is_reviewed = 1, last_edited_by_user_id = :user_id, updated_at = :updated_at
-             WHERE household_id = :household_id AND deleted_at IS NULL AND is_reviewed = 0'
-        );
-
-        $stmt->execute([
-            'user_id' => $userId,
-            'updated_at' => gmdate('Y-m-d H:i:s'),
-            'household_id' => $householdId,
-        ]);
-
-        return $stmt->rowCount();
-    }
-
-    /**
      * Bulk category assignment. Split transactions are silently excluded
      * from the WHERE clause (is_split = 0) — their category_id is a
      * derived "primary display" value (see
@@ -480,26 +387,6 @@ final class TransactionRepository
              WHERE household_id = ? AND is_split = 0 AND deleted_at IS NULL AND id IN ({$placeholders})"
         );
         $stmt->execute([$categoryId, gmdate('Y-m-d H:i:s'), $householdId, ...$transactionIds]);
-
-        return $stmt->rowCount();
-    }
-
-    /**
-     * @param list<int> $transactionIds
-     * @return int rows actually updated
-     */
-    public function bulkMarkReviewed(array $transactionIds, int $householdId, int $userId): int
-    {
-        if ($transactionIds === []) {
-            return 0;
-        }
-
-        $placeholders = implode(',', array_fill(0, count($transactionIds), '?'));
-        $stmt = Connection::get()->prepare(
-            "UPDATE transactions SET is_reviewed = 1, last_edited_by_user_id = ?, updated_at = ?
-             WHERE household_id = ? AND deleted_at IS NULL AND id IN ({$placeholders})"
-        );
-        $stmt->execute([$userId, gmdate('Y-m-d H:i:s'), $householdId, ...$transactionIds]);
 
         return $stmt->rowCount();
     }
@@ -559,11 +446,6 @@ final class TransactionRepository
         if (!empty($filters['date_to'])) {
             $clauses[] = 't.transaction_date <= :date_to';
             $params['date_to'] = $filters['date_to'];
-        }
-
-        if (isset($filters['reviewed']) && $filters['reviewed'] !== '') {
-            $clauses[] = 't.is_reviewed = :reviewed';
-            $params['reviewed'] = $filters['reviewed'] === '1' ? 1 : 0;
         }
 
         if (!empty($filters['search'])) {

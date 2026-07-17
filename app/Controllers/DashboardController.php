@@ -38,7 +38,6 @@ final class DashboardController
         $accounts = $householdId !== null ? $accountRepo->listForHousehold($householdId) : [];
         $transactionRepo = new TransactionRepository();
         $recentTransactions = $householdId !== null ? $transactionRepo->recentForHousehold($householdId, 5) : [];
-        $reviewCounts = $householdId !== null ? $transactionRepo->unreviewedCounts($householdId) : ['total' => 0, 'before_today' => 0];
         $budgetSummary = $householdId !== null ? (new BudgetRepository())->monthSummary($householdId, gmdate('Y-m-01')) : ['planned' => '0.00', 'spent' => '0.00', 'remaining' => '0.00', 'has_items' => false];
         $recurringRepo = new RecurringItemRepository();
         $upcomingRecurring = $householdId !== null ? $recurringRepo->upcomingForHousehold($householdId, 5) : [];
@@ -76,7 +75,6 @@ final class DashboardController
             'netWorth' => $netWorth,
             'accounts' => $accounts,
             'recentTransactions' => $recentTransactions,
-            'reviewCounts' => $reviewCounts,
             'budgetSummary' => $budgetSummary,
             'upcomingRecurring' => $upcomingRecurring,
             'recurringSummary' => $recurringSummary,

@@ -271,7 +271,6 @@ Each transaction may include:
 - Receipt or attachment.
 - Pending or posted status.
 - Recurring status.
-- Reviewed status.
 - Exclude from budget.
 - Exclude from reports.
 - Created-by user.
@@ -290,7 +289,6 @@ Transaction functionality should include:
 - Sorting.
 - Pagination.
 - Duplicate detection.
-- Transaction review workflow.
 - Transaction splitting.
 - Transfer matching.
 - CSV import.
@@ -307,7 +305,6 @@ Filters should include:
 - User.
 - Tag.
 - Transaction status.
-- Reviewed or unreviewed.
 - Recurring or nonrecurring.
 
 Transfers must not be counted as household income or spending.
@@ -358,7 +355,6 @@ Build transaction rules that can automatically:
 - Rename merchants.
 - Assign categories.
 - Apply tags.
-- Mark transactions as reviewed.
 - Hide transactions from reports.
 - Identify transfers.
 - Apply rules based on merchant, account, amount, or description.
@@ -384,7 +380,6 @@ Recommended dashboard cards:
 - Monthly cash flow.
 - Upcoming bills.
 - Recent transactions.
-- Unreviewed transactions.
 - Goal progress.
 - Largest spending categories.
 - Account balances.
@@ -611,7 +606,6 @@ Create an in-app notification center.
 
 Potential notifications:
 
-- Transaction requires review.
 - Account balance has not been updated recently.
 - Category is near its budget.
 - Category exceeded its budget.
@@ -1220,7 +1214,6 @@ Build:
 - Tags.
 - Transfers.
 - Split transactions.
-- Review workflow.
 - CSV import.
 - CSV export.
 

@@ -103,13 +103,10 @@ $router->get('/transactions/create', fn (): mixed => $transactionController->sho
 $router->post('/transactions', fn (Request $r): mixed => $transactionController->store($r));
 $router->get('/transactions/transfer', fn (): mixed => $transactionController->showTransferForm());
 $router->post('/transactions/transfer', fn (Request $r): mixed => $transactionController->storeTransfer($r));
-$router->get('/transactions/review', fn (): mixed => $transactionController->review());
-$router->post('/transactions/review/mark-all', fn (Request $r): mixed => $transactionController->markAllReviewed($r));
 $router->post('/transactions/bulk', fn (Request $r): mixed => $transactionController->bulkAction($r));
 $router->get('/transactions/{id}/edit', fn (Request $r): mixed => $transactionController->showEditForm($r));
 $router->post('/transactions/{id}', fn (Request $r): mixed => $transactionController->update($r));
 $router->post('/transactions/{id}/delete', fn (Request $r): mixed => $transactionController->destroy($r));
-$router->post('/transactions/{id}/review', fn (Request $r): mixed => $transactionController->markReviewed($r));
 
 $attachmentController = new AttachmentController();
 $router->post('/transactions/{id}/attachments', fn (Request $r): mixed => $attachmentController->upload($r));

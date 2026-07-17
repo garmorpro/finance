@@ -136,10 +136,6 @@ foreach ($actions as $action) {
                         </div>
                         <div class="flex items-center gap-6 mt-4">
                             <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
-                                <input type="checkbox" name="mark_reviewed" value="1" <?= isset($actionByType['mark_reviewed']) ? 'checked' : '' ?> class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
-                                Mark as reviewed
-                            </label>
-                            <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
                                 <input type="checkbox" name="exclude_from_reports" value="1" <?= isset($actionByType['exclude_from_reports']) ? 'checked' : '' ?> class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
                                 Hide from reports
                             </label>

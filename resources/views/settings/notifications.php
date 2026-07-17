@@ -9,7 +9,6 @@
 use App\Support\View;
 
 $descriptions = [
-    'unreviewed_transactions' => 'When you have transactions waiting in the review queue.',
     'budget_over' => 'When a category has spent more than its planned budget this month.',
     'bills_due' => 'When a recurring bill or subscription is overdue.',
     'goal_milestones' => 'When a savings goal reaches 90% or more of its target.',

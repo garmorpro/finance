@@ -261,10 +261,6 @@ final class RecurringController
                 'transaction_date' => $paidDate,
                 'payee' => $item['name'],
                 'notes' => 'Recurring: ' . $item['name'],
-                // The user is actively confirming this payment right now —
-                // that confirmation is the review, so it doesn't also need
-                // to sit in the unreviewed queue.
-                'is_reviewed' => true,
                 'exclude_from_budget' => false,
                 'exclude_from_reports' => false,
                 'signed_amount' => $signedAmount,

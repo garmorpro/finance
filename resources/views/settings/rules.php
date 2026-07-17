@@ -33,7 +33,6 @@ $actionLabels = function (array $actions) use ($categoryNames, $tagNames): array
             'set_category' => 'Set category to ' . ($categoryNames[(int) $action['value']] ?? 'an unknown category'),
             'set_payee' => 'Rename payee to "' . $action['value'] . '"',
             'add_tag' => 'Add tag ' . ($tagNames[(int) $action['value']] ?? 'an unknown tag'),
-            'mark_reviewed' => 'Mark as reviewed',
             'exclude_from_reports' => 'Hide from reports',
             default => null,
         };

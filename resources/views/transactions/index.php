@@ -10,7 +10,6 @@
 /** @var array $tagsByTransaction */
 /** @var array $attachmentsByTransaction */
 /** @var array $tags */
-/** @var int $unreviewedCount */
 /** @var string $csrfToken */
 /** @var string|null $notice */
 /** @var string|null $error */
@@ -42,12 +41,6 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                         <p class="text-sm text-stone-500 dark:text-stone-400 mt-1"><?= $total ?> total</p>
                     </div>
                     <div class="flex gap-3">
-                        <a href="/transactions/review" class="btn-secondary">
-                            Review
-                            <?php if ($unreviewedCount > 0): ?>
-                                <span class="badge-owner"><?= $unreviewedCount ?></span>
-                            <?php endif; ?>
-                        </a>
                         <a href="/transactions/export<?= $filters !== [] ? '?' . http_build_query($filters) : '' ?>" class="btn-secondary">Export</a>
                         <a href="/transactions/import" class="btn-secondary">Import</a>
                         <a href="/transactions/transfer" class="btn-secondary">Transfer</a>
@@ -89,14 +82,6 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                                 <option value="income" <?= $filters['type'] === 'income' ? 'selected' : '' ?>>Income</option>
                                 <option value="expense" <?= $filters['type'] === 'expense' ? 'selected' : '' ?>>Expense</option>
                                 <option value="transfer" <?= $filters['type'] === 'transfer' ? 'selected' : '' ?>>Transfer</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="f-reviewed" class="field-label">Status</label>
-                            <select id="f-reviewed" name="reviewed" class="field-input">
-                                <option value="">All</option>
-                                <option value="1" <?= $filters['reviewed'] === '1' ? 'selected' : '' ?>>Reviewed</option>
-                                <option value="0" <?= $filters['reviewed'] === '0' ? 'selected' : '' ?>>Unreviewed</option>
                             </select>
                         </div>
                         <div>
@@ -144,9 +129,6 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                                             <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['transaction_date']) ?></td>
                                             <td class="font-medium text-stone-900 dark:text-white">
                                                 <?= View::e($transaction['payee']) ?>
-                                                <?php if ((int) $transaction['is_reviewed'] === 0): ?>
-                                                    <span class="badge ml-2">Unreviewed</span>
-                                                <?php endif; ?>
                                                 <?php foreach ($tagsByTransaction[(int) $transaction['id']] ?? [] as $tag): ?>
                                                     <span class="badge ml-2"><?= View::e($tag['name']) ?></span>
                                                 <?php endforeach; ?>
@@ -203,7 +185,6 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                                 <button type="submit" name="action" value="add_tag" class="btn-secondary">Add tag</button>
                             <?php endif; ?>
 
-                            <button type="submit" name="action" value="mark_reviewed" class="btn-secondary">Mark reviewed</button>
                             <button type="submit" name="action" value="delete" id="bulk-delete-btn" class="btn-secondary ml-auto">Delete</button>
                         </div>
                     </form>

@@ -257,7 +257,6 @@ final class ImportController
                     'transaction_date' => $date,
                     'payee' => $payee,
                     'notes' => $notes,
-                    'is_reviewed' => false,
                     'exclude_from_budget' => false,
                     'exclude_from_reports' => false,
                     'signed_amount' => $amount,

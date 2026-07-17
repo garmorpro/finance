@@ -6,7 +6,6 @@
 /** @var array|null $netWorth */
 /** @var array $accounts */
 /** @var array $recentTransactions */
-/** @var array{total: int, before_today: int} $reviewCounts */
 /** @var array{planned: string, spent: string, remaining: string, has_items: bool} $budgetSummary */
 /** @var array $upcomingRecurring */
 /** @var array{overdue: int, monthlyExpense: string, monthlyIncome: string} $recurringSummary */
@@ -59,7 +58,6 @@ use App\Support\View;
                                         'netWorth' => $netWorth,
                                         'accounts' => $accounts,
                                         'recentTransactions' => $recentTransactions,
-                                        'reviewCounts' => $reviewCounts,
                                         'budgetSummary' => $budgetSummary,
                                         'upcomingRecurring' => $upcomingRecurring,
                                         'recurringSummary' => $recurringSummary,

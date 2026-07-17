@@ -17,8 +17,8 @@ use App\Repositories\TransactionRuleRepository;
  * A rule's conditions are always ANDed (every condition must match). A
  * transaction can match several rules; their actions layer in rule order —
  * a later rule's category/payee override an earlier one's, tags from every
- * matching rule accumulate, and the reviewed/hide-from-reports flags only
- * ever turn on, never back off.
+ * matching rule accumulate, and the hide-from-reports flag only ever
+ * turns on, never back off.
  */
 final class RuleMatchingService
 {
@@ -38,11 +38,11 @@ final class RuleMatchingService
     }
 
     /**
-     * @return array{category_id: ?int, payee: ?string, tag_ids: list<int>, mark_reviewed: bool, exclude_from_reports: bool}
+     * @return array{category_id: ?int, payee: ?string, tag_ids: list<int>, exclude_from_reports: bool}
      */
     public function resolveActions(array $actions): array
     {
-        $result = ['category_id' => null, 'payee' => null, 'tag_ids' => [], 'mark_reviewed' => false, 'exclude_from_reports' => false];
+        $result = ['category_id' => null, 'payee' => null, 'tag_ids' => [], 'exclude_from_reports' => false];
 
         foreach ($actions as $action) {
             switch ($action['action_type']) {
@@ -54,9 +54,6 @@ final class RuleMatchingService
                     break;
                 case 'add_tag':
                     $result['tag_ids'][] = (int) $action['value'];
-                    break;
-                case 'mark_reviewed':
-                    $result['mark_reviewed'] = true;
                     break;
                 case 'exclude_from_reports':
                     $result['exclude_from_reports'] = true;
@@ -79,7 +76,7 @@ final class RuleMatchingService
             return;
         }
 
-        $accumulated = ['category_id' => null, 'payee' => null, 'tag_ids' => [], 'mark_reviewed' => false, 'exclude_from_reports' => false];
+        $accumulated = ['category_id' => null, 'payee' => null, 'tag_ids' => [], 'exclude_from_reports' => false];
         $matchedAny = false;
 
         foreach ((new TransactionRuleRepository())->listActiveWithDetails($householdId) as $entry) {
@@ -93,7 +90,6 @@ final class RuleMatchingService
             $accumulated['category_id'] = $actions['category_id'] ?? $accumulated['category_id'];
             $accumulated['payee'] = $actions['payee'] ?? $accumulated['payee'];
             $accumulated['tag_ids'] = [...$accumulated['tag_ids'], ...$actions['tag_ids']];
-            $accumulated['mark_reviewed'] = $accumulated['mark_reviewed'] || $actions['mark_reviewed'];
             $accumulated['exclude_from_reports'] = $accumulated['exclude_from_reports'] || $actions['exclude_from_reports'];
         }
 
@@ -151,7 +147,7 @@ final class RuleMatchingService
     }
 
     /**
-     * @param array{category_id: ?int, payee: ?string, tag_ids: list<int>, mark_reviewed: bool, exclude_from_reports: bool} $resolved
+     * @param array{category_id: ?int, payee: ?string, tag_ids: list<int>, exclude_from_reports: bool} $resolved
      */
     private function applyResolvedActions(int $householdId, int $transactionId, array $resolved): void
     {
@@ -160,7 +156,6 @@ final class RuleMatchingService
             $householdId,
             $resolved['category_id'],
             $resolved['payee'],
-            $resolved['mark_reviewed'],
             $resolved['exclude_from_reports']
         );
 

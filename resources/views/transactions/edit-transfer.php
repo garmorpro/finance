@@ -62,11 +62,6 @@ $isOutgoing = $transaction['transaction_type'] === 'transfer' && str_starts_with
                         <textarea id="notes" name="notes" rows="2" class="field-input"><?= View::e($transaction['notes'] ?? '') ?></textarea>
                     </div>
 
-                    <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
-                        <input type="checkbox" name="is_reviewed" value="1" <?= (int) $transaction['is_reviewed'] === 1 ? 'checked' : '' ?> class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
-                        Reviewed
-                    </label>
-
                     <button type="submit" class="btn-primary">Save changes</button>
                 </form>
 

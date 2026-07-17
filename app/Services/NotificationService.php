@@ -7,22 +7,20 @@ namespace App\Services;
 use App\Repositories\BudgetRepository;
 use App\Repositories\GoalRepository;
 use App\Repositories\RecurringItemRepository;
-use App\Repositories\TransactionRepository;
 use App\Repositories\UserNotificationPreferenceRepository;
 
 /**
  * In-app notifications only — no email/push delivery exists in this app.
  * Every notification here is a live read of a condition that already has
- * its own dedicated page (review queue, budgets, recurring, goals); this
- * service just aggregates "is anything worth surfacing right now" and lets
- * each user opt out of a category. Nothing is persisted as a notification
- * record, so there's no read/unread or dismiss state to manage — the badge
+ * its own dedicated page (budgets, recurring, goals); this service just
+ * aggregates "is anything worth surfacing right now" and lets each user
+ * opt out of a category. Nothing is persisted as a notification record,
+ * so there's no read/unread or dismiss state to manage — the badge
  * always reflects current reality.
  */
 final class NotificationService
 {
     public const TYPES = [
-        'unreviewed_transactions' => 'Unreviewed transactions',
         'budget_over' => 'Categories over budget',
         'bills_due' => 'Bills overdue',
         'goal_milestones' => 'Goals nearing their target',
@@ -66,18 +64,6 @@ final class NotificationService
     {
         $prefs = $this->preferencesForUser($userId);
         $items = [];
-
-        if ($prefs['unreviewed_transactions']) {
-            $count = (new TransactionRepository())->unreviewedCounts($householdId)['total'];
-            if ($count > 0) {
-                $items[] = [
-                    'type' => 'unreviewed_transactions',
-                    'message' => $count . ' transaction' . ($count === 1 ? '' : 's') . ' need' . ($count === 1 ? 's' : '') . ' review',
-                    'count' => $count,
-                    'href' => '/transactions/review',
-                ];
-            }
-        }
 
         if ($prefs['budget_over']) {
             $count = $this->overBudgetCategoryCount($householdId);

@@ -138,10 +138,6 @@ $formatFileSize = function (int $bytes): string {
 
                     <div class="flex items-center gap-6">
                         <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
-                            <input type="checkbox" name="is_reviewed" value="1" <?= (int) $transaction['is_reviewed'] === 1 ? 'checked' : '' ?> class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
-                            Reviewed
-                        </label>
-                        <label class="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
                             <input type="checkbox" name="exclude_from_budget" value="1" <?= (int) $transaction['exclude_from_budget'] === 1 ? 'checked' : '' ?> class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
                             Exclude from budget
                         </label>

@@ -71,7 +71,6 @@ trait Fixtures
             'transaction_date' => gmdate('Y-m-d'),
             'payee' => 'Test Payee',
             'notes' => null,
-            'is_reviewed' => false,
             'exclude_from_budget' => false,
             'exclude_from_reports' => false,
             'signed_amount' => '-10.00',
