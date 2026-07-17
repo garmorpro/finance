@@ -29,7 +29,6 @@ use App\Http\Response;
 use App\Http\Router;
 use App\Support\ErrorHandler;
 use App\Support\SecurityHeaders;
-use App\Support\View;
 use Dotenv\Dotenv;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
@@ -202,34 +201,13 @@ $router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardControlle
 $router->post('/dashboard/widgets', fn (Request $r): mixed => $dashboardController->saveVisibility($r));
 $router->post('/dashboard/width', fn (Request $r): mixed => $dashboardController->saveWidth($r));
 
-$router->get('/', function () use ($appConfig, $dashboardController): void {
+$router->get('/', function () use ($dashboardController): void {
     if (!empty($_SESSION['user_id'])) {
         $dashboardController->index();
         return;
     }
 
-    $name = htmlspecialchars($appConfig['name'], ENT_QUOTES);
-    $appCss = View::asset('/assets/css/app.css');
-
-    Response::html(<<<HTML
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{$name}</title>
-            <link rel="stylesheet" href="{$appCss}">
-        </head>
-        <body class="auth-shell">
-            <div class="text-center">
-                <h1 class="text-3xl font-semibold tracking-tight text-stone-900 dark:text-white mb-2">{$name}</h1>
-                <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">A self-hosted household finance dashboard.</p>
-                <a href="/login" class="btn-primary">Log in</a>
-            </div>
-        </body>
-        </html>
-        HTML
-    );
+    header('Location: /login');
 });
 
 $router->get('/health', function (): void {
