@@ -277,7 +277,7 @@ final class ImportController
             }
 
             if ($imported > 0) {
-                $newBalance = bcadd($account['current_balance'], $netAmount, 2);
+                $newBalance = AccountRepository::applyDelta($account['current_balance'], $netAmount, $account['account_type']);
 
                 (new AccountBalanceHistoryRepository())->record(
                     $accountId,

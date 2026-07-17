@@ -39,6 +39,21 @@ time, never relying on MySQL's session timezone).
   `payment_due_day`, `original_balance`) used by the Debt overview
   without needing a separate table. `include_in_net_worth` and
   `include_in_budget` are independent flags.
+- **Liability account balances are a positive "amount owed"**, not a
+  negative number — `AccountRepository::LIABILITY_TYPES` (credit card,
+  mortgage, auto/student/personal loan, other liability). Net worth
+  (`ReportingService`) and the Debt overview both subtract this figure
+  from assets rather than adding a negative. Because of this, a
+  liability account's `current_balance` moves in the *opposite*
+  direction from an asset account's for the same transaction: a charge
+  increases what's owed, a payment/credit decreases it. Every place
+  that applies a signed amount to a balance (creating, editing,
+  deleting, or transferring a transaction; CSV import; recurring items)
+  goes through `AccountRepository::applyDelta()` rather than a plain
+  `bcadd()`, specifically so liability accounts get this inverted.
+  Manually setting a balance directly (`AccountController`'s balance
+  update) is unaffected — the user types the real target number, so
+  there's no delta to invert.
 - **`account_balance_history`** — every balance change, with
   `previous_balance`/`new_balance`/`note`. Balances are never silently
   overwritten; this is also what `ReportingService::netWorthTrend()`

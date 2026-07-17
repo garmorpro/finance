@@ -23,6 +23,23 @@ final class AccountRepository
         return in_array($accountType, self::LIABILITY_TYPES, true);
     }
 
+    /**
+     * Liability accounts (credit cards, loans, etc.) track a positive
+     * "amount owed" balance — the mirror image of an asset account's. A
+     * charge (negative delta) should increase what's owed instead of
+     * decreasing what's in the account, and a payment/credit (positive
+     * delta) should decrease it. Every place that moves a signed amount
+     * onto an account's balance (creating, editing, deleting, or
+     * transferring a transaction; CSV import; recurring items) routes
+     * through here instead of assuming asset semantics.
+     */
+    public static function applyDelta(string $balance, string $delta, string $accountType): string
+    {
+        return self::isLiability($accountType)
+            ? bcsub($balance, $delta, 2)
+            : bcadd($balance, $delta, 2);
+    }
+
     public function create(int $householdId, int $userId, array $data): int
     {
         $now = gmdate('Y-m-d H:i:s');

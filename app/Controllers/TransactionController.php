@@ -266,7 +266,7 @@ final class TransactionController
                 ]);
             }
 
-            $newBalance = bcadd($account['current_balance'], $signedAmount, 2);
+            $newBalance = AccountRepository::applyDelta($account['current_balance'], $signedAmount, $account['account_type']);
 
             (new AccountBalanceHistoryRepository())->record(
                 (int) $input['account_id'],
@@ -419,19 +419,19 @@ final class TransactionController
 
             if ($oldAccountId === $newAccountId) {
                 $account = $accountRepo->findById($newAccountId, $householdId);
-                $reverted = bcsub($account['current_balance'], $oldSignedAmount, 2);
-                $newBalance = bcadd($reverted, $newSignedAmount, 2);
+                $reverted = AccountRepository::applyDelta($account['current_balance'], bcmul($oldSignedAmount, '-1', 2), $account['account_type']);
+                $newBalance = AccountRepository::applyDelta($reverted, $newSignedAmount, $account['account_type']);
 
                 $historyRepo->record($newAccountId, $userId, $account['current_balance'], $newBalance, 'Transaction edited: ' . $input['payee']);
                 $accountRepo->updateBalance($newAccountId, $householdId, $newBalance);
             } else {
                 $oldAccount = $accountRepo->findById($oldAccountId, $householdId);
-                $revertedOld = bcsub($oldAccount['current_balance'], $oldSignedAmount, 2);
+                $revertedOld = AccountRepository::applyDelta($oldAccount['current_balance'], bcmul($oldSignedAmount, '-1', 2), $oldAccount['account_type']);
                 $historyRepo->record($oldAccountId, $userId, $oldAccount['current_balance'], $revertedOld, 'Transaction moved to another account: ' . $input['payee']);
                 $accountRepo->updateBalance($oldAccountId, $householdId, $revertedOld);
 
                 $newAccount = $accountRepo->findById($newAccountId, $householdId);
-                $appliedNew = bcadd($newAccount['current_balance'], $newSignedAmount, 2);
+                $appliedNew = AccountRepository::applyDelta($newAccount['current_balance'], $newSignedAmount, $newAccount['account_type']);
                 $historyRepo->record($newAccountId, $userId, $newAccount['current_balance'], $appliedNew, 'Transaction moved from another account: ' . $input['payee']);
                 $accountRepo->updateBalance($newAccountId, $householdId, $appliedNew);
             }
@@ -692,7 +692,7 @@ final class TransactionController
 
         $accountId = (int) $transaction['account_id'];
         $account = $accountRepo->findById($accountId, $householdId);
-        $newBalance = bcsub($account['current_balance'], $transaction['amount'], 2);
+        $newBalance = AccountRepository::applyDelta($account['current_balance'], bcmul($transaction['amount'], '-1', 2), $account['account_type']);
 
         $historyRepo->record($accountId, $userId, $account['current_balance'], $newBalance, 'Transaction deleted: ' . $transaction['payee']);
         $accountRepo->updateBalance($accountId, $householdId, $newBalance);
@@ -835,11 +835,11 @@ final class TransactionController
             $transactionRepo->linkTransferPair($fromId, $householdId, $toId);
             $transactionRepo->linkTransferPair($toId, $householdId, $fromId);
 
-            $newFromBalance = bcsub($fromAccount['current_balance'], $input['amount'], 2);
+            $newFromBalance = AccountRepository::applyDelta($fromAccount['current_balance'], bcmul($input['amount'], '-1', 2), $fromAccount['account_type']);
             $historyRepo->record($fromAccount['id'], $userId, $fromAccount['current_balance'], $newFromBalance, 'Transfer to ' . $toAccount['name']);
             $accountRepo->updateBalance($fromAccount['id'], $householdId, $newFromBalance);
 
-            $newToBalance = bcadd($toAccount['current_balance'], $input['amount'], 2);
+            $newToBalance = AccountRepository::applyDelta($toAccount['current_balance'], $input['amount'], $toAccount['account_type']);
             $historyRepo->record($toAccount['id'], $userId, $toAccount['current_balance'], $newToBalance, 'Transfer from ' . $fromAccount['name']);
             $accountRepo->updateBalance($toAccount['id'], $householdId, $newToBalance);
 

@@ -280,7 +280,7 @@ final class RecurringController
                 'transaction_type' => $item['recurring_type'],
             ]);
 
-            $newBalance = bcadd($account['current_balance'], $signedAmount, 2);
+            $newBalance = AccountRepository::applyDelta($account['current_balance'], $signedAmount, $account['account_type']);
             (new AccountBalanceHistoryRepository())->record(
                 (int) $item['account_id'],
                 $userId,
