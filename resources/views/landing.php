@@ -551,7 +551,7 @@
         </div>
     </header>
 
-    <section class="hero">
+    <section>
         <div class="wrap hero" style="padding-bottom:0;">
             <div>
                 <span class="eyebrow">Self-hosted &middot; manual entry only</span>
