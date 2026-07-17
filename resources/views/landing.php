@@ -552,7 +552,7 @@
     </header>
 
     <section>
-        <div class="wrap hero" style="padding-bottom:0;">
+        <div class="wrap hero">
             <div>
                 <span class="eyebrow">Self-hosted &middot; manual entry only</span>
                 <h1 class="headline">Your household's money, kept <em>entirely yours.</em></h1>
