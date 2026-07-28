@@ -19,7 +19,7 @@
   // boundary because there's no column boundary as far as the browser's
   // layout engine is concerned.
   var GAP = 16; // px, matches Tailwind's gap-4 / 1rem
-  var LG_BREAKPOINT = 1024; // px, matches this app's `lg:` breakpoint
+  var MIN_TWO_COL_WIDTH = 560; // px; below this a 2-column split leaves each tile too cramped
 
   function layoutMasonry() {
     var containerWidth = grid.clientWidth;
@@ -27,7 +27,12 @@
       return;
     }
 
-    var columns = window.innerWidth >= LG_BREAKPOINT ? 2 : 1;
+    // Based on the grid's own width, not the viewport — the grid can be
+    // narrower than the viewport (e.g. sharing the row with the sticky
+    // "Lifecycle of a Dollar" sidebar), and a viewport-only check would
+    // still try to split it into two columns even when there isn't
+    // really room for that.
+    var columns = containerWidth >= MIN_TWO_COL_WIDTH ? 2 : 1;
     var colWidth = columns === 1 ? containerWidth : (containerWidth - GAP) / 2;
     var colHeights = new Array(columns).fill(0);
 

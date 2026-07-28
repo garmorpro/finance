@@ -48,29 +48,39 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
                     </div>
                 </div>
 
-                <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
-                    <?php foreach ($widgetOrder as $widgetKey): ?>
-                        <?php $isWide = in_array($widgetKey, $wideWidgets, true); ?>
-                        <div class="tile <?= $isWide ? 'tile-wide' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="false" data-widget="<?= View::e($widgetKey) ?>">
-                            <div class="tile-card">
-                                <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
-                                    <?php View::partial('dashboard/widgets/' . $widgetKey, [
-                                        'widgetKey' => $widgetKey,
-                                        'isWide' => $isWide,
-                                        'netWorth' => $netWorth,
-                                        'netWorthTrend' => $netWorthTrend,
-                                        'allocationSummary' => $allocationSummary,
-                                        'runwayMonths' => $runwayMonths,
-                                        'thisMonthCashFlow' => $thisMonthCashFlow,
-                                        'incomeByCategory' => $incomeByCategory,
-                                        'topExpenseCategories' => $topExpenseCategories,
-                                    ]); ?>
-                                <?php else: ?>
-                                    <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>
-                                <?php endif; ?>
-                            </div>
+                <div class="flex flex-col lg:flex-row gap-6 items-start">
+                    <div class="flex-1 min-w-0 w-full">
+                        <p class="text-xs text-stone-500 dark:text-stone-400 mb-3">Drag tiles to rearrange</p>
+                        <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
+                            <?php foreach ($widgetOrder as $widgetKey): ?>
+                                <?php $isWide = in_array($widgetKey, $wideWidgets, true); ?>
+                                <div class="tile <?= $isWide ? 'tile-wide' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
+                                    <div class="tile-card">
+                                        <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
+                                            <?php View::partial('dashboard/widgets/' . $widgetKey, [
+                                                'widgetKey' => $widgetKey,
+                                                'isWide' => $isWide,
+                                                'netWorth' => $netWorth,
+                                                'netWorthTrend' => $netWorthTrend,
+                                                'runwayMonths' => $runwayMonths,
+                                                'thisMonthCashFlow' => $thisMonthCashFlow,
+                                                'incomeByCategory' => $incomeByCategory,
+                                                'topExpenseCategories' => $topExpenseCategories,
+                                            ]); ?>
+                                        <?php else: ?>
+                                            <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
-                    <?php endforeach; ?>
+                    </div>
+
+                    <aside class="dashboard-sidebar-sticky w-full lg:w-[360px] flex-shrink-0">
+                        <div class="tile-card">
+                            <?php View::partial('dashboard/widgets/lifecycle', ['allocationSummary' => $allocationSummary]); ?>
+                        </div>
+                    </aside>
                 </div>
 
                 <div>

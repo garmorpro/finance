@@ -39,11 +39,7 @@ final class DashboardController
         $topExpenseCategories = $householdId !== null ? array_slice($reportingService->spendingByCategory($householdId, gmdate('Y-m-01')), 0, 5) : [];
 
         $layout = $userRepo->getDashboardLayout($userId);
-        // Drag-to-reorder is temporarily disabled, so the dashboard always
-        // renders the canonical widget order below rather than a per-user
-        // saved order — otherwise widgets added after a user last dragged
-        // tiles around would only ever append to the end of their old order.
-        $widgetOrder = DashboardWidgets::resolveOrder([]);
+        $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
         $hiddenWidgets = DashboardWidgets::filterKnown($layout['hidden']);
         $wideWidgets = DashboardWidgets::resolveWide($layout['wide']);
 

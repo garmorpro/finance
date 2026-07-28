@@ -187,6 +187,18 @@
   }
 
   /*
+   * "Lifecycle of a Dollar" sits outside the draggable grid as a fixed
+   * panel that stays in view while the main column scrolls past it.
+   * Sticky only kicks in at the lg breakpoint, where there's a real
+   * two-column layout to be sticky within — on narrower screens it's
+   * just a normal block, stacking above/below the main column.
+   */
+  .dashboard-sidebar-sticky {
+    @apply lg:sticky;
+    top: 1.5rem;
+  }
+
+  /*
    * Tiles start in normal document flow (plain stacked blocks, mb-4
    * spacing) so the dashboard is readable before dashboard.js runs — it
    * switches each tile to `position: absolute` itself once it computes
@@ -194,7 +206,7 @@
    * absolutely-positioned tiles could flash before JS executes.
    */
   .tile {
-    @apply select-none mb-4;
+    @apply cursor-grab active:cursor-grabbing select-none mb-4;
     transition: top 0.2s ease, left 0.2s ease, width 0.2s ease;
   }
 
@@ -239,7 +251,14 @@
     height: 0.55rem;
   }
 
-  /* "Lifecycle of a Dollar" waterfall rows */
+  /* "Lifecycle of a Dollar" sticky sidebar panel */
+  .lifecycle-title {
+    @apply text-terracotta-700 dark:text-terracotta-300 font-bold uppercase tracking-wide;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    margin: 0 0 0.25rem;
+  }
+
   .lifecycle-item {
     @apply flex items-center justify-between gap-3 rounded-lg bg-terracotta-600/5 dark:bg-terracotta-400/10;
     padding: 0.65rem 0.85rem;

@@ -1,18 +1,21 @@
 <?php
 
-/** @var array{income: string, livingExpenses: string, debtPayments: string, savings: string, giving: string, remaining: string}|null $allocationSummary */
-/** @var string $widgetKey */
-/** @var bool $isWide */
+/**
+ * Rendered directly as a fixed sticky sidebar panel (see
+ * dashboard/index.php) — not a draggable/hideable tile, so unlike the
+ * other widget partials this one doesn't take widgetKey/isWide or go
+ * through _header.php.
+ *
+ * @var array{income: string, livingExpenses: string, debtPayments: string, savings: string, giving: string, remaining: string}|null $allocationSummary
+ */
 
 use App\Support\Money;
-use App\Support\View;
 
 $hasActivity = $allocationSummary !== null && bccomp($allocationSummary['income'], '0.00', 2) > 0;
 $isOverspent = $hasActivity && bccomp($allocationSummary['remaining'], '0.00', 2) < 0;
 
-View::partial('dashboard/widgets/_header', ['title' => 'The Lifecycle of a Dollar', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
-
 ?>
+<h2 class="lifecycle-title">The Lifecycle of a Dollar</h2>
 <p class="text-xs text-stone-500 dark:text-stone-400 mb-3">Follow this month's income through to what's actually left over.</p>
 
 <?php if (!$hasActivity): ?>

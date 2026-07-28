@@ -20,5 +20,6 @@ use App\Support\View;
         >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18-5h-3a2 2 0 0 0-2 2v3M3 16v3a2 2 0 0 0 2 2h3m11-5v3a2 2 0 0 1-2 2h-3"/></svg>
         </button>
+        <span class="tile-drag-handle" aria-hidden="true">&#8942;&#8942;</span>
     </div>
 </div>
