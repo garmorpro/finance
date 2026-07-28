@@ -22,4 +22,28 @@ final class Money
 
         return $isNegative ? '-' . $formatted : $formatted;
     }
+
+    /**
+     * An abbreviated form ($4.8K, $1.2M) for tight spaces like a donut
+     * chart's center label, where the full 2-decimal format doesn't fit.
+     */
+    public static function formatCompact(?string $amount): string
+    {
+        if ($amount === null) {
+            return '—';
+        }
+
+        $isNegative = str_starts_with($amount, '-');
+        $abs = (float) ltrim($amount, '-');
+
+        if ($abs >= 1_000_000) {
+            $formatted = '$' . number_format($abs / 1_000_000, 1) . 'M';
+        } elseif ($abs >= 1_000) {
+            $formatted = '$' . number_format($abs / 1_000, 1) . 'K';
+        } else {
+            $formatted = '$' . number_format($abs, 0);
+        }
+
+        return $isNegative ? '-' . $formatted : $formatted;
+    }
 }

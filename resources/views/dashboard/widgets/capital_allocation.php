@@ -49,7 +49,7 @@ View::partial('dashboard/widgets/_header', ['title' => 'Capital Allocation', 'wi
     <div class="flex items-center gap-5">
         <div class="donut" style="background: <?= $gradient ?>;">
             <div class="donut-hole bg-white dark:bg-stone-900">
-                <span class="text-lg font-semibold text-stone-900 dark:text-white"><?= Money::format($allocationSummary['income']) ?></span>
+                <span class="text-lg font-semibold text-stone-900 dark:text-white"><?= Money::formatCompact($allocationSummary['income']) ?></span>
                 <span class="text-[10px] text-stone-400 dark:text-stone-500">allocated</span>
             </div>
         </div>

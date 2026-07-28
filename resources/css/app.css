@@ -218,6 +218,18 @@
     @apply flex items-center justify-between mb-3;
   }
 
+  /*
+   * Dashboard tile titles use .label-text for the shared uppercase/
+   * tracking-wide treatment, but bolder and full-contrast rather than
+   * .label-text's usual muted caption color — that muted style is
+   * still correct everywhere else .label-text is used (stat captions
+   * on Debt, Cash Flow, Goals, etc.), so this only overrides it inside
+   * a tile header, not the class itself.
+   */
+  .tile-header .label-text {
+    @apply font-bold text-stone-900 dark:text-white;
+  }
+
   .tile-drag-handle {
     @apply text-stone-300 dark:text-stone-700;
   }

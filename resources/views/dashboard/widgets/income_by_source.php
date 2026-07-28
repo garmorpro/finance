@@ -53,7 +53,7 @@ View::partial('dashboard/widgets/_header', ['title' => 'Income by Source', 'widg
     <div class="flex items-center gap-5">
         <div class="donut" style="background: <?= $gradient ?>;">
             <div class="donut-hole bg-white dark:bg-stone-900">
-                <span class="text-lg font-semibold text-stone-900 dark:text-white"><?= Money::format($total) ?></span>
+                <span class="text-lg font-semibold text-stone-900 dark:text-white"><?= Money::formatCompact($total) ?></span>
             </div>
         </div>
         <div class="space-y-2 text-sm">
