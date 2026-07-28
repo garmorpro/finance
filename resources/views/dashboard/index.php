@@ -41,7 +41,6 @@ use App\Support\View;
                 <div class="flex items-end justify-between">
                     <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Hello, <?= View::e(explode(' ', $user['name'])[0]) ?>!</h1>
                     <div class="flex items-center gap-4">
-                        <p class="text-xs text-stone-500 dark:text-stone-400">Drag tiles to rearrange</p>
                         <button type="button" id="customize-open" class="btn-secondary">Customize</button>
                     </div>
                 </div>
@@ -49,7 +48,7 @@ use App\Support\View;
                 <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
                     <?php foreach ($widgetOrder as $widgetKey): ?>
                         <?php $isWide = in_array($widgetKey, $wideWidgets, true); ?>
-                        <div class="tile <?= $isWide ? 'tile-wide' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
+                        <div class="tile <?= $isWide ? 'tile-wide' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="false" data-widget="<?= View::e($widgetKey) ?>">
                             <div class="tile-card">
                                 <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
                                     <?php View::partial('dashboard/widgets/' . $widgetKey, [

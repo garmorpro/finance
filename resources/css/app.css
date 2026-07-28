@@ -194,7 +194,7 @@
    * absolutely-positioned tiles could flash before JS executes.
    */
   .tile {
-    @apply cursor-grab active:cursor-grabbing select-none mb-4;
+    @apply select-none mb-4;
     transition: top 0.2s ease, left 0.2s ease, width 0.2s ease;
   }
 

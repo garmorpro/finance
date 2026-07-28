@@ -67,7 +67,11 @@ final class DashboardController
         $debtSummary = $debtService->summarize($debtAccounts);
 
         $layout = $userRepo->getDashboardLayout($userId);
-        $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
+        // Drag-to-reorder is temporarily disabled, so the dashboard always
+        // renders the canonical widget order below rather than a per-user
+        // saved order — otherwise widgets added after a user last dragged
+        // tiles around would only ever append to the end of their old order.
+        $widgetOrder = DashboardWidgets::resolveOrder([]);
         $hiddenWidgets = DashboardWidgets::filterKnown($layout['hidden']);
         $wideWidgets = DashboardWidgets::resolveWide($layout['wide']);
 
