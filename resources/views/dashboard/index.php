@@ -62,6 +62,7 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
                                                 'isWide' => $isWide,
                                                 'netWorth' => $netWorth,
                                                 'netWorthTrend' => $netWorthTrend,
+                                                'allocationSummary' => $allocationSummary,
                                                 'runwayMonths' => $runwayMonths,
                                                 'thisMonthCashFlow' => $thisMonthCashFlow,
                                                 'incomeByCategory' => $incomeByCategory,
