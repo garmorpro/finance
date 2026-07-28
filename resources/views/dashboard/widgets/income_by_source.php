@@ -14,13 +14,18 @@ foreach ($incomeByCategory as $row) {
     $total = bcadd($total, $row['amount'], 2);
 }
 
+// Always drawn from the curated palette above (matching Capital
+// Allocation's fixed colors), rather than each category's own stored
+// color — categories are colored for the Categories/Transactions
+// pages, but this widget's donut is meant to read as part of the same
+// terracotta/emerald dashboard palette as its neighbors.
 $slices = [];
 if (bccomp($total, '0.00', 2) > 0) {
     foreach ($incomeByCategory as $i => $row) {
         $pct = (float) bcdiv(bcmul($row['amount'], '100', 4), $total, 4);
         $slices[] = [
             'label' => $row['name'],
-            'color' => $row['color'] ?? $palette[$i % count($palette)],
+            'color' => $palette[$i % count($palette)],
             'pct' => $pct,
         ];
     }

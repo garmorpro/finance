@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Database\Connection;
+use App\Support\DashboardWidgets;
 use PDO;
 
 final class UserRepository
@@ -189,6 +190,15 @@ final class UserRepository
             return ['order' => [], 'hidden' => [], 'wide' => null];
         }
 
+        // A layout saved against an earlier widget set (widgets added,
+        // removed, or renamed since) is discarded rather than partially
+        // applied — otherwise known keys survive, new ones just get
+        // appended to the end, and the page stops matching its own
+        // current default layout. See DashboardWidgets::fingerprint().
+        if (($decoded['widgetSetVersion'] ?? null) !== DashboardWidgets::fingerprint()) {
+            return ['order' => [], 'hidden' => [], 'wide' => null];
+        }
+
         $order = is_array($decoded['order'] ?? null) ? array_values(array_filter($decoded['order'], 'is_string')) : [];
         $hidden = is_array($decoded['hidden'] ?? null) ? array_values(array_filter($decoded['hidden'], 'is_string')) : [];
         $wide = is_array($decoded['wide'] ?? null) ? array_values(array_filter($decoded['wide'], 'is_string')) : null;
@@ -230,7 +240,11 @@ final class UserRepository
      */
     private function saveDashboardLayout(int $userId, array $order, array $hidden, ?array $wide): void
     {
-        $payload = ['order' => array_values($order), 'hidden' => array_values($hidden)];
+        $payload = [
+            'order' => array_values($order),
+            'hidden' => array_values($hidden),
+            'widgetSetVersion' => DashboardWidgets::fingerprint(),
+        ];
         if ($wide !== null) {
             $payload['wide'] = array_values($wide);
         }

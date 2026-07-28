@@ -17,7 +17,10 @@ final class DashboardWidgets
      * (see dashboard/index.php), not a draggable/hideable tile.
      */
     private const WIDGETS = [
-        'key_metrics' => ['title' => 'Key Metrics', 'available' => true, 'wide' => true],
+        'runway' => ['title' => 'Runway', 'available' => true],
+        'savings_rate' => ['title' => 'Savings Rate', 'available' => true],
+        'net_worth' => ['title' => 'Net Worth', 'available' => true],
+        'cash_flow' => ['title' => 'Cash Flow This Month', 'available' => true],
         'capital_allocation' => ['title' => 'Capital Allocation', 'available' => true],
         'income_by_source' => ['title' => 'Income by Source', 'available' => true],
         'top_expense_categories' => ['title' => 'Top Expense Categories', 'available' => true],
@@ -25,8 +28,23 @@ final class DashboardWidgets
 
     /** @var list<string> */
     private const DEFAULT_ORDER = [
-        'key_metrics', 'capital_allocation', 'income_by_source', 'top_expense_categories',
+        'runway', 'savings_rate', 'net_worth', 'cash_flow',
+        'capital_allocation', 'income_by_source', 'top_expense_categories',
     ];
+
+    /**
+     * A fingerprint of the current widget set. Saved layouts are only
+     * honored when they were saved against this exact set — see
+     * UserRepository::getDashboardLayout(). Widgets have been added,
+     * removed, and renamed several times during this redesign; without
+     * this, a saved layout from an earlier widget set would keep
+     * partially applying (known keys kept, new ones just appended to the
+     * end) instead of resetting cleanly to the new defaults.
+     */
+    public static function fingerprint(): string
+    {
+        return implode(',', array_keys(self::WIDGETS));
+    }
 
     public static function title(string $key): string
     {
