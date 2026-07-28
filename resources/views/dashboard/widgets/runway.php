@@ -6,7 +6,7 @@
 
 use App\Support\View;
 
-View::partial('dashboard/widgets/_header', ['title' => 'Runway', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
+View::partial('dashboard/widgets/_header', ['title' => 'Runway', 'widgetKey' => $widgetKey, 'isWide' => $isWide, 'resizable' => false]);
 
 ?>
 <div class="text-2xl font-semibold text-stone-900 dark:text-white"><?= $runwayMonths === null ? '—' : number_format($runwayMonths, 1) . ' months' ?></div>

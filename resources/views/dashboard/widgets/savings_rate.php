@@ -11,7 +11,7 @@ if ($allocationSummary !== null && bccomp($allocationSummary['income'], '0.00', 
     $savingsRate = (float) bcdiv(bcmul($allocationSummary['savings'], '100', 4), $allocationSummary['income'], 1);
 }
 
-View::partial('dashboard/widgets/_header', ['title' => 'Savings Rate', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
+View::partial('dashboard/widgets/_header', ['title' => 'Savings Rate', 'widgetKey' => $widgetKey, 'isWide' => $isWide, 'resizable' => false]);
 
 ?>
 <div class="text-2xl font-semibold text-stone-900 dark:text-white"><?= $savingsRate === null ? '—' : number_format($savingsRate, 0) . '%' ?></div>

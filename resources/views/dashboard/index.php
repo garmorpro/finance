@@ -10,7 +10,8 @@
 /** @var array{label: string, income: string, expenses: string, net: string, cumulative: string}|null $thisMonthCashFlow */
 /** @var list<array{name: string, color: string|null, amount: string}> $incomeByCategory */
 /** @var list<array{name: string, color: string|null, amount: string}> $topExpenseCategories */
-/** @var list<string> $widgetOrder */
+/** @var list<string> $statsOrder */
+/** @var list<string> $mainOrder */
 /** @var list<string> $hiddenWidgets */
 /** @var list<string> $wideWidgets */
 /** @var string $csrfToken */
@@ -51,10 +52,28 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
                     </div>
                 </div>
 
+                <div id="stats-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-csrf-token="<?= View::e($csrfToken) ?>">
+                    <?php foreach ($statsOrder as $widgetKey): ?>
+                        <div class="tile <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
+                            <div class="tile-card">
+                                <?php View::partial('dashboard/widgets/' . $widgetKey, [
+                                    'widgetKey' => $widgetKey,
+                                    'isWide' => false,
+                                    'netWorth' => $netWorth,
+                                    'netWorthTrend' => $netWorthTrend,
+                                    'allocationSummary' => $allocationSummary,
+                                    'runwayMonths' => $runwayMonths,
+                                    'thisMonthCashFlow' => $thisMonthCashFlow,
+                                ]); ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
                 <div class="flex flex-col lg:flex-row gap-6 items-start">
                     <div class="flex-1 min-w-0 w-full">
                         <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
-                            <?php foreach ($widgetOrder as $widgetKey): ?>
+                            <?php foreach ($mainOrder as $widgetKey): ?>
                                 <?php $isWide = in_array($widgetKey, $wideWidgets, true); ?>
                                 <div class="tile <?= $isWide ? 'tile-wide' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
                                     <div class="tile-card">
@@ -62,11 +81,7 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
                                             <?php View::partial('dashboard/widgets/' . $widgetKey, [
                                                 'widgetKey' => $widgetKey,
                                                 'isWide' => $isWide,
-                                                'netWorth' => $netWorth,
-                                                'netWorthTrend' => $netWorthTrend,
                                                 'allocationSummary' => $allocationSummary,
-                                                'runwayMonths' => $runwayMonths,
-                                                'thisMonthCashFlow' => $thisMonthCashFlow,
                                                 'incomeByCategory' => $incomeByCategory,
                                                 'topExpenseCategories' => $topExpenseCategories,
                                             ]); ?>
@@ -145,7 +160,7 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
             <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Choose which tiles appear on your overview.</p>
 
             <div id="customize-list" class="space-y-1" data-csrf-token="<?= View::e($csrfToken) ?>">
-                <?php foreach ($widgetOrder as $widgetKey): ?>
+                <?php foreach ([...$statsOrder, ...$mainOrder] as $widgetKey): ?>
                     <?php $isHidden = in_array($widgetKey, $hiddenWidgets, true); ?>
                     <label class="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer">
                         <span class="text-sm font-medium text-stone-700 dark:text-stone-300"><?= View::e(DashboardWidgets::title($widgetKey)) ?></span>

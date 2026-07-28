@@ -7,7 +7,7 @@
 use App\Support\Money;
 use App\Support\View;
 
-View::partial('dashboard/widgets/_header', ['title' => 'Cash Flow This Month', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
+View::partial('dashboard/widgets/_header', ['title' => 'Cash Flow This Month', 'widgetKey' => $widgetKey, 'isWide' => $isWide, 'resizable' => false]);
 
 ?>
 <?php if ($thisMonthCashFlow === null): ?>

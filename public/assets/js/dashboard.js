@@ -2,14 +2,14 @@
   'use strict';
 
   var grid = document.getElementById('dashboard-grid');
-  if (!grid) {
+  var statsGrid = document.getElementById('stats-grid');
+  if (!grid && !statsGrid) {
     return;
   }
 
-  var csrfToken = grid.dataset.csrfToken;
-  var dragging = null;
+  var csrfToken = (grid || statsGrid).dataset.csrfToken;
 
-  // --- Masonry layout ---
+  // --- Masonry layout (main grid only) ---
   // Tiles flow into the shortest column, computed here rather than via
   // CSS multi-column — `columns` + `break-inside: avoid` + `column-span:
   // all` + a box-shadowed child proved unreliable across browsers (it
@@ -18,10 +18,19 @@
   // class of bug entirely: nothing ever gets fragmented across a column
   // boundary because there's no column boundary as far as the browser's
   // layout engine is concerned.
+  //
+  // The stats row (#stats-grid) doesn't need any of this — it's a fixed
+  // 4-up (or fewer, responsively) native CSS grid of equal-size cards,
+  // so the browser lays it out on its own; only drag-to-reorder is
+  // wired up for it below.
   var GAP = 16; // px, matches Tailwind's gap-4 / 1rem
   var MIN_TWO_COL_WIDTH = 560; // px; below this a 2-column split leaves each tile too cramped
 
   function layoutMasonry() {
+    if (!grid) {
+      return;
+    }
+
     var containerWidth = grid.clientWidth;
     if (containerWidth === 0) {
       return;
@@ -96,7 +105,7 @@
   // guessing at a fixed delay. Chart canvases sit in a fixed-height
   // wrapper, so this doesn't loop: width changes from layoutMasonry()
   // don't feed back into another height change.
-  if (window.ResizeObserver) {
+  if (grid && window.ResizeObserver) {
     var observer = new ResizeObserver(scheduleLayout);
     Array.prototype.forEach.call(grid.querySelectorAll('.tile-card'), function (card) {
       observer.observe(card);
@@ -104,59 +113,81 @@
   }
 
   // --- Drag to reorder ---
-  function currentOrder() {
-    return Array.prototype.map.call(grid.querySelectorAll('[data-widget]'), function (el) {
-      return el.dataset.widget;
-    });
-  }
-
-  function saveOrder() {
-    var body = new URLSearchParams();
-    body.set('csrf_token', csrfToken);
-    body.set('order', JSON.stringify(currentOrder()));
-
-    fetch('/dashboard/layout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    }).catch(function () {
-      // Silent failure is acceptable here: worst case, the next page
-      // load falls back to the last successfully saved order.
-    });
-  }
-
-  grid.addEventListener('dragstart', function (event) {
-    var tile = event.target.closest('[data-widget]');
-    if (!tile) {
-      return;
-    }
-    dragging = tile;
-    tile.classList.add('opacity-50');
-    event.dataTransfer.effectAllowed = 'move';
-  });
-
-  grid.addEventListener('dragend', function () {
-    if (dragging) {
-      dragging.classList.remove('opacity-50');
-    }
-    dragging = null;
-    saveOrder();
-    layoutMasonry();
-  });
-
-  grid.addEventListener('dragover', function (event) {
-    event.preventDefault();
-
-    var target = event.target.closest('[data-widget]');
-    if (!target || target === dragging || !dragging) {
+  // Each group (the fixed stats row, the main masonry grid) is its own
+  // independent drag-and-drop scope: tiles only ever reorder among
+  // siblings within the same container, and each persists to its own
+  // "group" via /dashboard/layout so the two can never get mixed
+  // together in one saved order.
+  function setupDragReorder(container, group, onDrop) {
+    if (!container) {
       return;
     }
 
-    var rect = target.getBoundingClientRect();
-    var before = (event.clientY - rect.top) < rect.height / 2;
+    var dragging = null;
 
-    grid.insertBefore(dragging, before ? target : target.nextSibling);
-  });
+    function currentOrder() {
+      return Array.prototype.map.call(container.querySelectorAll('[data-widget]'), function (el) {
+        return el.dataset.widget;
+      });
+    }
+
+    function saveOrder() {
+      var body = new URLSearchParams();
+      body.set('csrf_token', csrfToken);
+      body.set('group', group);
+      body.set('order', JSON.stringify(currentOrder()));
+
+      fetch('/dashboard/layout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      }).catch(function () {
+        // Silent failure is acceptable here: worst case, the next page
+        // load falls back to the last successfully saved order.
+      });
+    }
+
+    container.addEventListener('dragstart', function (event) {
+      var tile = event.target.closest('[data-widget]');
+      if (!tile || tile.parentElement !== container) {
+        return;
+      }
+      dragging = tile;
+      tile.classList.add('opacity-50');
+      event.dataTransfer.effectAllowed = 'move';
+    });
+
+    container.addEventListener('dragend', function () {
+      if (dragging) {
+        dragging.classList.remove('opacity-50');
+      }
+      dragging = null;
+      saveOrder();
+      if (onDrop) {
+        onDrop();
+      }
+    });
+
+    container.addEventListener('dragover', function (event) {
+      if (!dragging) {
+        return;
+      }
+      event.preventDefault();
+
+      var target = event.target.closest('[data-widget]');
+      if (!target || target === dragging || target.parentElement !== container) {
+        return;
+      }
+
+      var rect = target.getBoundingClientRect();
+      var before = (event.clientY - rect.top) < rect.height / 2;
+
+      container.insertBefore(dragging, before ? target : target.nextSibling);
+    });
+  }
+
+  setupDragReorder(grid, 'main', layoutMasonry);
+  setupDragReorder(statsGrid, 'stats', null);
 
   // --- Customize modal: show/hide tiles ---
   var modal = document.getElementById('customize-modal');
@@ -258,7 +289,10 @@
         return;
       }
 
-      var tile = grid.querySelector('[data-widget="' + toggle.dataset.widgetToggle + '"]');
+      // The toggled widget could live in either the stats row or the
+      // main grid, so look it up across the whole document rather than
+      // scoping to one container.
+      var tile = document.querySelector('[data-widget="' + toggle.dataset.widgetToggle + '"]');
       if (tile) {
         tile.classList.toggle('hidden', !toggle.checked);
       }
@@ -268,40 +302,42 @@
     });
   }
 
-  // --- Per-tile resize toggle (full width vs. column width) ---
-  grid.addEventListener('click', function (event) {
-    var btn = event.target.closest('[data-widget-resize]');
-    if (!btn) {
-      return;
-    }
+  // --- Per-tile resize toggle (full width vs. column width; main grid only) ---
+  if (grid) {
+    grid.addEventListener('click', function (event) {
+      var btn = event.target.closest('[data-widget-resize]');
+      if (!btn) {
+        return;
+      }
 
-    var tile = btn.closest('[data-widget]');
-    if (!tile) {
-      return;
-    }
+      var tile = btn.closest('[data-widget]');
+      if (!tile) {
+        return;
+      }
 
-    var nowWide = !tile.classList.contains('tile-wide');
-    tile.classList.toggle('tile-wide', nowWide);
-    btn.dataset.wide = nowWide ? '1' : '0';
-    btn.title = nowWide ? 'Shrink to column width' : 'Expand to full width';
-    layoutMasonry();
+      var nowWide = !tile.classList.contains('tile-wide');
+      tile.classList.toggle('tile-wide', nowWide);
+      btn.dataset.wide = nowWide ? '1' : '0';
+      btn.title = nowWide ? 'Shrink to column width' : 'Expand to full width';
+      layoutMasonry();
 
-    var wide = Array.prototype.map
-      .call(grid.querySelectorAll('[data-widget-resize][data-wide="1"]'), function (el) {
-        return el.closest('[data-widget]').dataset.widget;
+      var wide = Array.prototype.map
+        .call(grid.querySelectorAll('[data-widget-resize][data-wide="1"]'), function (el) {
+          return el.closest('[data-widget]').dataset.widget;
+        });
+
+      var body = new URLSearchParams();
+      body.set('csrf_token', csrfToken);
+      body.set('wide', JSON.stringify(wide));
+
+      fetch('/dashboard/width', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      }).catch(function () {
+        // Silent failure is acceptable here too: worst case, the next
+        // page load falls back to the last successfully saved width state.
       });
-
-    var body = new URLSearchParams();
-    body.set('csrf_token', csrfToken);
-    body.set('wide', JSON.stringify(wide));
-
-    fetch('/dashboard/width', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    }).catch(function () {
-      // Silent failure is acceptable here too: worst case, the next
-      // page load falls back to the last successfully saved width state.
     });
-  });
+  }
 })();

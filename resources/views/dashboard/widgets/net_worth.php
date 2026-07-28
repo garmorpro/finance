@@ -13,7 +13,7 @@ if (count($netWorthTrend) >= 2) {
     $netWorthChange = bcsub($netWorthTrend[count($netWorthTrend) - 1]['netWorth'], $netWorthTrend[count($netWorthTrend) - 2]['netWorth'], 2);
 }
 
-View::partial('dashboard/widgets/_header', ['title' => 'Net Worth', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
+View::partial('dashboard/widgets/_header', ['title' => 'Net Worth', 'widgetKey' => $widgetKey, 'isWide' => $isWide, 'resizable' => false]);
 
 ?>
 <div class="text-2xl font-semibold text-stone-900 dark:text-white"><?= $netWorth === null ? '—' : Money::format($netWorth['net']) ?></div>

@@ -39,7 +39,8 @@ final class DashboardController
         $topExpenseCategories = $householdId !== null ? array_slice($reportingService->spendingByCategory($householdId, gmdate('Y-m-01')), 0, 5) : [];
 
         $layout = $userRepo->getDashboardLayout($userId);
-        $widgetOrder = DashboardWidgets::resolveOrder($layout['order']);
+        $statsOrder = DashboardWidgets::resolveOrder('stats', $layout['statsOrder']);
+        $mainOrder = DashboardWidgets::resolveOrder('main', $layout['mainOrder']);
         $hiddenWidgets = DashboardWidgets::filterKnown($layout['hidden']);
         $wideWidgets = DashboardWidgets::resolveWide($layout['wide']);
 
@@ -54,7 +55,8 @@ final class DashboardController
             'thisMonthCashFlow' => $thisMonthCashFlow,
             'incomeByCategory' => $incomeByCategory,
             'topExpenseCategories' => $topExpenseCategories,
-            'widgetOrder' => $widgetOrder,
+            'statsOrder' => $statsOrder,
+            'mainOrder' => $mainOrder,
             'hiddenWidgets' => $hiddenWidgets,
             'wideWidgets' => $wideWidgets,
             'csrfToken' => Csrf::token(),
@@ -62,10 +64,12 @@ final class DashboardController
     }
 
     /**
-     * AJAX endpoint the drag-and-drop grid calls to persist tile order.
-     * Only touches the "order" half of the saved layout — visibility is
-     * saved separately by saveVisibility() so each action can't clobber
-     * the other's most recent change.
+     * AJAX endpoint the drag-and-drop grids call to persist tile order.
+     * `group` scopes the save to just the "stats" row or the "main" grid
+     * — the two are reordered independently and never mixed. Only
+     * touches the "order" half of the saved layout — visibility is saved
+     * separately by saveVisibility() so each action can't clobber the
+     * other's most recent change.
      */
     public function saveLayout(Request $request): void
     {
@@ -76,14 +80,21 @@ final class DashboardController
             return;
         }
 
-        $decoded = json_decode($request->post('order'), true);
+        $group = $request->post('group');
+        if (!in_array($group, ['stats', 'main'], true)) {
+            Response::json(['error' => 'Invalid widget group.'], 422);
+            return;
+        }
 
-        if (!is_array($decoded) || array_filter($decoded, fn ($v): bool => !is_string($v) || !DashboardWidgets::exists($v)) !== []) {
+        $decoded = json_decode($request->post('order'), true);
+        $groupKeys = DashboardWidgets::keysInGroup($group);
+
+        if (!is_array($decoded) || array_filter($decoded, fn ($v): bool => !is_string($v) || !in_array($v, $groupKeys, true)) !== []) {
             Response::json(['error' => 'Invalid layout data.'], 422);
             return;
         }
 
-        (new UserRepository())->updateDashboardOrder((int) AuthMiddleware::userId(), array_values($decoded));
+        (new UserRepository())->updateDashboardOrder((int) AuthMiddleware::userId(), $group, array_values($decoded));
 
         Response::json(['status' => 'ok']);
     }

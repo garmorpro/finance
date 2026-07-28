@@ -176,10 +176,15 @@ final class UserRepository
      * "full list, not a diff" convention as `hidden`), including an
      * explicitly-saved empty array meaning "everything narrow."
      *
-     * @return array{order: list<string>, hidden: list<string>, wide: list<string>|null}
+     * `statsOrder` and `mainOrder` are separate, independently-draggable
+     * groups — see DashboardWidgets's class doc comment.
+     *
+     * @return array{statsOrder: list<string>, mainOrder: list<string>, hidden: list<string>, wide: list<string>|null}
      */
     public function getDashboardLayout(int $userId): array
     {
+        $empty = ['statsOrder' => [], 'mainOrder' => [], 'hidden' => [], 'wide' => null];
+
         $stmt = Connection::get()->prepare('SELECT dashboard_layout FROM users WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $userId]);
 
@@ -187,7 +192,7 @@ final class UserRepository
         $decoded = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
 
         if (!is_array($decoded)) {
-            return ['order' => [], 'hidden' => [], 'wide' => null];
+            return $empty;
         }
 
         // A layout saved against an earlier widget set (widgets added,
@@ -196,23 +201,26 @@ final class UserRepository
         // appended to the end, and the page stops matching its own
         // current default layout. See DashboardWidgets::fingerprint().
         if (($decoded['widgetSetVersion'] ?? null) !== DashboardWidgets::fingerprint()) {
-            return ['order' => [], 'hidden' => [], 'wide' => null];
+            return $empty;
         }
 
-        $order = is_array($decoded['order'] ?? null) ? array_values(array_filter($decoded['order'], 'is_string')) : [];
+        $statsOrder = is_array($decoded['statsOrder'] ?? null) ? array_values(array_filter($decoded['statsOrder'], 'is_string')) : [];
+        $mainOrder = is_array($decoded['mainOrder'] ?? null) ? array_values(array_filter($decoded['mainOrder'], 'is_string')) : [];
         $hidden = is_array($decoded['hidden'] ?? null) ? array_values(array_filter($decoded['hidden'], 'is_string')) : [];
         $wide = is_array($decoded['wide'] ?? null) ? array_values(array_filter($decoded['wide'], 'is_string')) : null;
 
-        return ['order' => $order, 'hidden' => $hidden, 'wide' => $wide];
+        return ['statsOrder' => $statsOrder, 'mainOrder' => $mainOrder, 'hidden' => $hidden, 'wide' => $wide];
     }
 
     /**
      * @param list<string> $order
      */
-    public function updateDashboardOrder(int $userId, array $order): void
+    public function updateDashboardOrder(int $userId, string $group, array $order): void
     {
         $current = $this->getDashboardLayout($userId);
-        $this->saveDashboardLayout($userId, $order, $current['hidden'], $current['wide']);
+        $statsOrder = $group === 'stats' ? $order : $current['statsOrder'];
+        $mainOrder = $group === 'main' ? $order : $current['mainOrder'];
+        $this->saveDashboardLayout($userId, $statsOrder, $mainOrder, $current['hidden'], $current['wide']);
     }
 
     /**
@@ -221,7 +229,7 @@ final class UserRepository
     public function updateDashboardHidden(int $userId, array $hidden): void
     {
         $current = $this->getDashboardLayout($userId);
-        $this->saveDashboardLayout($userId, $current['order'], $hidden, $current['wide']);
+        $this->saveDashboardLayout($userId, $current['statsOrder'], $current['mainOrder'], $hidden, $current['wide']);
     }
 
     /**
@@ -230,18 +238,20 @@ final class UserRepository
     public function updateDashboardWide(int $userId, array $wide): void
     {
         $current = $this->getDashboardLayout($userId);
-        $this->saveDashboardLayout($userId, $current['order'], $current['hidden'], $wide);
+        $this->saveDashboardLayout($userId, $current['statsOrder'], $current['mainOrder'], $current['hidden'], $wide);
     }
 
     /**
-     * @param list<string> $order
+     * @param list<string> $statsOrder
+     * @param list<string> $mainOrder
      * @param list<string> $hidden
      * @param list<string>|null $wide
      */
-    private function saveDashboardLayout(int $userId, array $order, array $hidden, ?array $wide): void
+    private function saveDashboardLayout(int $userId, array $statsOrder, array $mainOrder, array $hidden, ?array $wide): void
     {
         $payload = [
-            'order' => array_values($order),
+            'statsOrder' => array_values($statsOrder),
+            'mainOrder' => array_values($mainOrder),
             'hidden' => array_values($hidden),
             'widgetSetVersion' => DashboardWidgets::fingerprint(),
         ];
