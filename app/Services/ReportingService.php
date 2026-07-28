@@ -106,24 +106,12 @@ final class ReportingService
     }
 
     /**
-     * Income and expense totals per month for the last $months months.
-     * Transfers are never income or spending (per CLAUDE.md) and are
-     * excluded by the transaction_type filter alone, without needing a
-     * separate check. Honors exclude_from_reports, distinct from the
-     * exclude_from_budget flag budgets use.
-     *
-     * @return list<array{label: string, income: string, expenses: string}>
-     */
-    public function incomeVsSpending(int $householdId, int $months = 6): array
-    {
-        return $this->monthlyIncomeExpense($householdId, $months);
-    }
-
-    /**
-     * Same monthly income/expense series as incomeVsSpending(), with a net
-     * (income minus expenses) and a running cumulative total added — the
-     * "money in vs. money out over time" story a fixed side-by-side
-     * comparison doesn't tell on its own.
+     * Monthly income/expense series with a net (income minus expenses) and
+     * a running cumulative total added — the "money in vs. money out over
+     * time" story. Transfers are never income or spending (per CLAUDE.md)
+     * and are excluded by the transaction_type filter alone. Honors
+     * exclude_from_reports, distinct from the exclude_from_budget flag
+     * budgets use.
      *
      * @return list<array{label: string, income: string, expenses: string, net: string, cumulative: string}>
      */
@@ -244,6 +232,72 @@ final class ReportingService
                 $totals[$categoryId] = ['name' => $categoryById[$categoryId]['name'], 'color' => $categoryById[$categoryId]['color'], 'amount' => '0.00'];
             }
             $totals[$categoryId]['amount'] = bcadd($totals[$categoryId]['amount'], bcmul($row['amount'], '-1', 2), 2);
+        }
+
+        $totals = array_values($totals);
+        usort($totals, fn (array $a, array $b): int => bccomp($b['amount'], $a['amount'], 2));
+
+        return $totals;
+    }
+
+    /**
+     * Same shape as spendingByCategory(), for the "Income by Source"
+     * dashboard widget — income amounts are already stored positive (no
+     * sign flip needed, unlike expense amounts).
+     *
+     * @return list<array{name: string, color: string|null, amount: string}>
+     */
+    public function incomeByCategory(int $householdId, string $periodMonth): array
+    {
+        $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
+
+        $stmt = Connection::get()->prepare(
+            'SELECT category_id, amount FROM (
+                SELECT t.category_id AS category_id, t.amount AS amount
+                FROM transactions t
+                WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.exclude_from_reports = 0
+                  AND t.transaction_type = "income" AND t.is_split = 0
+                  AND t.transaction_date >= :month_start AND t.transaction_date < :month_end
+                UNION ALL
+                SELECT ts.category_id AS category_id, ts.amount AS amount
+                FROM transactions t
+                INNER JOIN transaction_splits ts ON ts.transaction_id = t.id
+                WHERE t.household_id = :household_id2 AND t.deleted_at IS NULL AND t.exclude_from_reports = 0
+                  AND t.transaction_type = "income" AND t.is_split = 1
+                  AND t.transaction_date >= :month_start2 AND t.transaction_date < :month_end2
+            ) combined
+            WHERE category_id IS NOT NULL'
+        );
+        $stmt->execute([
+            'household_id' => $householdId,
+            'month_start' => $periodMonth,
+            'month_end' => $monthEnd,
+            'household_id2' => $householdId,
+            'month_start2' => $periodMonth,
+            'month_end2' => $monthEnd,
+        ]);
+
+        $categoryRows = $stmt->fetchAll();
+        if ($categoryRows === []) {
+            return [];
+        }
+
+        $categories = (new CategoryRepository())->listForHousehold($householdId, true);
+        $categoryById = [];
+        foreach ($categories as $category) {
+            $categoryById[(int) $category['id']] = $category;
+        }
+
+        $totals = [];
+        foreach ($categoryRows as $row) {
+            $categoryId = (int) $row['category_id'];
+            if (!isset($categoryById[$categoryId])) {
+                continue;
+            }
+            if (!isset($totals[$categoryId])) {
+                $totals[$categoryId] = ['name' => $categoryById[$categoryId]['name'], 'color' => $categoryById[$categoryId]['color'], 'amount' => '0.00'];
+            }
+            $totals[$categoryId]['amount'] = bcadd($totals[$categoryId]['amount'], $row['amount'], 2);
         }
 
         $totals = array_values($totals);

@@ -8,14 +8,8 @@ use App\Http\Request;
 use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AccountRepository;
-use App\Repositories\BudgetRepository;
-use App\Repositories\GoalRepository;
 use App\Repositories\HouseholdRepository;
-use App\Repositories\RecurringItemRepository;
-use App\Repositories\TransactionRepository;
 use App\Repositories\UserRepository;
-use App\Services\DebtService;
-use App\Services\GoalService;
 use App\Services\ReportingService;
 use App\Support\Csrf;
 use App\Support\DashboardWidgets;
@@ -35,36 +29,14 @@ final class DashboardController
         $household = $householdId !== null ? (new HouseholdRepository())->findById($householdId) : null;
         $accountRepo = new AccountRepository();
         $netWorth = $householdId !== null ? $accountRepo->netWorthSummary($householdId) : null;
-        $accounts = $householdId !== null ? $accountRepo->listForHousehold($householdId) : [];
-        $transactionRepo = new TransactionRepository();
-        $recentTransactions = $householdId !== null ? $transactionRepo->recentForHousehold($householdId, 5) : [];
-        $budgetSummary = $householdId !== null ? (new BudgetRepository())->monthSummary($householdId, gmdate('Y-m-01')) : ['planned' => '0.00', 'spent' => '0.00', 'remaining' => '0.00', 'has_items' => false];
-        $recurringRepo = new RecurringItemRepository();
-        $upcomingRecurring = $householdId !== null ? $recurringRepo->upcomingForHousehold($householdId, 5) : [];
-        $recurringSummary = $householdId !== null ? $recurringRepo->summaryForHousehold($householdId) : ['overdue' => 0, 'monthlyExpense' => '0.00', 'monthlyIncome' => '0.00'];
 
         $reportingService = new ReportingService();
         $netWorthTrend = $householdId !== null ? $reportingService->netWorthTrend($householdId) : [];
-        $incomeVsSpending = $householdId !== null ? $reportingService->incomeVsSpending($householdId) : [];
-        $spendingByCategory = $householdId !== null ? $reportingService->spendingByCategory($householdId, gmdate('Y-m-01')) : [];
         $allocationSummary = $householdId !== null ? $reportingService->monthlyAllocationSummary($householdId, gmdate('Y-m-01')) : null;
         $runwayMonths = $householdId !== null ? $reportingService->runwayMonths($householdId) : null;
         $thisMonthCashFlow = $householdId !== null ? array_slice($reportingService->cashFlow($householdId, 1), -1)[0] ?? null : null;
-
-        $goalService = new GoalService();
-        $activeGoals = $householdId !== null
-            ? array_values(array_filter((new GoalRepository())->listForHousehold($householdId), fn (array $g): bool => $g['status'] === 'active'))
-            : [];
-        $topGoals = array_map(
-            fn (array $g): array => [...$g, 'progressPercent' => $goalService->progressPercent($g['current_amount'], $g['target_amount'])],
-            array_slice($activeGoals, 0, 3)
-        );
-
-        $debtService = new DebtService();
-        $debtAccounts = $householdId !== null
-            ? array_values(array_filter($accountRepo->listForHousehold($householdId), fn (array $a): bool => AccountRepository::isLiability($a['account_type'])))
-            : [];
-        $debtSummary = $debtService->summarize($debtAccounts);
+        $incomeByCategory = $householdId !== null ? $reportingService->incomeByCategory($householdId, gmdate('Y-m-01')) : [];
+        $topExpenseCategories = $householdId !== null ? array_slice($reportingService->spendingByCategory($householdId, gmdate('Y-m-01')), 0, 5) : [];
 
         $layout = $userRepo->getDashboardLayout($userId);
         // Drag-to-reorder is temporarily disabled, so the dashboard always
@@ -80,20 +52,12 @@ final class DashboardController
             'household' => $household,
             'role' => $_SESSION['role'] ?? null,
             'netWorth' => $netWorth,
-            'accounts' => $accounts,
-            'recentTransactions' => $recentTransactions,
-            'budgetSummary' => $budgetSummary,
-            'upcomingRecurring' => $upcomingRecurring,
-            'recurringSummary' => $recurringSummary,
             'netWorthTrend' => $netWorthTrend,
-            'incomeVsSpending' => $incomeVsSpending,
-            'spendingByCategory' => $spendingByCategory,
             'allocationSummary' => $allocationSummary,
             'runwayMonths' => $runwayMonths,
             'thisMonthCashFlow' => $thisMonthCashFlow,
-            'topGoals' => $topGoals,
-            'activeGoalCount' => count($activeGoals),
-            'debtSummary' => $debtSummary,
+            'incomeByCategory' => $incomeByCategory,
+            'topExpenseCategories' => $topExpenseCategories,
             'widgetOrder' => $widgetOrder,
             'hiddenWidgets' => $hiddenWidgets,
             'wideWidgets' => $wideWidgets,

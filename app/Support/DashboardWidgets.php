@@ -15,23 +15,13 @@ final class DashboardWidgets
         'key_metrics' => ['title' => 'Key Metrics', 'available' => true, 'wide' => true],
         'lifecycle' => ['title' => 'The Lifecycle of a Dollar', 'available' => true, 'wide' => true],
         'capital_allocation' => ['title' => 'Capital Allocation', 'available' => true],
-        'net_worth' => ['title' => 'Net Worth', 'available' => true],
-        'net_worth_trend' => ['title' => 'Net Worth Trend', 'available' => true, 'wide' => true],
-        'accounts' => ['title' => 'Accounts', 'available' => true],
-        'spending' => ['title' => 'Spending by Category', 'available' => true, 'wide' => true],
-        'income_vs_spending' => ['title' => 'Income vs. Spending', 'available' => true, 'wide' => true],
-        'budget' => ['title' => 'Budget', 'available' => true],
-        'transactions' => ['title' => 'Recent Transactions', 'available' => true],
-        'recurring' => ['title' => 'Recurring Bills', 'available' => true],
-        'goals' => ['title' => 'Goals', 'available' => true],
-        'debt' => ['title' => 'Debt', 'available' => true],
-        'investments' => ['title' => 'Investments', 'available' => false],
+        'income_by_source' => ['title' => 'Income by Source', 'available' => true],
+        'top_expense_categories' => ['title' => 'Top Expense Categories', 'available' => true],
     ];
 
     /** @var list<string> */
     private const DEFAULT_ORDER = [
-        'key_metrics', 'lifecycle', 'capital_allocation', 'net_worth', 'net_worth_trend', 'accounts',
-        'spending', 'income_vs_spending', 'budget', 'transactions', 'recurring', 'goals', 'debt', 'investments',
+        'key_metrics', 'lifecycle', 'capital_allocation', 'income_by_source', 'top_expense_categories',
     ];
 
     public static function title(string $key): string
