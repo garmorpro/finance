@@ -47,6 +47,9 @@ final class DashboardController
         $netWorthTrend = $householdId !== null ? $reportingService->netWorthTrend($householdId) : [];
         $incomeVsSpending = $householdId !== null ? $reportingService->incomeVsSpending($householdId) : [];
         $spendingByCategory = $householdId !== null ? $reportingService->spendingByCategory($householdId, gmdate('Y-m-01')) : [];
+        $allocationSummary = $householdId !== null ? $reportingService->monthlyAllocationSummary($householdId, gmdate('Y-m-01')) : null;
+        $runwayMonths = $householdId !== null ? $reportingService->runwayMonths($householdId) : null;
+        $thisMonthCashFlow = $householdId !== null ? array_slice($reportingService->cashFlow($householdId, 1), -1)[0] ?? null : null;
 
         $goalService = new GoalService();
         $activeGoals = $householdId !== null
@@ -81,6 +84,9 @@ final class DashboardController
             'netWorthTrend' => $netWorthTrend,
             'incomeVsSpending' => $incomeVsSpending,
             'spendingByCategory' => $spendingByCategory,
+            'allocationSummary' => $allocationSummary,
+            'runwayMonths' => $runwayMonths,
+            'thisMonthCashFlow' => $thisMonthCashFlow,
             'topGoals' => $topGoals,
             'activeGoalCount' => count($activeGoals),
             'debtSummary' => $debtSummary,

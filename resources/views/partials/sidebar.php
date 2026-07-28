@@ -23,7 +23,7 @@ $notificationCount = (new NotificationService())->badgeCount((int) AuthMiddlewar
     <button type="button" id="sidebar-open" class="sidebar-icon-btn cursor-pointer text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800" aria-label="Open menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <span class="font-semibold text-lg tracking-tight text-stone-900 dark:text-white">Finance</span>
+    <span class="font-semibold text-lg tracking-tight text-stone-900 dark:text-white">MyCFO+</span>
     <span class="w-8" aria-hidden="true"></span>
 </header>
 
@@ -31,7 +31,7 @@ $notificationCount = (new NotificationService())->badgeCount((int) AuthMiddlewar
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand flex items-center justify-between">
-        Finance
+        MyCFO+
         <button type="button" id="sidebar-close" class="sidebar-icon-btn lg:hidden cursor-pointer text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800" aria-label="Close menu">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -62,10 +62,19 @@ $notificationCount = (new NotificationService())->badgeCount((int) AuthMiddlewar
 
         <?= $link('cash-flow', '/cash-flow', 'Cash Flow') ?>
         <?= $link('budgets', '/budgets', 'Budgets') ?>
-        <?= $link('recurring', '/recurring', 'Recurring') ?>
-        <?= $link('goals', '/goals', 'Goals') ?>
-        <?= $link('debt', '/debt', 'Debt') ?>
+        <?= $link('planning', '/planning', 'Planning') ?>
+        <?= $link('debt', '/debt', 'Debts') ?>
         <?= $link('reports', '/reports', 'Reports') ?>
+        <?= $link('rules', '/settings/rules', 'Rules &amp; Inputs') ?>
+
+        <div class="pt-2 mt-2 border-t border-stone-100 dark:border-stone-800">
+            <div class="px-3 pb-1.5 pt-1 flex items-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">Business</span>
+                <span class="badge-owner" style="font-size: 0.6rem; padding: 0.05rem 0.4rem;">New</span>
+            </div>
+            <?= $link('business-overview', '/business/overview', 'Business Overview') ?>
+            <?= $link('business-transactions', '/business/transactions', 'Business Transactions') ?>
+        </div>
 
         <div class="pt-2 mt-2 border-t border-stone-100 dark:border-stone-800">
             <?= $link('settings', '/settings/profile', 'Settings') ?>

@@ -6,6 +6,7 @@ use App\Controllers\AccountController;
 use App\Controllers\AttachmentController;
 use App\Controllers\AuthController;
 use App\Controllers\BudgetController;
+use App\Controllers\BusinessController;
 use App\Controllers\CashFlowController;
 use App\Controllers\CategoryController;
 use App\Controllers\CategoryGroupController;
@@ -16,6 +17,7 @@ use App\Controllers\HouseholdController;
 use App\Controllers\ImportController;
 use App\Controllers\NotificationController;
 use App\Controllers\PasswordResetController;
+use App\Controllers\PlanningController;
 use App\Controllers\ProfileController;
 use App\Controllers\RecurringController;
 use App\Controllers\ReportController;
@@ -149,6 +151,13 @@ $router->post('/goals/{id}/reactivate', fn (Request $r): mixed => $goalControlle
 
 $debtController = new DebtController();
 $router->get('/debt', fn (Request $r): mixed => $debtController->index($r));
+
+$planningController = new PlanningController();
+$router->get('/planning', fn (): mixed => $planningController->index());
+
+$businessController = new BusinessController();
+$router->get('/business/overview', fn (): mixed => $businessController->overview());
+$router->get('/business/transactions', fn (): mixed => $businessController->transactions());
 
 $cashFlowController = new CashFlowController();
 $router->get('/cash-flow', fn (Request $r): mixed => $cashFlowController->index($r));

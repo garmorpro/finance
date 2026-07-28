@@ -1,6 +1,6 @@
-# Finance
+# MyCFO+
 
-A self-hosted, manual-entry personal finance dashboard built for household use. Finance tracks accounts, transactions, budgets, bills, goals, debt, and net worth — all entered manually, with no bank connections of any kind. See [CLAUDE.md](CLAUDE.md) for the full manual-only data policy and product requirements.
+A self-hosted, manual-entry personal finance dashboard built for household use. MyCFO+ tracks accounts, transactions, budgets, bills, goals, debt, and net worth — all entered manually, with no bank connections of any kind. See [CLAUDE.md](CLAUDE.md) for the full manual-only data policy and product requirements.
 
 ## Status
 

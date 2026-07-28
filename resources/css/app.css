@@ -222,6 +222,55 @@
     @apply flex flex-col items-center justify-center text-center py-8 text-stone-400 dark:text-stone-600;
   }
 
+  /* Capital Allocation / Income by Source donut charts (CSS conic-gradient, no chart library) */
+  .donut {
+    @apply w-36 h-36 rounded-full flex items-center justify-center flex-shrink-0;
+  }
+
+  .donut-hole {
+    @apply rounded-full flex flex-col items-center justify-center;
+    width: 62%;
+    height: 62%;
+  }
+
+  .legend-dot {
+    @apply rounded-full flex-shrink-0;
+    width: 0.55rem;
+    height: 0.55rem;
+  }
+
+  /* "Lifecycle of a Dollar" waterfall rows */
+  .lifecycle-item {
+    @apply flex items-center justify-between gap-3 rounded-lg bg-terracotta-600/5 dark:bg-terracotta-400/10;
+    padding: 0.65rem 0.85rem;
+  }
+
+  .lifecycle-arrow {
+    @apply text-center text-stone-300 dark:text-stone-700;
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 0.15rem 0;
+  }
+
+  .lifecycle-remaining {
+    @apply flex items-center justify-between gap-3 rounded-lg bg-emerald-600/10 dark:bg-emerald-400/10;
+    padding: 0.75rem 0.9rem;
+    margin-top: 1.1rem;
+  }
+
+  .lifecycle-remaining-text {
+    @apply text-emerald-700 dark:text-emerald-400;
+  }
+
+  /* Overspent month: remaining cash is negative — flag it, don't paint it green */
+  .lifecycle-remaining-negative {
+    @apply bg-red-50 dark:bg-red-950/40;
+  }
+
+  .lifecycle-remaining-negative-text {
+    @apply text-red-700 dark:text-red-400;
+  }
+
   .brand {
     @apply font-semibold text-lg tracking-tight text-stone-900 dark:text-white;
   }

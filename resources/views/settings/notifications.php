@@ -20,7 +20,7 @@ $descriptions = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notifications · Settings · Finance</title>
+    <title>Notifications · Settings · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body>
@@ -37,7 +37,7 @@ $descriptions = [
                     <div class="space-y-6">
                         <div>
                             <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Notifications</h2>
-                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Choose which conditions show up as an in-app alert (bell icon, top left). Finance doesn't send email or push notifications — everything here is in-app only.</p>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Choose which conditions show up as an in-app alert (bell icon, top left). MyCFO+ doesn't send email or push notifications — everything here is in-app only.</p>
                         </div>
 
                         <?php if (!empty($error)): ?>

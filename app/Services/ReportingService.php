@@ -8,6 +8,7 @@ use App\Database\Connection;
 use App\Repositories\AccountBalanceHistoryRepository;
 use App\Repositories\AccountRepository;
 use App\Repositories\CategoryRepository;
+use App\Repositories\GoalRepository;
 
 /**
  * Chart/report data for the dashboard. Kept out of controllers per
@@ -249,6 +250,127 @@ final class ReportingService
         usort($totals, fn (array $a, array $b): int => bccomp($b['amount'], $a['amount'], 2));
 
         return $totals;
+    }
+
+    /**
+     * Splits a month's money into buckets for the "Lifecycle of a Dollar"
+     * and "Capital Allocation" dashboard widgets. Living Expenses
+     * deliberately excludes whatever Giving accounts for (so it isn't
+     * counted twice); Debt Payments and Savings never overlap with
+     * expense transactions at all — a debt payment is a transfer (never
+     * typed as an "expense"), and a goal contribution lives in its own
+     * ledger table, not the transactions table. Giving is the one
+     * heuristic here: spending in a category literally named "Giving" or
+     * containing "gift", since there's no dedicated giving ledger.
+     *
+     * @return array{income: string, livingExpenses: string, debtPayments: string, savings: string, giving: string, remaining: string}
+     */
+    public function monthlyAllocationSummary(int $householdId, string $periodMonth): array
+    {
+        $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
+
+        $stmt = Connection::get()->prepare(
+            'SELECT transaction_type, amount FROM transactions
+             WHERE household_id = :household_id AND deleted_at IS NULL AND exclude_from_reports = 0
+               AND transaction_type IN ("income", "expense")
+               AND transaction_date >= :month_start AND transaction_date < :month_end'
+        );
+        $stmt->execute(['household_id' => $householdId, 'month_start' => $periodMonth, 'month_end' => $monthEnd]);
+
+        $income = '0.00';
+        $totalExpenses = '0.00';
+        foreach ($stmt->fetchAll() as $row) {
+            if ($row['transaction_type'] === 'income') {
+                $income = bcadd($income, $row['amount'], 2);
+            } else {
+                $totalExpenses = bcadd($totalExpenses, bcmul($row['amount'], '-1', 2), 2);
+            }
+        }
+
+        $giving = '0.00';
+        foreach ($this->spendingByCategory($householdId, $periodMonth) as $category) {
+            if (preg_match('/giving|gift/i', $category['name']) === 1) {
+                $giving = bcadd($giving, $category['amount'], 2);
+            }
+        }
+
+        $debtPayments = $this->debtPaymentsForMonth($householdId, $periodMonth, $monthEnd);
+        $savings = (new GoalRepository())->totalContributionsForRange($householdId, $periodMonth, $monthEnd);
+        $livingExpenses = bcsub($totalExpenses, $giving, 2);
+
+        $remaining = bcsub($income, $livingExpenses, 2);
+        $remaining = bcsub($remaining, $debtPayments, 2);
+        $remaining = bcsub($remaining, $savings, 2);
+        $remaining = bcsub($remaining, $giving, 2);
+
+        return [
+            'income' => $income,
+            'livingExpenses' => $livingExpenses,
+            'debtPayments' => $debtPayments,
+            'savings' => $savings,
+            'giving' => $giving,
+            'remaining' => $remaining,
+        ];
+    }
+
+    /**
+     * This month's transfers into a liability account — a real credit
+     * card or loan payment, read from the same transfer mechanism
+     * `TransactionController::storeTransfer()` writes (the destination
+     * side of a transfer always has a positive amount), not a
+     * category-name guess.
+     */
+    private function debtPaymentsForMonth(int $householdId, string $monthStart, string $monthEndExclusive): string
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT t.amount AS amount, a.account_type AS account_type
+             FROM transactions t
+             INNER JOIN accounts a ON a.id = t.account_id
+             WHERE t.household_id = :household_id AND t.deleted_at IS NULL
+               AND t.transaction_type = "transfer" AND t.amount > 0
+               AND t.transaction_date >= :month_start AND t.transaction_date < :month_end'
+        );
+        $stmt->execute(['household_id' => $householdId, 'month_start' => $monthStart, 'month_end' => $monthEndExclusive]);
+
+        $total = '0.00';
+        foreach ($stmt->fetchAll() as $row) {
+            if (AccountRepository::isLiability($row['account_type'])) {
+                $total = bcadd($total, $row['amount'], 2);
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * A rough "how many months could liquid savings cover normal
+     * spending" estimate — liquid balance (checking/savings/cash
+     * accounts counted toward net worth) divided by the trailing
+     * 3-month average expense. Clearly an estimate, not a forecast:
+     * returns null when there's no expense history to divide by, rather
+     * than a misleading infinite/zero runway.
+     */
+    public function runwayMonths(int $householdId): ?float
+    {
+        $liquidTypes = ['checking', 'savings', 'cash'];
+        $liquid = '0.00';
+        foreach ((new AccountRepository())->listForHousehold($householdId) as $account) {
+            if ((int) $account['include_in_net_worth'] === 1 && in_array($account['account_type'], $liquidTypes, true)) {
+                $liquid = bcadd($liquid, $account['current_balance'], 2);
+            }
+        }
+
+        $totalExpense = '0.00';
+        foreach ($this->monthlyIncomeExpense($householdId, 3) as $month) {
+            $totalExpense = bcadd($totalExpense, $month['expenses'], 2);
+        }
+        $avgExpense = bcdiv($totalExpense, '3', 2);
+
+        if (bccomp($avgExpense, '0.00', 2) <= 0) {
+            return null;
+        }
+
+        return (float) bcdiv($liquid, $avgExpense, 4);
     }
 
     /**

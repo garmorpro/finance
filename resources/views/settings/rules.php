@@ -46,12 +46,12 @@ $actionLabels = function (array $actions) use ($categoryNames, $tagNames): array
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rules · Settings · Finance</title>
+    <title>Rules · Settings · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body>
     <div class="app-shell">
-        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'settings']); ?>
+        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'rules']); ?>
 
         <div class="app-content">
             <main class="page-main-wide">

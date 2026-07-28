@@ -12,7 +12,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance</title>
+    <title>MyCFO+</title>
     <style>
         :root {
             --bg: #fafaf9;
@@ -545,7 +545,7 @@
                         <path d="M14 6h6v6" />
                     </svg>
                 </span>
-                Finance
+                MyCFO+
             </div>
             <a class="btn btn-ghost" href="/login">Log in</a>
         </div>
@@ -567,7 +567,7 @@
                 </div>
             </div>
 
-            <div class="preview" role="img" aria-label="Preview of the Finance dashboard showing net worth, account balances, and a budget line">
+            <div class="preview" role="img" aria-label="Preview of the MyCFO+ dashboard showing net worth, account balances, and a budget line">
                 <div class="preview-head">
                     <span class="preview-label">Net worth</span>
                     <span class="preview-delta">+$2,140 this month</span>
@@ -675,7 +675,7 @@
 
     <footer class="bottom">
         <div class="wrap bottom-inner">
-            <span>Finance &mdash; a self-hosted household finance dashboard.</span>
+            <span>MyCFO+ &mdash; a self-hosted household finance dashboard.</span>
             <a href="/login">Log in &rarr;</a>
         </div>
     </footer>

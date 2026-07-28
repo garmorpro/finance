@@ -34,7 +34,7 @@ $columnSelect = function (string $name, string $label, bool $required = true) us
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map columns · Finance</title>
+    <title>Map columns · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body>

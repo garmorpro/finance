@@ -33,7 +33,7 @@ $formatFileSize = function (int $bytes): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit transaction · Finance</title>
+    <title>Edit transaction · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body>

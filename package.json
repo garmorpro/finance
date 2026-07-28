@@ -1,5 +1,5 @@
 {
-  "name": "finance",
+  "name": "mycfo-plus",
   "private": true,
   "scripts": {
     "build:css": "tailwindcss -i ./resources/css/app.css -o ./public/assets/css/app.css --minify",

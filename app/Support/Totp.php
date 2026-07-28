@@ -28,7 +28,7 @@ final class Totp
      * The otpauth:// URI format authenticator apps recognize — useful if
      * a QR-code generator is ever added later, otherwise unused.
      */
-    public static function provisioningUri(string $secret, string $accountLabel, string $issuer = 'Finance'): string
+    public static function provisioningUri(string $secret, string $accountLabel, string $issuer = 'MyCFO+'): string
     {
         return sprintf(
             'otpauth://totp/%s:%s?secret=%s&issuer=%s&digits=%d&period=%d',

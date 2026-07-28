@@ -35,12 +35,12 @@ foreach ($actions as $action) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $isEdit ? 'Edit rule' : 'New rule' ?> · Settings · Finance</title>
+    <title><?= $isEdit ? 'Edit rule' : 'New rule' ?> · Settings · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body>
     <div class="app-shell">
-        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'settings']); ?>
+        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'rules']); ?>
 
         <div class="app-content">
             <main class="page-main">

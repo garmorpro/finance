@@ -29,7 +29,7 @@ use App\Support\View;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Overview · Finance</title>
+    <title>Overview · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body>
@@ -64,6 +64,9 @@ use App\Support\View;
                                         'netWorthTrend' => $netWorthTrend,
                                         'incomeVsSpending' => $incomeVsSpending,
                                         'spendingByCategory' => $spendingByCategory,
+                                        'allocationSummary' => $allocationSummary,
+                                        'runwayMonths' => $runwayMonths,
+                                        'thisMonthCashFlow' => $thisMonthCashFlow,
                                         'topGoals' => $topGoals,
                                         'activeGoalCount' => $activeGoalCount,
                                         'debtSummary' => $debtSummary,

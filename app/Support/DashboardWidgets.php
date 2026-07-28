@@ -12,6 +12,9 @@ namespace App\Support;
 final class DashboardWidgets
 {
     private const WIDGETS = [
+        'key_metrics' => ['title' => 'Key Metrics', 'available' => true, 'wide' => true],
+        'lifecycle' => ['title' => 'The Lifecycle of a Dollar', 'available' => true, 'wide' => true],
+        'capital_allocation' => ['title' => 'Capital Allocation', 'available' => true],
         'net_worth' => ['title' => 'Net Worth', 'available' => true],
         'net_worth_trend' => ['title' => 'Net Worth Trend', 'available' => true, 'wide' => true],
         'accounts' => ['title' => 'Accounts', 'available' => true],
@@ -27,8 +30,8 @@ final class DashboardWidgets
 
     /** @var list<string> */
     private const DEFAULT_ORDER = [
-        'net_worth', 'net_worth_trend', 'accounts', 'spending', 'income_vs_spending', 'budget',
-        'transactions', 'recurring', 'goals', 'debt', 'investments',
+        'key_metrics', 'lifecycle', 'capital_allocation', 'net_worth', 'net_worth_trend', 'accounts',
+        'spending', 'income_vs_spending', 'budget', 'transactions', 'recurring', 'goals', 'debt', 'investments',
     ];
 
     public static function title(string $key): string

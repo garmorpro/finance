@@ -67,7 +67,7 @@ if ($filters['tag_ids'] !== []) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports · Finance</title>
+    <title>Reports · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body>
@@ -88,7 +88,7 @@ if ($filters['tag_ids'] !== []) {
                 </div>
 
                 <div class="print-only mb-6">
-                    <h1 class="text-2xl font-semibold text-stone-900">Finance Report</h1>
+                    <h1 class="text-2xl font-semibold text-stone-900">MyCFO+ Report</h1>
                     <p class="text-sm text-stone-600"><?= View::e($filters['date_from']) ?> to <?= View::e($filters['date_to']) ?></p>
                     <p class="text-sm text-stone-600"><?= View::e(implode(' · ', $filterSummaryParts)) ?></p>
                     <p class="text-xs text-stone-500 mt-1">Printed <?= View::e(date('Y-m-d')) ?></p>
