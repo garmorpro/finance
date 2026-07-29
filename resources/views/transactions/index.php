@@ -4,6 +4,9 @@
 /** @var int $total */
 /** @var int $page */
 /** @var int $perPage */
+/** @var array{income: string, expenses: string, net: string} $sums */
+/** @var string $sort */
+/** @var string $dir */
 /** @var array $accounts */
 /** @var array $categories */
 /** @var array $filters */
@@ -18,7 +21,27 @@ use App\Support\Money;
 use App\Support\View;
 
 $totalPages = max(1, (int) ceil($total / $perPage));
-$returnQuery = http_build_query([...$filters, 'page' => $page]);
+$returnQuery = http_build_query([...$filters, 'sort' => $sort, 'dir' => $dir, 'page' => $page]);
+
+/**
+ * Builds a column-header link that toggles sort direction when the same
+ * column is clicked again, preserves every active filter, and resets back
+ * to page 1 (a sort change on page 3 shouldn't leave the user staring at
+ * a now-unrelated slice of results).
+ */
+$sortLink = function (string $column) use ($filters, $sort, $dir): string {
+    $nextDir = ($sort === $column && $dir === 'asc') ? 'desc' : 'asc';
+
+    return '?' . http_build_query([...$filters, 'sort' => $column, 'dir' => $nextDir, 'page' => 1]);
+};
+
+$sortIndicator = function (string $column) use ($sort, $dir): string {
+    if ($sort !== $column) {
+        return '';
+    }
+
+    return $dir === 'asc' ? ' &uarr;' : ' &darr;';
+};
 
 ?>
 <!DOCTYPE html>
@@ -35,13 +58,13 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between flex-wrap gap-3">
                     <div>
                         <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Transactions</h1>
                         <p class="text-sm text-stone-500 dark:text-stone-400 mt-1"><?= $total ?> total</p>
                     </div>
                     <div class="flex gap-3">
-                        <a href="/transactions/export<?= $filters !== [] ? '?' . http_build_query($filters) : '' ?>" class="btn-secondary">Export</a>
+                        <a href="/transactions/export<?= '?' . http_build_query($filters) ?>" class="btn-secondary">Export</a>
                         <a href="/transactions/import" class="btn-secondary">Import</a>
                         <a href="/transactions/transfer" class="btn-secondary">Transfer</a>
                         <a href="/transactions/create" class="btn-primary">Add transaction</a>
@@ -54,6 +77,24 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                 <?php if (!empty($notice)): ?>
                     <div class="alert-success"><?= View::e($notice) ?></div>
                 <?php endif; ?>
+
+                <div class="card">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <div>
+                            <div class="label-text">Income</div>
+                            <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($sums['income']) ?></div>
+                        </div>
+                        <div>
+                            <div class="label-text">Expenses</div>
+                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($sums['expenses']) ?></div>
+                        </div>
+                        <div>
+                            <div class="label-text">Net</div>
+                            <div class="text-xl font-semibold <?= bccomp($sums['net'], '0.00', 2) >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' ?>"><?= Money::format($sums['net']) ?></div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-stone-500 dark:text-stone-400 mt-3">Reflects the filters below, not just the current page. Transfers aren't counted as income or spending.</p>
+                </div>
 
                 <form method="GET" action="/transactions" class="card">
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -84,6 +125,17 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                                 <option value="transfer" <?= $filters['type'] === 'transfer' ? 'selected' : '' ?>>Transfer</option>
                             </select>
                         </div>
+                        <?php if ($tags !== []): ?>
+                        <div>
+                            <label for="f-tag" class="field-label">Tag</label>
+                            <select id="f-tag" name="tag_id" class="field-input">
+                                <option value="">All</option>
+                                <?php foreach ($tags as $tag): ?>
+                                    <option value="<?= (int) $tag['id'] ?>" <?= (string) $tag['id'] === $filters['tag_id'] ? 'selected' : '' ?>><?= View::e($tag['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <?php endif; ?>
                         <div>
                             <label for="f-from" class="field-label">From</label>
                             <input type="date" id="f-from" name="date_from" value="<?= View::e($filters['date_from']) ?>" class="field-input">
@@ -93,10 +145,18 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                             <input type="date" id="f-to" name="date_to" value="<?= View::e($filters['date_to']) ?>" class="field-input">
                         </div>
                     </div>
-                    <div class="flex items-end gap-3 mt-3">
-                        <div class="flex-1">
+                    <div class="flex items-end flex-wrap gap-3 mt-3">
+                        <div class="flex-1 min-w-[12rem]">
                             <label for="f-search" class="field-label">Search payee or notes</label>
                             <input type="text" id="f-search" name="search" value="<?= View::e($filters['search']) ?>" class="field-input">
+                        </div>
+                        <div>
+                            <label for="f-amount-min" class="field-label">Min amount</label>
+                            <input type="number" step="0.01" min="0" id="f-amount-min" name="amount_min" value="<?= View::e($filters['amount_min']) ?>" class="field-input" style="max-width: 8rem;">
+                        </div>
+                        <div>
+                            <label for="f-amount-max" class="field-label">Max amount</label>
+                            <input type="number" step="0.01" min="0" id="f-amount-max" name="amount_max" value="<?= View::e($filters['amount_max']) ?>" class="field-input" style="max-width: 8rem;">
                         </div>
                         <button type="submit" class="btn-secondary">Filter</button>
                         <a href="/transactions" class="btn-secondary">Clear</a>
@@ -117,16 +177,22 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                                 <thead>
                                     <tr>
                                         <th class="w-8"><input type="checkbox" id="select-all-checkbox" title="Select all on this page" class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500"></th>
-                                        <th>Date</th><th>Payee</th><th>Category</th><th>Account</th><th class="text-right">Amount</th><th></th>
+                                        <th><a href="<?= View::e($sortLink('date')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Date<?= $sortIndicator('date') ?></a></th>
+                                        <th><a href="<?= View::e($sortLink('payee')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Payee<?= $sortIndicator('payee') ?></a></th>
+                                        <th>Category</th>
+                                        <th>Account</th>
+                                        <th class="text-right"><a href="<?= View::e($sortLink('amount')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Amount<?= $sortIndicator('amount') ?></a></th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($transactions as $transaction): ?>
-                                        <tr>
+                                        <?php $categoryColor = $transaction['category_color'] ?? null; ?>
+                                        <tr class="row-clickable cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors" data-href="/transactions/<?= (int) $transaction['id'] ?>/edit">
                                             <td>
                                                 <input type="checkbox" name="transaction_ids[]" value="<?= (int) $transaction['id'] ?>" class="row-checkbox rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
                                             </td>
-                                            <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['transaction_date']) ?></td>
+                                            <td class="text-stone-500 dark:text-stone-400 whitespace-nowrap"><?= View::e($transaction['transaction_date']) ?></td>
                                             <td class="font-medium text-stone-900 dark:text-white">
                                                 <?= View::e($transaction['payee']) ?>
                                                 <?php foreach ($tagsByTransaction[(int) $transaction['id']] ?? [] as $tag): ?>
@@ -140,16 +206,19 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                                             </td>
                                             <td class="text-stone-500 dark:text-stone-400">
                                                 <?php if ($transaction['transaction_type'] === 'transfer'): ?>
-                                                    Transfer
+                                                    <span class="inline-flex items-center gap-1.5"><span class="inline-block w-2 h-2 rounded-full bg-stone-400 flex-shrink-0"></span>Transfer</span>
                                                 <?php else: ?>
-                                                    <?= View::e($transaction['category_name'] ?? '—') ?>
+                                                    <span class="inline-flex items-center gap-1.5">
+                                                        <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: <?= View::e($categoryColor ?: '#a8a29e') ?>;"></span>
+                                                        <?= View::e($transaction['category_name'] ?? '—') ?>
+                                                    </span>
                                                     <?php if ((int) $transaction['is_split'] === 1): ?>
                                                         <span class="badge ml-1" title="Split across multiple categories">Split</span>
                                                     <?php endif; ?>
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-stone-500 dark:text-stone-400"><?= View::e($transaction['account_name']) ?></td>
-                                            <td class="text-right font-medium <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
+                                            <td class="text-right font-medium whitespace-nowrap <?= $transaction['transaction_type'] === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white' ?>">
                                                 <?= Money::format($transaction['amount']) ?>
                                             </td>
                                             <td class="text-right">
@@ -194,10 +263,10 @@ $returnQuery = http_build_query([...$filters, 'page' => $page]);
                         <span>Page <?= $page ?> of <?= $totalPages ?></span>
                         <div class="flex gap-2">
                             <?php if ($page > 1): ?>
-                                <a href="?<?= http_build_query([...$filters, 'page' => $page - 1]) ?>" class="btn-secondary">Previous</a>
+                                <a href="?<?= http_build_query([...$filters, 'sort' => $sort, 'dir' => $dir, 'page' => $page - 1]) ?>" class="btn-secondary">Previous</a>
                             <?php endif; ?>
                             <?php if ($page < $totalPages): ?>
-                                <a href="?<?= http_build_query([...$filters, 'page' => $page + 1]) ?>" class="btn-secondary">Next</a>
+                                <a href="?<?= http_build_query([...$filters, 'sort' => $sort, 'dir' => $dir, 'page' => $page + 1]) ?>" class="btn-secondary">Next</a>
                             <?php endif; ?>
                         </div>
                     </div>

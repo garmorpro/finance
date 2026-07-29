@@ -1,6 +1,21 @@
 (function () {
   'use strict';
 
+  // Clicking anywhere on a transaction row opens its edit page — the
+  // explicit "Edit" link and checkbox remain the real, keyboard-accessible
+  // controls; this just saves mouse users a trip to a small target. A
+  // click that started on an interactive element (checkbox, link, button)
+  // is left alone so it keeps its own behavior instead of also navigating.
+  document.querySelectorAll('.row-clickable[data-href]').forEach(function (row) {
+    row.addEventListener('click', function (event) {
+      if (event.target.closest('a, button, input, label')) {
+        return;
+      }
+
+      window.location.href = row.dataset.href;
+    });
+  });
+
   var form = document.getElementById('bulk-form');
   if (!form) {
     return;

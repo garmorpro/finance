@@ -36,12 +36,18 @@ final class TransactionController
             'date_from' => $request->query('date_from'),
             'date_to' => $request->query('date_to'),
             'search' => $request->query('search'),
+            'tag_id' => $request->query('tag_id'),
+            'amount_min' => $this->normalizeAmountFilter($request->query('amount_min')),
+            'amount_max' => $this->normalizeAmountFilter($request->query('amount_max')),
         ];
 
         $page = max(1, (int) $request->query('page', '1'));
+        $sort = in_array($request->query('sort'), ['date', 'payee', 'amount'], true) ? $request->query('sort') : 'date';
+        $dir = $request->query('dir') === 'asc' ? 'asc' : 'desc';
 
         $transactionRepo = new TransactionRepository();
-        $result = $transactionRepo->listForHousehold($householdId, $filters, $page);
+        $result = $transactionRepo->listForHousehold($householdId, $filters, $page, $sort, $dir);
+        $sums = $transactionRepo->sumsForHousehold($householdId, $filters);
         $accountRepo = new AccountRepository();
         $transactionIds = array_column($result['rows'], 'id');
         $tagsByTransaction = (new TagRepository())->listForTransactions($transactionIds);
@@ -54,6 +60,9 @@ final class TransactionController
             'total' => $result['total'],
             'page' => $result['page'],
             'perPage' => $result['perPage'],
+            'sums' => $sums,
+            'sort' => $sort,
+            'dir' => $dir,
             'accounts' => $accountRepo->listForHousehold($householdId, true),
             'categories' => (new CategoryRepository())->listForHousehold($householdId),
             'tags' => (new TagRepository())->listForHousehold($householdId),
@@ -64,6 +73,23 @@ final class TransactionController
         ]));
 
         unset($_SESSION['_flash_notice'], $_SESSION['_flash_error']);
+    }
+
+    /**
+     * A malformed amount filter (non-numeric, negative) is simply dropped
+     * rather than surfaced as a validation error — this is a read-only GET
+     * filter, so silently ignoring garbage input is friendlier than a hard
+     * failure, and it keeps buildWhere() from ever seeing a non-numeric
+     * value in a numeric comparison.
+     */
+    private function normalizeAmountFilter(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '' || !MoneyInput::isValid($value) || bccomp($value, '0', 2) < 0) {
+            return '';
+        }
+
+        return MoneyInput::normalize($value);
     }
 
     public function export(Request $request): void
@@ -79,6 +105,9 @@ final class TransactionController
             'date_from' => $request->query('date_from'),
             'date_to' => $request->query('date_to'),
             'search' => $request->query('search'),
+            'tag_id' => $request->query('tag_id'),
+            'amount_min' => $this->normalizeAmountFilter($request->query('amount_min')),
+            'amount_max' => $this->normalizeAmountFilter($request->query('amount_max')),
         ];
 
         $rows = (new TransactionRepository())->exportForHousehold($householdId, $filters);

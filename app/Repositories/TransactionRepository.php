@@ -11,6 +11,17 @@ final class TransactionRepository
     private const PER_PAGE = 50;
 
     /**
+     * Whitelist of columns the transactions list may be sorted by — never
+     * built from user input directly, since this string is interpolated
+     * into the ORDER BY clause (PDO can't parameterize a column name).
+     */
+    private const SORTABLE_COLUMNS = [
+        'date' => 't.transaction_date',
+        'payee' => 't.payee',
+        'amount' => 't.amount',
+    ];
+
+    /**
      * @param array<string, mixed> $data
      */
     public function create(int $householdId, int $userId, array $data): int
@@ -276,7 +287,7 @@ final class TransactionRepository
      * @param array<string, mixed> $filters
      * @return array{rows: array, total: int, page: int, perPage: int}
      */
-    public function listForHousehold(int $householdId, array $filters, int $page = 1): array
+    public function listForHousehold(int $householdId, array $filters, int $page = 1, string $sort = 'date', string $dir = 'desc'): array
     {
         [$where, $params] = $this->buildWhere($householdId, $filters);
         $page = max(1, $page);
@@ -286,12 +297,15 @@ final class TransactionRepository
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
-        $sql = "SELECT t.*, a.name AS account_name, c.name AS category_name
+        $sortColumn = self::SORTABLE_COLUMNS[$sort] ?? self::SORTABLE_COLUMNS['date'];
+        $sortDir = strtolower($dir) === 'asc' ? 'ASC' : 'DESC';
+
+        $sql = "SELECT t.*, a.name AS account_name, c.name AS category_name, c.color AS category_color
                 FROM transactions t
                 INNER JOIN accounts a ON a.id = t.account_id
                 LEFT JOIN categories c ON c.id = t.category_id
                 {$where}
-                ORDER BY t.transaction_date DESC, t.id DESC
+                ORDER BY {$sortColumn} {$sortDir}, t.id DESC
                 LIMIT " . self::PER_PAGE . " OFFSET {$offset}";
 
         $stmt = Connection::get()->prepare($sql);
@@ -302,6 +316,40 @@ final class TransactionRepository
             'total' => $total,
             'page' => $page,
             'perPage' => self::PER_PAGE,
+        ];
+    }
+
+    /**
+     * Income/expense/net totals across every row matching the current
+     * filters (not just the current page) — powers the summary cards
+     * above the transactions table. Transfers never count as income or
+     * spending (CLAUDE.md's manual-only accounting rule), so they're
+     * excluded from both sums even if the "All types" filter is active.
+     *
+     * @param array<string, mixed> $filters
+     * @return array{income: string, expenses: string, net: string}
+     */
+    public function sumsForHousehold(int $householdId, array $filters): array
+    {
+        [$where, $params] = $this->buildWhere($householdId, $filters);
+
+        $stmt = Connection::get()->prepare(
+            "SELECT
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'income' THEN t.amount ELSE 0 END), 0) AS income,
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'expense' THEN t.amount ELSE 0 END), 0) AS expenses
+             FROM transactions t
+             {$where}"
+        );
+        $stmt->execute($params);
+        $row = $stmt->fetch();
+
+        $income = (string) $row['income'];
+        $expenses = (string) $row['expenses'];
+
+        return [
+            'income' => $income,
+            'expenses' => $expenses,
+            'net' => bcadd($income, $expenses, 2),
         ];
     }
 
@@ -452,6 +500,25 @@ final class TransactionRepository
             $clauses[] = '(t.payee LIKE :search_payee OR t.notes LIKE :search_notes)';
             $params['search_payee'] = '%' . $filters['search'] . '%';
             $params['search_notes'] = '%' . $filters['search'] . '%';
+        }
+
+        if (!empty($filters['tag_id'])) {
+            $clauses[] = 'EXISTS (SELECT 1 FROM transaction_tags tt WHERE tt.transaction_id = t.id AND tt.tag_id = :tag_id)';
+            $params['tag_id'] = (int) $filters['tag_id'];
+        }
+
+        // Amount filters compare against the unsigned magnitude — a user
+        // filtering "at least $100" means any transaction of $100 or more
+        // regardless of whether it's income or an expense, not a raw
+        // comparison against the signed stored value.
+        if (!empty($filters['amount_min'])) {
+            $clauses[] = 'ABS(t.amount) >= :amount_min';
+            $params['amount_min'] = $filters['amount_min'];
+        }
+
+        if (!empty($filters['amount_max'])) {
+            $clauses[] = 'ABS(t.amount) <= :amount_max';
+            $params['amount_max'] = $filters['amount_max'];
         }
 
         return ['WHERE ' . implode(' AND ', $clauses), $params];
