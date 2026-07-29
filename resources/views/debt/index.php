@@ -15,6 +15,9 @@ use App\Support\View;
 $strategyLabels = ['snowball' => 'Snowball', 'avalanche' => 'Avalanche'];
 $strategyBlurbs = ['snowball' => 'Smallest balance first', 'avalanche' => 'Highest interest rate first'];
 
+$calendarIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+$percentIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>';
+
 $typeLabel = [
     'credit_card' => 'Credit Card',
     'mortgage' => 'Mortgage',
@@ -50,20 +53,37 @@ $typeLabel = [
                         <a href="/accounts/create" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add a credit card or loan &rarr;</a>
                     </div>
                 <?php else: ?>
-                    <div class="card">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                            <div>
-                                <div class="label-text">Total debt</div>
-                                <div class="text-xl font-semibold text-red-600 dark:text-red-400"><?= Money::format($totalBalance) ?></div>
+                    <div class="stat-hero stat-hero-negative flex items-center justify-between flex-wrap gap-6">
+                        <span class="stat-hero-icon text-red-600">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </span>
+                        <div style="position: relative;">
+                            <div class="text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-400 mb-2">Total Debt</div>
+                            <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($totalBalance) ?></div>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Combined balance across <?= count($rows) ?> debt account<?= count($rows) === 1 ? '' : 's' ?>.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="card">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="metric-icon" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $calendarIcon ?></span>
+                                <div>
+                                    <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Total Minimum Payments</div>
+                                    <div class="text-xs text-stone-500 dark:text-stone-400">Due across all debts</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="label-text">Total minimum payments</div>
-                                <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($totalMinimumPayment) ?> <span class="text-sm font-normal text-stone-500 dark:text-stone-400">/ month</span></div>
+                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($totalMinimumPayment) ?> <span class="text-sm font-normal text-stone-500 dark:text-stone-400">/ month</span></div>
+                        </div>
+                        <div class="card">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="metric-icon" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $percentIcon ?></span>
+                                <div>
+                                    <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Weighted Avg. Rate</div>
+                                    <div class="text-xs text-stone-500 dark:text-stone-400">Weighted by balance</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="label-text">Weighted avg. interest rate</div>
-                                <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= $weightedAverageRate !== null ? $weightedAverageRate . '%' : '—' ?></div>
-                            </div>
+                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= $weightedAverageRate !== null ? $weightedAverageRate . '%' : '—' ?></div>
                         </div>
                     </div>
 
