@@ -19,6 +19,14 @@ use App\Repositories\GoalRepository;
 final class ReportingService
 {
     /**
+     * Whitelist of columns the Reports table may be sorted by — validated
+     * against this before ever reaching a comparator, same reasoning as
+     * TransactionRepository::SORTABLE_COLUMNS (never trust a client-supplied
+     * sort key directly).
+     */
+    public const REPORT_SORTABLE_FIELDS = ['label', 'income', 'expense', 'transfer', 'net', 'count'];
+
+    /**
      * Month-end net worth for each of the last $months months, built from
      * account_balance_history rather than transactions (per CLAUDE.md:
      * "Do not calculate net worth solely from transactions"). Only
@@ -438,7 +446,7 @@ final class ReportingService
      * @param array{date_from: string, date_to: string, account_ids: list<int>, category_ids: list<int>, tag_ids: list<int>, type: string, user_id: int|null} $filters
      * @return array{rows: list<array{label: string, income: string, expense: string, transfer: string, net: string, count: int}>, totals: array{income: string, expense: string, transfer: string, net: string, count: int}}
      */
-    public function transactionsReport(int $householdId, array $filters, string $groupBy): array
+    public function transactionsReport(int $householdId, array $filters, string $groupBy, ?string $sort = null, string $dir = 'desc'): array
     {
         $clauses = [
             't.household_id = :household_id',
@@ -495,7 +503,7 @@ final class ReportingService
         );
         $stmt->execute($params);
 
-        return $this->groupTransactions($stmt->fetchAll(), $groupBy);
+        return $this->groupTransactions($stmt->fetchAll(), $groupBy, $sort, $dir);
     }
 
     /**
@@ -520,7 +528,7 @@ final class ReportingService
      * @param array $transactions
      * @return array{rows: list<array>, totals: array{income: string, expense: string, transfer: string, net: string, count: int}}
      */
-    private function groupTransactions(array $transactions, string $groupBy): array
+    private function groupTransactions(array $transactions, string $groupBy, ?string $sort = null, string $dir = 'desc'): array
     {
         $groups = [];
         $totals = ['income' => '0.00', 'expense' => '0.00', 'transfer' => '0.00', 'count' => 0];
@@ -560,7 +568,14 @@ final class ReportingService
         }
         unset($group);
 
-        if ($groupBy === 'month') {
+        // An explicit column sort (user clicked a table header) always wins.
+        // Without one, month grouping defaults to chronological order (best
+        // for reading a trend) and every other grouping defaults to total
+        // activity descending (biggest categories/merchants/etc. first).
+        if ($sort !== null && in_array($sort, self::REPORT_SORTABLE_FIELDS, true)) {
+            $rows = array_values($groups);
+            $this->sortReportRows($rows, $sort, $dir);
+        } elseif ($groupBy === 'month') {
             ksort($groups);
             $rows = array_values($groups);
         } else {
@@ -574,5 +589,25 @@ final class ReportingService
         $totals['net'] = bcsub($totals['income'], $totals['expense'], 2);
 
         return ['rows' => $rows, 'totals' => $totals];
+    }
+
+    /**
+     * @param list<array> $rows sorted in place
+     */
+    private function sortReportRows(array &$rows, string $sort, string $dir): void
+    {
+        $multiplier = $dir === 'asc' ? 1 : -1;
+
+        usort($rows, function (array $a, array $b) use ($sort, $multiplier): int {
+            if ($sort === 'label') {
+                return $multiplier * strcasecmp($a['label'], $b['label']);
+            }
+
+            if ($sort === 'count') {
+                return $multiplier * ($a['count'] <=> $b['count']);
+            }
+
+            return $multiplier * bccomp($a[$sort], $b[$sort], 2);
+        });
     }
 }

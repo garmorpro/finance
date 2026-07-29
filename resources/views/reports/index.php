@@ -3,6 +3,8 @@
 /** @var list<array{label: string, income: string, expense: string, transfer: string, net: string, count: int}> $rows */
 /** @var array{income: string, expense: string, transfer: string, net: string, count: int} $totals */
 /** @var string $groupBy */
+/** @var string|null $sort */
+/** @var string $dir */
 /** @var array{date_from: string, date_to: string, account_ids: list<int>, category_ids: list<int>, tag_ids: list<int>, type: string, user_id: int|null} $filters */
 /** @var array $accounts */
 /** @var array $categories */
@@ -30,7 +32,78 @@ $exportQuery = http_build_query([
     'type' => $filters['type'],
     'user_id' => $filters['user_id'] ?? '',
     'group_by' => $groupBy,
+    'sort' => $sort ?? '',
+    'dir' => $dir,
 ]);
+
+/**
+ * Quick date-range presets — before this, generating a report for "this
+ * month" or "year to date" meant typing both dates by hand every time.
+ * Each preset is a plain link (preserves every other active filter) that
+ * lands exactly on the dates it claims, so the currently-active preset
+ * can be detected by comparing against $filters and highlighted below.
+ */
+$today = gmdate('Y-m-d');
+$presets = [
+    'this_month' => ['label' => 'This Month', 'from' => gmdate('Y-m-01'), 'to' => $today],
+    'last_month' => ['label' => 'Last Month', 'from' => date('Y-m-01', strtotime('first day of last month')), 'to' => date('Y-m-t', strtotime('last day of last month'))],
+    'last_3_months' => ['label' => 'Last 3 Months', 'from' => date('Y-m-01', strtotime('-2 months')), 'to' => $today],
+    'last_6_months' => ['label' => 'Last 6 Months', 'from' => date('Y-m-01', strtotime('-5 months')), 'to' => $today],
+    'ytd' => ['label' => 'Year to Date', 'from' => gmdate('Y-01-01'), 'to' => $today],
+    'last_12_months' => ['label' => 'Last 12 Months', 'from' => date('Y-m-01', strtotime('-11 months')), 'to' => $today],
+    'all_time' => ['label' => 'All Time', 'from' => '1970-01-01', 'to' => $today],
+];
+
+$presetLink = function (array $preset) use ($filters, $groupBy, $sort, $dir): string {
+    return '?' . http_build_query([
+        ...$filters,
+        'date_from' => $preset['from'],
+        'date_to' => $preset['to'],
+        'group_by' => $groupBy,
+        'sort' => $sort ?? '',
+        'dir' => $dir,
+    ]);
+};
+
+$activePreset = null;
+foreach ($presets as $key => $preset) {
+    if ($preset['from'] === $filters['date_from'] && $preset['to'] === $filters['date_to']) {
+        $activePreset = $key;
+        break;
+    }
+}
+
+$sortLink = function (string $column) use ($filters, $groupBy, $sort, $dir): string {
+    $nextDir = ($sort === $column && $dir === 'asc') ? 'desc' : 'asc';
+
+    return '?' . http_build_query([
+        ...$filters,
+        'group_by' => $groupBy,
+        'sort' => $column,
+        'dir' => $nextDir,
+    ]);
+};
+
+$sortIndicator = function (string $column) use ($sort, $dir): string {
+    if ($sort !== $column) {
+        return '';
+    }
+
+    return $dir === 'asc' ? ' &uarr;' : ' &darr;';
+};
+
+// Bar chart: income vs. expenses per group row. Capped to the first 15
+// rows (already sorted by activity or the user's chosen column) so a
+// report with dozens of merchants doesn't render an unreadable wall of
+// bars — the full, un-capped breakdown is still in the table below.
+$chartRows = array_slice($rows, 0, 15);
+$chartPayload = [
+    'labels' => array_column($chartRows, 'label'),
+    'datasets' => [
+        ['label' => 'Income', 'data' => array_map(fn (array $r): float => (float) $r['income'], $chartRows)],
+        ['label' => 'Expenses', 'data' => array_map(fn (array $r): float => abs((float) $r['expense']), $chartRows)],
+    ],
+];
 
 // The interactive filter form is hidden when printing (.no-print) since
 // its <select>/<input> controls aren't meaningful on paper — this
@@ -101,6 +174,15 @@ $listIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
                 </div>
 
                 <form method="GET" action="/reports" class="card space-y-4 no-print">
+                    <div>
+                        <div class="field-label mb-1.5">Quick range</div>
+                        <div class="flex flex-wrap gap-2">
+                            <?php foreach ($presets as $key => $preset): ?>
+                                <a href="<?= View::e($presetLink($preset)) ?>" class="<?= $activePreset === $key ? 'badge-owner' : 'badge hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors' ?>"><?= View::e($preset['label']) ?></a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                         <div>
                             <label for="date_from" class="field-label">From</label>
@@ -220,16 +302,26 @@ $listIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
                         <p class="text-stone-500 dark:text-stone-400">No transactions match these filters.</p>
                     </div>
                 <?php else: ?>
+                    <div class="card no-print">
+                        <div style="height: 280px;">
+                            <canvas id="chart-report" data-chart="bar" aria-label="Income and expenses per <?= View::e(strtolower($groupLabels[$groupBy])) ?>" role="img"></canvas>
+                        </div>
+                        <script type="application/json" id="chart-report-data"><?= json_encode($chartPayload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+                        <?php if (count($rows) > count($chartRows)): ?>
+                            <p class="text-xs text-stone-500 dark:text-stone-400 mt-2">Showing the top <?= count($chartRows) ?> of <?= count($rows) ?> rows — the full breakdown is in the table below.</p>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="card">
                         <table class="table-base">
                             <thead>
                                 <tr>
-                                    <th><?= View::e($groupLabels[$groupBy]) ?></th>
-                                    <th class="text-right">Income</th>
-                                    <th class="text-right">Expenses</th>
-                                    <th class="text-right">Transfers</th>
-                                    <th class="text-right">Net</th>
-                                    <th class="text-right">Count</th>
+                                    <th><a href="<?= View::e($sortLink('label')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200"><?= View::e($groupLabels[$groupBy]) ?><?= $sortIndicator('label') ?></a></th>
+                                    <th class="text-right"><a href="<?= View::e($sortLink('income')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Income<?= $sortIndicator('income') ?></a></th>
+                                    <th class="text-right"><a href="<?= View::e($sortLink('expense')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Expenses<?= $sortIndicator('expense') ?></a></th>
+                                    <th class="text-right"><a href="<?= View::e($sortLink('transfer')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Transfers<?= $sortIndicator('transfer') ?></a></th>
+                                    <th class="text-right"><a href="<?= View::e($sortLink('net')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Net<?= $sortIndicator('net') ?></a></th>
+                                    <th class="text-right"><a href="<?= View::e($sortLink('count')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Count<?= $sortIndicator('count') ?></a></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -250,5 +342,8 @@ $listIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
             </main>
         </div>
     </div>
+
+    <script src="<?= View::asset('/assets/js/vendor/chart.umd.min.js') ?>" defer></script>
+    <script src="<?= View::asset('/assets/js/charts.js') ?>" defer></script>
 </body>
 </html>

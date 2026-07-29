@@ -27,13 +27,17 @@ final class ReportController
         $householdId = (int) AuthMiddleware::householdId();
         $filters = $this->readFilters($request);
         $groupBy = $this->resolveGroupBy($request->query('group_by'));
+        $sort = $this->resolveSort($request->query('sort'));
+        $dir = $request->query('dir') === 'asc' ? 'asc' : 'desc';
 
-        $report = (new ReportingService())->transactionsReport($householdId, $filters, $groupBy);
+        $report = (new ReportingService())->transactionsReport($householdId, $filters, $groupBy, $sort, $dir);
 
         Response::html(View::render('reports/index', [
             'rows' => $report['rows'],
             'totals' => $report['totals'],
             'groupBy' => $groupBy,
+            'sort' => $sort,
+            'dir' => $dir,
             'filters' => $filters,
             'accounts' => (new AccountRepository())->listForHousehold($householdId, true),
             'categories' => (new CategoryRepository())->listForHousehold($householdId, true),
@@ -50,8 +54,10 @@ final class ReportController
         $householdId = (int) AuthMiddleware::householdId();
         $filters = $this->readFilters($request);
         $groupBy = $this->resolveGroupBy($request->query('group_by'));
+        $sort = $this->resolveSort($request->query('sort'));
+        $dir = $request->query('dir') === 'asc' ? 'asc' : 'desc';
 
-        $report = (new ReportingService())->transactionsReport($householdId, $filters, $groupBy);
+        $report = (new ReportingService())->transactionsReport($householdId, $filters, $groupBy, $sort, $dir);
 
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="report-' . $groupBy . '-' . gmdate('Y-m-d') . '.csv"');
@@ -105,5 +111,10 @@ final class ReportController
     private function resolveGroupBy(string $value): string
     {
         return in_array($value, self::GROUP_OPTIONS, true) ? $value : 'category';
+    }
+
+    private function resolveSort(string $value): ?string
+    {
+        return in_array($value, ReportingService::REPORT_SORTABLE_FIELDS, true) ? $value : null;
     }
 }
