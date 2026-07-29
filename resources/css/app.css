@@ -242,14 +242,22 @@
     @apply bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400;
   }
 
+  /*
+   * A solid opaque base (bg-white/dark:bg-stone-900, same as .card)
+   * with the tint layered on top as a separate background-image,
+   * rather than one background gradient that fades to alpha 0 — this
+   * panel floats over other rows (position: fixed, set by budgets.js),
+   * so a background that goes fully transparent at one edge let
+   * whatever's underneath bleed through it.
+   */
   .budget-history-panel {
-    @apply rounded-xl border p-4 mt-2;
+    @apply rounded-xl border p-4 mt-2 bg-white dark:bg-stone-900 shadow-lg;
     border-color: rgba(226, 105, 75, .25);
-    background: linear-gradient(160deg, rgba(226, 105, 75, .06), rgba(255, 255, 255, 0));
+    background-image: linear-gradient(160deg, rgba(226, 105, 75, .1), rgba(226, 105, 75, 0));
   }
   @media (prefers-color-scheme: dark) {
     .budget-history-panel {
-      background: linear-gradient(160deg, rgba(226, 105, 75, .1), rgba(28, 25, 23, 0));
+      background-image: linear-gradient(160deg, rgba(226, 105, 75, .14), rgba(226, 105, 75, 0));
     }
   }
 
