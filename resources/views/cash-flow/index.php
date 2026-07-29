@@ -21,6 +21,10 @@ $chartPayload = [
     ],
 ];
 
+$netPositive = bccomp($netCashFlow, '0.00', 2) >= 0;
+$arrowUpIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+$arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -57,20 +61,37 @@ $chartPayload = [
                         <a href="/transactions/create" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add a transaction &rarr;</a>
                     </div>
                 <?php else: ?>
-                    <div class="card">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                            <div>
-                                <div class="label-text">Total income</div>
-                                <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($totalIncome) ?></div>
+                    <div class="stat-hero <?= $netPositive ? 'stat-hero-positive' : 'stat-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
+                        <span class="stat-hero-icon <?= $netPositive ? 'text-emerald-600' : 'text-red-600' ?>">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </span>
+                        <div style="position: relative;">
+                            <div class="text-xs font-bold uppercase tracking-wide <?= $netPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' ?> mb-2">Net Cash Flow</div>
+                            <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($netCashFlow) ?></div>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Total income minus total expenses over the last <?= $months ?> months.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="card">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="metric-icon" style="background: rgba(52, 211, 153, .14); color: #059669;"><?= $arrowUpIcon ?></span>
+                                <div>
+                                    <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Total Income</div>
+                                    <div class="text-xs text-stone-500 dark:text-stone-400">Last <?= $months ?> months</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="label-text">Total expenses</div>
-                                <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($totalExpenses) ?></div>
+                            <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($totalIncome) ?></div>
+                        </div>
+                        <div class="card">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="metric-icon" style="background: rgba(226, 105, 75, .14); color: #c94f32;"><?= $arrowDownIcon ?></span>
+                                <div>
+                                    <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Total Expenses</div>
+                                    <div class="text-xs text-stone-500 dark:text-stone-400">Last <?= $months ?> months</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="label-text">Net cash flow</div>
-                                <div class="text-xl font-semibold <?= bccomp($netCashFlow, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400' ?>"><?= Money::format($netCashFlow) ?></div>
-                            </div>
+                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($totalExpenses) ?></div>
                         </div>
                     </div>
 
