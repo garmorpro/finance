@@ -10,6 +10,7 @@ use App\Middleware\AuthMiddleware;
 use App\Repositories\AccountBalanceHistoryRepository;
 use App\Repositories\AccountRepository;
 use App\Repositories\AuditLogRepository;
+use App\Support\AccountGroups;
 use App\Support\Csrf;
 use App\Support\View;
 use App\Validation\MoneyInput;
@@ -22,9 +23,12 @@ final class AccountController
 
         $householdId = (int) AuthMiddleware::householdId();
         $accountRepo = new AccountRepository();
+        $accounts = $accountRepo->listForHousehold($householdId);
 
         Response::html(View::render('accounts/index', [
-            'accounts' => $accountRepo->listForHousehold($householdId),
+            'sections' => AccountGroups::group($accounts),
+            'netWorth' => $accountRepo->netWorthSummary($householdId),
+            'hasAccounts' => $accounts !== [],
             'csrfToken' => Csrf::token(),
             'notice' => $_SESSION['_flash_notice'] ?? null,
         ]));

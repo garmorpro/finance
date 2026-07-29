@@ -1,6 +1,8 @@
 <?php
 
-/** @var array $accounts */
+/** @var list<array{label: string, accounts: list<array<string, mixed>>, total: string}> $sections */
+/** @var array{assets: string, liabilities: string, net: string, count: int} $netWorth */
+/** @var bool $hasAccounts */
 /** @var string $csrfToken */
 /** @var string|null $notice */
 
@@ -22,7 +24,7 @@ use App\Support\View;
         <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'accounts']); ?>
 
         <div class="app-content">
-        <main class="page-main">
+        <main class="page-main-wide">
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Accounts</h1>
@@ -35,40 +37,60 @@ use App\Support\View;
             <div class="alert-success"><?= View::e($notice) ?></div>
         <?php endif; ?>
 
-        <?php if ($accounts === []): ?>
+        <?php if (!$hasAccounts): ?>
             <div class="card text-center py-12">
                 <p class="text-stone-500 dark:text-stone-400">No accounts yet.</p>
                 <a href="/accounts/create" class="inline-block mt-3 text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add your first account &rarr;</a>
             </div>
         <?php else: ?>
             <div class="card">
-                <table class="table-base">
-                    <thead>
-                        <tr><th>Name</th><th>Type</th><th>Institution</th><th class="text-right">Balance</th><th></th></tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($accounts as $account): ?>
-                            <tr class="<?= $account['status'] === 'archived' ? 'opacity-50' : '' ?>">
-                                <td class="font-medium text-stone-900 dark:text-white">
-                                    <?php if (!empty($account['color'])): ?>
-                                        <span class="inline-block w-2 h-2 rounded-full mr-2" style="background-color: <?= View::e($account['color']) ?>"></span>
-                                    <?php endif; ?>
-                                    <?= View::e($account['name']) ?>
-                                    <?php if ($account['status'] === 'archived'): ?>
-                                        <span class="badge ml-2">Archived</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= View::e(AccountTypeLabels::label($account['account_type'])) ?></td>
-                                <td class="text-stone-500 dark:text-stone-400"><?= View::e($account['institution_name'] ?? '—') ?></td>
-                                <td class="text-right font-medium text-stone-900 dark:text-white"><?= Money::format($account['current_balance']) ?></td>
-                                <td class="text-right">
-                                    <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Edit</a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div>
+                        <div class="label-text">Total Assets</div>
+                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($netWorth['assets']) ?></div>
+                    </div>
+                    <div>
+                        <div class="label-text">Total Debt</div>
+                        <div class="text-xl font-semibold text-red-600 dark:text-red-400"><?= Money::format($netWorth['liabilities']) ?></div>
+                    </div>
+                    <div>
+                        <div class="label-text">Net Worth</div>
+                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($netWorth['net']) ?></div>
+                    </div>
+                </div>
             </div>
+
+            <?php foreach ($sections as $section): ?>
+                <div class="card">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white"><?= View::e($section['label']) ?></h2>
+                        <span class="text-sm font-semibold text-stone-900 dark:text-white"><?= Money::format($section['total']) ?></span>
+                    </div>
+                    <div class="divide-y divide-stone-100 dark:divide-stone-800">
+                        <?php foreach ($section['accounts'] as $account): ?>
+                            <?php
+                            $subtitle = AccountTypeLabels::label($account['account_type']);
+                            if (!empty($account['institution_name'])) {
+                                $subtitle .= ' · ' . $account['institution_name'];
+                            }
+                            ?>
+                            <div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: <?= View::e($account['color'] ?: '#a8a29e') ?>"></span>
+                                    <div class="min-w-0">
+                                        <div class="font-medium text-stone-900 dark:text-white truncate"><?= View::e($account['name']) ?></div>
+                                        <div class="text-xs text-stone-500 dark:text-stone-400 truncate"><?= View::e($subtitle) ?></div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4 flex-shrink-0">
+                                    <span class="font-medium text-stone-900 dark:text-white"><?= Money::format($account['current_balance']) ?></span>
+                                    <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Edit</a>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         <?php endif; ?>
         </main>
         </div>
