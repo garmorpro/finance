@@ -138,20 +138,123 @@
     @apply settings-nav-link bg-terracotta-50 text-terracotta-700 hover:bg-terracotta-50 hover:text-terracotta-700 dark:bg-terracotta-950/50 dark:text-terracotta-300 dark:hover:bg-terracotta-950/50 dark:hover:text-terracotta-300;
   }
 
-  .budget-layout {
-    @apply grid grid-cols-1 gap-6 items-start;
-    grid-template-columns: 1fr;
+  /*
+   * Budgets page — "Left to Budget" hero, stat row, and category-group
+   * sections. Two color variants (positive/negative) since the hero and
+   * its sparkline flip between emerald and red depending on the sign of
+   * the current month's figure.
+   */
+  .budget-hero {
+    @apply relative overflow-hidden rounded-2xl border p-8;
   }
 
-  @screen lg {
-    .budget-layout {
-      grid-template-columns: minmax(0, 1fr) 320px;
+  .budget-hero-positive {
+    @apply border-emerald-200 dark:border-emerald-900/60;
+    background: radial-gradient(120% 140% at 100% 0%, rgba(5, 150, 105, .12), transparent 55%),
+      linear-gradient(135deg, rgba(236, 253, 245, .7), rgba(255, 255, 255, 0));
+  }
+  @media (prefers-color-scheme: dark) {
+    .budget-hero-positive {
+      background: radial-gradient(120% 140% at 100% 0%, rgba(5, 150, 105, .16), transparent 55%),
+        linear-gradient(135deg, rgba(6, 78, 59, .3), rgba(28, 25, 23, 0));
     }
   }
 
-  .budget-sidebar {
-    @apply lg:sticky;
-    top: 1.5rem;
+  .budget-hero-negative {
+    @apply border-red-200 dark:border-red-900/60;
+    background: radial-gradient(120% 140% at 100% 0%, rgba(220, 38, 38, .1), transparent 55%),
+      linear-gradient(135deg, rgba(254, 242, 242, .8), rgba(255, 255, 255, 0));
+  }
+  @media (prefers-color-scheme: dark) {
+    .budget-hero-negative {
+      background: radial-gradient(120% 140% at 100% 0%, rgba(220, 38, 38, .16), transparent 55%),
+        linear-gradient(135deg, rgba(69, 10, 10, .35), rgba(28, 25, 23, 0));
+    }
+  }
+
+  .budget-hero-icon {
+    @apply absolute pointer-events-none opacity-[0.05];
+    right: -1.5rem;
+    top: -1.5rem;
+    width: 11rem;
+    height: 11rem;
+  }
+
+  .budget-stat-icon {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0;
+  }
+  .budget-stat-icon svg {
+    @apply w-[1.1rem] h-[1.1rem];
+  }
+
+  .budget-group-icon {
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400;
+  }
+  .budget-group-icon svg {
+    @apply w-4 h-4;
+  }
+
+  .budget-section-card {
+    @apply overflow-visible;
+  }
+  .budget-section-card + .budget-section-card {
+    @apply mt-4;
+  }
+
+  .budget-cat-row {
+    @apply rounded-xl px-6 py-4 transition-colors;
+  }
+  .budget-cat-row:hover {
+    @apply bg-stone-50 dark:bg-stone-800/50;
+  }
+
+  .budget-cat-bar-track {
+    @apply w-full rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden mt-2.5;
+    height: 7px;
+  }
+  .budget-cat-bar-fill {
+    @apply h-full rounded-full;
+    background-image: linear-gradient(90deg, var(--bar-a), var(--bar-b));
+  }
+
+  .budget-cat-input {
+    @apply text-right font-semibold rounded-lg border border-transparent bg-transparent px-2 py-1 text-stone-900 dark:text-white transition-colors;
+    width: 6.5rem;
+  }
+  .budget-cat-input:hover {
+    @apply border-stone-300 dark:border-stone-600;
+  }
+  .budget-cat-input:focus {
+    @apply outline-none border-terracotta-500 dark:border-terracotta-400 bg-terracotta-50 dark:bg-terracotta-950/30;
+  }
+
+  .budget-delta-chip {
+    @apply inline-block rounded-full text-xs font-semibold whitespace-nowrap;
+    padding: .2rem .6rem;
+  }
+  .budget-delta-chip-ok {
+    @apply bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400;
+  }
+  .budget-delta-chip-over {
+    @apply bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400;
+  }
+  .budget-delta-chip-neutral {
+    @apply bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400;
+  }
+
+  .budget-history-panel {
+    @apply rounded-xl border p-4 mt-2;
+    border-color: rgba(226, 105, 75, .25);
+    background: linear-gradient(160deg, rgba(226, 105, 75, .06), rgba(255, 255, 255, 0));
+  }
+  @media (prefers-color-scheme: dark) {
+    .budget-history-panel {
+      background: linear-gradient(160deg, rgba(226, 105, 75, .1), rgba(28, 25, 23, 0));
+    }
+  }
+
+  .budget-total-row {
+    @apply rounded-xl px-6 py-3.5 bg-stone-50 dark:bg-stone-800/50 mt-3;
   }
 
   .sidebar-icon-btn svg {

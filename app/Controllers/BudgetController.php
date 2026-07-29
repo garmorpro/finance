@@ -85,6 +85,8 @@ final class BudgetController
         // which is what's really left over regardless of the plan.
         $leftToBudget = bcsub(bcsub($incomeTotals['planned'], $expenseTotals['planned'], 2), $plannedGoalContributions, 2);
 
+        $leftToBudgetTrend = $this->leftToBudgetTrend($budgetRepo, $householdId, $periodMonth, $plannedGoalContributions, $leftToBudget);
+
         Response::html(View::render('budgets/index', [
             'periodMonth' => $periodMonth,
             'monthLabel' => date('F Y', strtotime($periodMonth)),
@@ -101,6 +103,7 @@ final class BudgetController
             'plannedGoalContributions' => $plannedGoalContributions,
             'actualGoalContributions' => $actualGoalContributions,
             'leftToBudget' => $leftToBudget,
+            'leftToBudgetTrend' => $leftToBudgetTrend,
             'canManage' => in_array(AuthMiddleware::role(), self::MANAGE_ROLES, true),
             'hasPreviousBudget' => $budgetRepo->findForMonth($householdId, date('Y-m-d', strtotime($periodMonth . ' -1 month'))) !== null,
             'csrfToken' => Csrf::token(),
@@ -339,6 +342,59 @@ final class BudgetController
         }
 
         return ['planned' => $planned, 'actual' => $actual];
+    }
+
+    /**
+     * A 6-month trailing "Left to Budget" series for the Overview hero's
+     * sparkline — the last point is always exactly $currentLeftToBudget
+     * (already computed with the current month's standing-default
+     * layering above), so the sparkline's endpoint never disagrees with
+     * the big number next to it. Earlier months use only what was
+     * explicitly planned that month (budget_items rows) — standing
+     * defaults are a display convenience for the current/future months,
+     * not a claim about what a past month's plan actually was. A month
+     * with no budget row at all shows as $0.00 rather than fabricating a
+     * number: nothing was planned, so there's nothing to report.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    private function leftToBudgetTrend(
+        BudgetRepository $budgetRepo,
+        int $householdId,
+        string $currentMonth,
+        string $plannedGoalContributions,
+        string $currentLeftToBudget,
+        int $monthsBack = 5
+    ): array {
+        $trend = [];
+
+        for ($i = $monthsBack; $i >= 1; $i--) {
+            $month = date('Y-m-01', strtotime($currentMonth . " -{$i} months"));
+            $budget = $budgetRepo->findForMonth($householdId, $month);
+
+            $value = '0.00';
+            if ($budget !== null) {
+                $incomePlanned = '0.00';
+                $expensePlanned = '0.00';
+                foreach ($budgetRepo->listItemsForBudget((int) $budget['id']) as $item) {
+                    if ($item['planned_amount'] === null) {
+                        continue;
+                    }
+                    if ($item['category_type'] === 'income') {
+                        $incomePlanned = bcadd($incomePlanned, $item['planned_amount'], 2);
+                    } else {
+                        $expensePlanned = bcadd($expensePlanned, $item['planned_amount'], 2);
+                    }
+                }
+                $value = bcsub(bcsub($incomePlanned, $expensePlanned, 2), $plannedGoalContributions, 2);
+            }
+
+            $trend[] = ['label' => date('M', strtotime($month)), 'value' => $value];
+        }
+
+        $trend[] = ['label' => date('M', strtotime($currentMonth)), 'value' => $currentLeftToBudget];
+
+        return $trend;
     }
 
     /**
