@@ -126,6 +126,8 @@ final class AccountRepository
 
         $assets = '0.00';
         $liabilities = '0.00';
+        $assetCount = 0;
+        $liabilityCount = 0;
 
         foreach ($accounts as $account) {
             if ((int) $account['include_in_net_worth'] !== 1) {
@@ -134,8 +136,10 @@ final class AccountRepository
 
             if (self::isLiability($account['account_type'])) {
                 $liabilities = bcadd($liabilities, $account['current_balance'], 2);
+                $liabilityCount++;
             } else {
                 $assets = bcadd($assets, $account['current_balance'], 2);
+                $assetCount++;
             }
         }
 
@@ -144,6 +148,8 @@ final class AccountRepository
             'liabilities' => $liabilities,
             'net' => bcsub($assets, $liabilities, 2),
             'count' => count($accounts),
+            'assetCount' => $assetCount,
+            'liabilityCount' => $liabilityCount,
         ];
     }
 

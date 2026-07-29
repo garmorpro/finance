@@ -1,7 +1,7 @@
 <?php
 
 /** @var list<array{label: string, accounts: list<array<string, mixed>>, total: string}> $sections */
-/** @var array{assets: string, liabilities: string, net: string, count: int} $netWorth */
+/** @var array{assets: string, liabilities: string, net: string, count: int, assetCount: int, liabilityCount: int} $netWorth */
 /** @var bool $hasAccounts */
 /** @var string $csrfToken */
 /** @var string|null $notice */
@@ -10,6 +10,10 @@ use App\Support\AccountTypeIcons;
 use App\Support\AccountTypeLabels;
 use App\Support\Money;
 use App\Support\View;
+
+$netPositive = bccomp($netWorth['net'], '0.00', 2) >= 0;
+$arrowUpIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+$arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
 
 ?>
 <!DOCTYPE html>
@@ -44,20 +48,37 @@ use App\Support\View;
                 <a href="/accounts/create" class="inline-block mt-3 text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add your first account &rarr;</a>
             </div>
         <?php else: ?>
-            <div class="card">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <div>
-                        <div class="label-text">Total Assets</div>
-                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($netWorth['assets']) ?></div>
+            <div class="stat-hero <?= $netPositive ? 'stat-hero-positive' : 'stat-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
+                <span class="stat-hero-icon <?= $netPositive ? 'text-emerald-600' : 'text-red-600' ?>">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </span>
+                <div style="position: relative;">
+                    <div class="text-xs font-bold uppercase tracking-wide <?= $netPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' ?> mb-2">Net Worth</div>
+                    <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($netWorth['net']) ?></div>
+                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Total assets minus total debt, across every account included in net worth.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="card">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="metric-icon" style="background: rgba(52, 211, 153, .14); color: #059669;"><?= $arrowUpIcon ?></span>
+                        <div>
+                            <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Total Assets</div>
+                            <div class="text-xs text-stone-500 dark:text-stone-400"><?= $netWorth['assetCount'] ?> account<?= $netWorth['assetCount'] === 1 ? '' : 's' ?></div>
+                        </div>
                     </div>
-                    <div>
-                        <div class="label-text">Total Debt</div>
-                        <div class="text-xl font-semibold text-red-600 dark:text-red-400"><?= Money::format($netWorth['liabilities']) ?></div>
+                    <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($netWorth['assets']) ?></div>
+                </div>
+                <div class="card">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="metric-icon" style="background: rgba(220, 38, 38, .14); color: #dc2626;"><?= $arrowDownIcon ?></span>
+                        <div>
+                            <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Total Debt</div>
+                            <div class="text-xs text-stone-500 dark:text-stone-400"><?= $netWorth['liabilityCount'] ?> account<?= $netWorth['liabilityCount'] === 1 ? '' : 's' ?></div>
+                        </div>
                     </div>
-                    <div>
-                        <div class="label-text">Net Worth</div>
-                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($netWorth['net']) ?></div>
-                    </div>
+                    <div class="text-xl font-semibold text-red-600 dark:text-red-400"><?= Money::format($netWorth['liabilities']) ?></div>
                 </div>
             </div>
 
