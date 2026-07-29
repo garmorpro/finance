@@ -92,6 +92,28 @@ $sortIndicator = function (string $column) use ($sort, $dir): string {
     return $dir === 'asc' ? ' &uarr;' : ' &darr;';
 };
 
+/**
+ * Renders a scrollable checkbox list in place of a native <select multiple>
+ * — a native multi-select's "selected" highlight is unstyleable browser
+ * chrome (a plain white/gray bar) that ignores this app's dark theme
+ * entirely. Checkboxes submit the exact same name="x[]" array shape a
+ * multi-select would, so no controller change was needed.
+ *
+ * @param list<array{value: int, label: string, checked: bool}> $options
+ */
+$checkboxGroup = function (string $name, array $options): void {
+    ?>
+    <div class="border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 max-h-40 overflow-y-auto p-1.5 space-y-0.5">
+        <?php foreach ($options as $opt): ?>
+            <label class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer text-sm text-stone-700 dark:text-stone-300">
+                <input type="checkbox" name="<?= View::e($name) ?>[]" value="<?= (int) $opt['value'] ?>" <?= $opt['checked'] ? 'checked' : '' ?> class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
+                <?= View::e($opt['label']) ?>
+            </label>
+        <?php endforeach; ?>
+    </div>
+    <?php
+};
+
 // Bar chart: income vs. expenses per group row. Capped to the first 15
 // rows (already sorted by activity or the user's chosen column) so a
 // report with dozens of merchants doesn't render an unreadable wall of
@@ -225,31 +247,31 @@ $listIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                            <label for="account_ids" class="field-label">Accounts (leave empty for all)</label>
-                            <select id="account_ids" name="account_ids[]" multiple class="field-input" size="4">
-                                <?php foreach ($accounts as $account): ?>
-                                    <option value="<?= (int) $account['id'] ?>" <?= in_array((int) $account['id'], $filters['account_ids'], true) ? 'selected' : '' ?>><?= View::e($account['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <div class="field-label">Accounts (leave empty for all)</div>
+                            <?php $checkboxGroup('account_ids', array_map(fn (array $a): array => [
+                                'value' => (int) $a['id'],
+                                'label' => $a['name'],
+                                'checked' => in_array((int) $a['id'], $filters['account_ids'], true),
+                            ], $accounts)); ?>
                         </div>
                         <div>
-                            <label for="category_ids" class="field-label">Categories (leave empty for all)</label>
-                            <select id="category_ids" name="category_ids[]" multiple class="field-input" size="4">
-                                <?php foreach ($categories as $category): ?>
-                                    <option value="<?= (int) $category['id'] ?>" <?= in_array((int) $category['id'], $filters['category_ids'], true) ? 'selected' : '' ?>><?= View::e($category['name']) ?> (<?= View::e(ucfirst($category['type'])) ?>)</option>
-                                <?php endforeach; ?>
-                            </select>
+                            <div class="field-label">Categories (leave empty for all)</div>
+                            <?php $checkboxGroup('category_ids', array_map(fn (array $c): array => [
+                                'value' => (int) $c['id'],
+                                'label' => $c['name'] . ' (' . ucfirst($c['type']) . ')',
+                                'checked' => in_array((int) $c['id'], $filters['category_ids'], true),
+                            ], $categories)); ?>
                         </div>
                         <div>
-                            <label for="tag_ids" class="field-label">Tags (leave empty for all)</label>
+                            <div class="field-label">Tags (leave empty for all)</div>
                             <?php if ($tags === []): ?>
                                 <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">No tags yet — <a href="/settings/tags" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">create one</a>.</p>
                             <?php else: ?>
-                                <select id="tag_ids" name="tag_ids[]" multiple class="field-input" size="4">
-                                    <?php foreach ($tags as $tag): ?>
-                                        <option value="<?= (int) $tag['id'] ?>" <?= in_array((int) $tag['id'], $filters['tag_ids'], true) ? 'selected' : '' ?>><?= View::e($tag['name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <?php $checkboxGroup('tag_ids', array_map(fn (array $t): array => [
+                                    'value' => (int) $t['id'],
+                                    'label' => $t['name'],
+                                    'checked' => in_array((int) $t['id'], $filters['tag_ids'], true),
+                                ], $tags)); ?>
                             <?php endif; ?>
                         </div>
                     </div>
