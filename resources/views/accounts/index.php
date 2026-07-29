@@ -6,6 +6,7 @@
 /** @var string $csrfToken */
 /** @var string|null $notice */
 
+use App\Support\AccountTypeIcons;
 use App\Support\AccountTypeLabels;
 use App\Support\Money;
 use App\Support\View;
@@ -73,20 +74,20 @@ use App\Support\View;
                             if (!empty($account['institution_name'])) {
                                 $subtitle .= ' · ' . $account['institution_name'];
                             }
+                            $accountColor = $account['color'] ?: '#a8a29e';
                             ?>
-                            <div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                            <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="flex items-center justify-between gap-4 py-3 -mx-2 px-2 rounded-lg first:pt-0 last:pb-0 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors">
                                 <div class="flex items-center gap-3 min-w-0">
-                                    <span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: <?= View::e($account['color'] ?: '#a8a29e') ?>"></span>
+                                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0" style="background-color: <?= View::e($accountColor) ?>1a; color: <?= View::e($accountColor) ?>;">
+                                        <?= AccountTypeIcons::svg($account['account_type']) ?>
+                                    </span>
                                     <div class="min-w-0">
                                         <div class="font-medium text-stone-900 dark:text-white truncate"><?= View::e($account['name']) ?></div>
                                         <div class="text-xs text-stone-500 dark:text-stone-400 truncate"><?= View::e($subtitle) ?></div>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-4 flex-shrink-0">
-                                    <span class="font-medium text-stone-900 dark:text-white"><?= Money::format($account['current_balance']) ?></span>
-                                    <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Edit</a>
-                                </div>
-                            </div>
+                                <span class="font-medium text-stone-900 dark:text-white flex-shrink-0"><?= Money::format($account['current_balance']) ?></span>
+                            </a>
                         <?php endforeach; ?>
                     </div>
                 </div>
