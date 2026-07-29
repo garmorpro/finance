@@ -40,9 +40,9 @@ $percentFor = function (string $actual, string $planned): int {
 // Expenses: exceeding the plan is the bad direction.
 $expenseDelta = function (string $remaining): array {
     if (bccomp($remaining, '0.00', 2) < 0) {
-        return ['class' => 'budget-delta-chip-over', 'text' => Money::format(bcmul($remaining, '-1', 2)) . ' over'];
+        return ['class' => 'delta-chip-over', 'text' => Money::format(bcmul($remaining, '-1', 2)) . ' over'];
     }
-    return ['class' => 'budget-delta-chip-ok', 'text' => Money::format($remaining) . ' left'];
+    return ['class' => 'delta-chip-ok', 'text' => Money::format($remaining) . ' left'];
 };
 
 // Income/Goals: exceeding the plan is good news, not overage — earning or
@@ -50,9 +50,9 @@ $expenseDelta = function (string $remaining): array {
 // overspending does.
 $positiveFramingDelta = function (string $remaining, string $shortOfPlanVerb): array {
     if (bccomp($remaining, '0.00', 2) <= 0) {
-        return ['class' => 'budget-delta-chip-ok', 'text' => Money::format(bcmul($remaining, '-1', 2)) . ' above plan'];
+        return ['class' => 'delta-chip-ok', 'text' => Money::format(bcmul($remaining, '-1', 2)) . ' above plan'];
     }
-    return ['class' => 'budget-delta-chip-neutral', 'text' => Money::format($remaining) . ' ' . $shortOfPlanVerb];
+    return ['class' => 'delta-chip-neutral', 'text' => Money::format($remaining) . ' ' . $shortOfPlanVerb];
 };
 
 // Normalizes the trend series into an SVG polyline `points` string for the
@@ -158,7 +158,7 @@ $renderSection = function (array $section, string $type) use ($renderRow, $expen
             </span>
             <span class="flex items-center gap-3 text-sm flex-shrink-0">
                 <span class="text-stone-500 dark:text-stone-400"><?= Money::format($actual) ?> <span class="text-stone-400 dark:text-stone-600">of</span> <?= Money::format($planned) ?></span>
-                <span class="budget-delta-chip <?= $delta['class'] ?>"><?= View::e($delta['text']) ?></span>
+                <span class="delta-chip <?= $delta['class'] ?>"><?= View::e($delta['text']) ?></span>
             </span>
         </summary>
         <div class="px-4 pb-2 border-t border-stone-100 dark:border-stone-800 pt-2">
@@ -178,7 +178,7 @@ $statCard = function (string $label, string $planned, string $actual, array $del
     ?>
     <div class="card">
         <div class="flex items-center gap-3 mb-3">
-            <span class="budget-stat-icon" style="background: <?= $iconBg ?>; color: <?= $iconColor ?>;"><?= $iconSvg ?></span>
+            <span class="metric-icon" style="background: <?= $iconBg ?>; color: <?= $iconColor ?>;"><?= $iconSvg ?></span>
             <div>
                 <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white"><?= View::e($label) ?></div>
                 <div class="text-xs text-stone-500 dark:text-stone-400"><?= Money::format($planned) ?> planned</div>
@@ -189,7 +189,7 @@ $statCard = function (string $label, string $planned, string $actual, array $del
         </div>
         <div class="flex items-center justify-between mt-3 text-xs">
             <span class="text-stone-500 dark:text-stone-400"><?= Money::format($actual) ?> <?= View::e($earnedOrSpentLabel) ?></span>
-            <span class="budget-delta-chip <?= $delta['class'] ?>"><?= View::e($delta['text']) ?></span>
+            <span class="delta-chip <?= $delta['class'] ?>"><?= View::e($delta['text']) ?></span>
         </div>
     </div>
     <?php
@@ -246,8 +246,8 @@ $leftToBudgetPositive = bccomp($leftToBudget, '0.00', 2) >= 0;
                 <?php endif; ?>
 
                 <!-- Left to Budget hero -->
-                <div class="budget-hero <?= $leftToBudgetPositive ? 'budget-hero-positive' : 'budget-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
-                    <span class="budget-hero-icon <?= $leftToBudgetPositive ? 'text-emerald-600' : 'text-red-600' ?>">
+                <div class="stat-hero <?= $leftToBudgetPositive ? 'stat-hero-positive' : 'stat-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
+                    <span class="stat-hero-icon <?= $leftToBudgetPositive ? 'text-emerald-600' : 'text-red-600' ?>">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                     </span>
                     <div style="position: relative;">

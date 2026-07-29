@@ -327,7 +327,7 @@ final class TransactionRepository
      * excluded from both sums even if the "All types" filter is active.
      *
      * @param array<string, mixed> $filters
-     * @return array{income: string, expenses: string, net: string}
+     * @return array{income: string, expenses: string, net: string, incomeCount: int, expenseCount: int}
      */
     public function sumsForHousehold(int $householdId, array $filters): array
     {
@@ -336,7 +336,9 @@ final class TransactionRepository
         $stmt = Connection::get()->prepare(
             "SELECT
                 COALESCE(SUM(CASE WHEN t.transaction_type = 'income' THEN t.amount ELSE 0 END), 0) AS income,
-                COALESCE(SUM(CASE WHEN t.transaction_type = 'expense' THEN t.amount ELSE 0 END), 0) AS expenses
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'expense' THEN t.amount ELSE 0 END), 0) AS expenses,
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'income' THEN 1 ELSE 0 END), 0) AS income_count,
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'expense' THEN 1 ELSE 0 END), 0) AS expense_count
              FROM transactions t
              {$where}"
         );
@@ -350,6 +352,8 @@ final class TransactionRepository
             'income' => $income,
             'expenses' => $expenses,
             'net' => bcadd($income, $expenses, 2),
+            'incomeCount' => (int) $row['income_count'],
+            'expenseCount' => (int) $row['expense_count'],
         ];
     }
 

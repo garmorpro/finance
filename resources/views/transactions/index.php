@@ -4,7 +4,7 @@
 /** @var int $total */
 /** @var int $page */
 /** @var int $perPage */
-/** @var array{income: string, expenses: string, net: string} $sums */
+/** @var array{income: string, expenses: string, net: string, incomeCount: int, expenseCount: int} $sums */
 /** @var string $sort */
 /** @var string $dir */
 /** @var array $accounts */
@@ -43,6 +43,10 @@ $sortIndicator = function (string $column) use ($sort, $dir): string {
     return $dir === 'asc' ? ' &uarr;' : ' &darr;';
 };
 
+$netPositive = bccomp($sums['net'], '0.00', 2) >= 0;
+$arrowUpIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+$arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -78,22 +82,38 @@ $sortIndicator = function (string $column) use ($sort, $dir): string {
                     <div class="alert-success"><?= View::e($notice) ?></div>
                 <?php endif; ?>
 
-                <div class="card">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <div>
-                            <div class="label-text">Income</div>
-                            <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($sums['income']) ?></div>
-                        </div>
-                        <div>
-                            <div class="label-text">Expenses</div>
-                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($sums['expenses']) ?></div>
-                        </div>
-                        <div>
-                            <div class="label-text">Net</div>
-                            <div class="text-xl font-semibold <?= bccomp($sums['net'], '0.00', 2) >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' ?>"><?= Money::format($sums['net']) ?></div>
-                        </div>
+                <div class="stat-hero <?= $netPositive ? 'stat-hero-positive' : 'stat-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
+                    <span class="stat-hero-icon <?= $netPositive ? 'text-emerald-600' : 'text-red-600' ?>">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </span>
+                    <div style="position: relative;">
+                        <div class="text-xs font-bold uppercase tracking-wide <?= $netPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' ?> mb-2">Net &middot; Filtered results</div>
+                        <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($sums['net']) ?></div>
+                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Income minus expenses across the filters below, not just the current page. Transfers aren't counted as income or spending.</p>
                     </div>
-                    <p class="text-xs text-stone-500 dark:text-stone-400 mt-3">Reflects the filters below, not just the current page. Transfers aren't counted as income or spending.</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="card">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="metric-icon" style="background: rgba(52, 211, 153, .14); color: #059669;"><?= $arrowUpIcon ?></span>
+                            <div>
+                                <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Income</div>
+                                <div class="text-xs text-stone-500 dark:text-stone-400"><?= $sums['incomeCount'] ?> transaction<?= $sums['incomeCount'] === 1 ? '' : 's' ?></div>
+                            </div>
+                        </div>
+                        <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($sums['income']) ?></div>
+                    </div>
+                    <div class="card">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="metric-icon" style="background: rgba(226, 105, 75, .14); color: #c94f32;"><?= $arrowDownIcon ?></span>
+                            <div>
+                                <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Expenses</div>
+                                <div class="text-xs text-stone-500 dark:text-stone-400"><?= $sums['expenseCount'] ?> transaction<?= $sums['expenseCount'] === 1 ? '' : 's' ?></div>
+                            </div>
+                        </div>
+                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($sums['expenses']) ?></div>
+                    </div>
                 </div>
 
                 <form method="GET" action="/transactions" class="card">

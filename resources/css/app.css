@@ -139,40 +139,43 @@
   }
 
   /*
-   * Budgets page — "Left to Budget" hero, stat row, and category-group
-   * sections. Two color variants (positive/negative) since the hero and
-   * its sparkline flip between emerald and red depending on the sign of
-   * the current month's figure.
+   * Shared "hero number" + icon-stat-card pattern, introduced for the
+   * Budgets page's "Left to Budget" hero and stat row, now also used by
+   * the Transactions page's Net/Income/Expenses summary — generically
+   * named (not budget-*) since it's no longer budget-specific. Two hero
+   * color variants (positive/negative) since the hero and its sparkline
+   * flip between emerald and red depending on the sign of the figure
+   * shown.
    */
-  .budget-hero {
+  .stat-hero {
     @apply relative overflow-hidden rounded-2xl border p-8;
   }
 
-  .budget-hero-positive {
+  .stat-hero-positive {
     @apply border-emerald-200 dark:border-emerald-900/60;
     background: radial-gradient(120% 140% at 100% 0%, rgba(5, 150, 105, .12), transparent 55%),
       linear-gradient(135deg, rgba(236, 253, 245, .7), rgba(255, 255, 255, 0));
   }
   @media (prefers-color-scheme: dark) {
-    .budget-hero-positive {
+    .stat-hero-positive {
       background: radial-gradient(120% 140% at 100% 0%, rgba(5, 150, 105, .16), transparent 55%),
         linear-gradient(135deg, rgba(6, 78, 59, .3), rgba(28, 25, 23, 0));
     }
   }
 
-  .budget-hero-negative {
+  .stat-hero-negative {
     @apply border-red-200 dark:border-red-900/60;
     background: radial-gradient(120% 140% at 100% 0%, rgba(220, 38, 38, .1), transparent 55%),
       linear-gradient(135deg, rgba(254, 242, 242, .8), rgba(255, 255, 255, 0));
   }
   @media (prefers-color-scheme: dark) {
-    .budget-hero-negative {
+    .stat-hero-negative {
       background: radial-gradient(120% 140% at 100% 0%, rgba(220, 38, 38, .16), transparent 55%),
         linear-gradient(135deg, rgba(69, 10, 10, .35), rgba(28, 25, 23, 0));
     }
   }
 
-  .budget-hero-icon {
+  .stat-hero-icon {
     @apply absolute pointer-events-none opacity-[0.05];
     right: -1.5rem;
     top: -1.5rem;
@@ -180,10 +183,10 @@
     height: 11rem;
   }
 
-  .budget-stat-icon {
+  .metric-icon {
     @apply inline-flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0;
   }
-  .budget-stat-icon svg {
+  .metric-icon svg {
     @apply w-[1.1rem] h-[1.1rem];
   }
 
@@ -228,17 +231,17 @@
     @apply outline-none border-terracotta-500 dark:border-terracotta-400 bg-terracotta-50 dark:bg-terracotta-950/30;
   }
 
-  .budget-delta-chip {
+  .delta-chip {
     @apply inline-block rounded-full text-xs font-semibold whitespace-nowrap;
     padding: .2rem .6rem;
   }
-  .budget-delta-chip-ok {
+  .delta-chip-ok {
     @apply bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400;
   }
-  .budget-delta-chip-over {
+  .delta-chip-over {
     @apply bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400;
   }
-  .budget-delta-chip-neutral {
+  .delta-chip-neutral {
     @apply bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400;
   }
 
