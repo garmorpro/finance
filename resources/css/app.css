@@ -13,6 +13,25 @@
     @apply bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-sm p-6;
   }
 
+  /*
+   * Accounts page's physical-card-style tile. Background color comes from
+   * the account's own custom `color` (inline style, set per-account —
+   * can't be a static Tailwind class), with a dark gradient layered over
+   * it via background-image so white text stays legible regardless of
+   * how light the underlying color is, the same way a real card design
+   * darkens toward one corner rather than relying on the base color alone
+   * for contrast.
+   */
+  .account-card {
+    @apply relative overflow-hidden rounded-2xl p-5 flex flex-col justify-between text-white shadow-md transition-transform hover:-translate-y-0.5;
+    min-height: 168px;
+    background-image: linear-gradient(160deg, rgba(28, 25, 23, 0.2), rgba(28, 25, 23, 0.75));
+  }
+
+  .account-card-icon {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/15;
+  }
+
   .page-shell {
     @apply min-h-screen;
   }

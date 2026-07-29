@@ -83,31 +83,29 @@ $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
             </div>
 
             <?php foreach ($sections as $section): ?>
-                <div class="card">
+                <div>
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white"><?= View::e($section['label']) ?></h2>
                         <span class="text-sm font-semibold text-stone-900 dark:text-white"><?= Money::format($section['total']) ?></span>
                     </div>
-                    <div class="divide-y divide-stone-100 dark:divide-stone-800">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <?php foreach ($section['accounts'] as $account): ?>
-                            <?php
-                            $subtitle = AccountTypeLabels::label($account['account_type']);
-                            if (!empty($account['institution_name'])) {
-                                $subtitle .= ' · ' . $account['institution_name'];
-                            }
-                            $accountColor = $account['color'] ?: '#a8a29e';
-                            ?>
-                            <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="flex items-center justify-between gap-4 py-3 -mx-2 px-2 rounded-lg first:pt-0 last:pb-0 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors">
-                                <div class="flex items-center gap-3 min-w-0">
-                                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0" style="background-color: <?= View::e($accountColor) ?>1a; color: <?= View::e($accountColor) ?>;">
-                                        <?= AccountTypeIcons::svg($account['account_type']) ?>
-                                    </span>
-                                    <div class="min-w-0">
-                                        <div class="font-medium text-stone-900 dark:text-white truncate"><?= View::e($account['name']) ?></div>
-                                        <div class="text-xs text-stone-500 dark:text-stone-400 truncate"><?= View::e($subtitle) ?></div>
-                                    </div>
+                            <?php $accountColor = $account['color'] ?: '#a8a29e'; ?>
+                            <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="account-card" style="background-color: <?= View::e($accountColor) ?>;">
+                                <div class="flex items-start justify-between">
+                                    <span class="account-card-icon"><?= AccountTypeIcons::svg($account['account_type']) ?></span>
+                                    <span class="text-[10px] font-semibold uppercase tracking-wide text-white/70"><?= View::e(AccountTypeLabels::label($account['account_type'])) ?></span>
                                 </div>
-                                <span class="font-medium text-stone-900 dark:text-white flex-shrink-0"><?= Money::format($account['current_balance']) ?></span>
+                                <div class="min-w-0">
+                                    <div class="font-semibold truncate"><?= View::e($account['name']) ?></div>
+                                    <?php if (!empty($account['institution_name'])): ?>
+                                        <div class="text-xs text-white/70 truncate"><?= View::e($account['institution_name']) ?></div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="flex items-end justify-between mt-2">
+                                    <span class="text-sm tracking-widest text-white/60" aria-hidden="true">&bull;&bull;&bull;&bull;</span>
+                                    <span class="text-lg font-semibold flex-shrink-0"><?= Money::format($account['current_balance']) ?></span>
+                                </div>
                             </a>
                         <?php endforeach; ?>
                     </div>
