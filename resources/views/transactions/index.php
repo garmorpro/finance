@@ -168,7 +168,7 @@ $sortIndicator = function (string $column) use ($sort, $dir): string {
                         <p class="text-stone-500 dark:text-stone-400">No transactions match.</p>
                     </div>
                 <?php else: ?>
-                    <form method="POST" action="/transactions/bulk" id="bulk-form">
+                    <form method="POST" action="/transactions/bulk" id="bulk-form" class="space-y-6">
                         <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                         <input type="hidden" name="return_query" value="<?= View::e($returnQuery) ?>">
 
