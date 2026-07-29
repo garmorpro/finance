@@ -152,11 +152,11 @@ $sortIndicator = function (string $column) use ($sort, $dir): string {
                         </div>
                         <div>
                             <label for="f-amount-min" class="field-label">Min amount</label>
-                            <input type="number" step="0.01" min="0" id="f-amount-min" name="amount_min" value="<?= View::e($filters['amount_min']) ?>" class="field-input" style="max-width: 8rem;">
+                            <input type="text" inputmode="decimal" id="f-amount-min" name="amount_min" value="<?= View::e($filters['amount_min']) ?>" class="field-input" placeholder="0.00" style="max-width: 8rem;">
                         </div>
                         <div>
                             <label for="f-amount-max" class="field-label">Max amount</label>
-                            <input type="number" step="0.01" min="0" id="f-amount-max" name="amount_max" value="<?= View::e($filters['amount_max']) ?>" class="field-input" style="max-width: 8rem;">
+                            <input type="text" inputmode="decimal" id="f-amount-max" name="amount_max" value="<?= View::e($filters['amount_max']) ?>" class="field-input" placeholder="0.00" style="max-width: 8rem;">
                         </div>
                         <button type="submit" class="btn-secondary">Filter</button>
                         <a href="/transactions" class="btn-secondary">Clear</a>
