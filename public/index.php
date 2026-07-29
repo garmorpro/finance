@@ -22,6 +22,7 @@ use App\Controllers\ProfileController;
 use App\Controllers\RecurringController;
 use App\Controllers\ReportController;
 use App\Controllers\RuleController;
+use App\Controllers\RulesInputsController;
 use App\Controllers\SearchController;
 use App\Controllers\TagController;
 use App\Controllers\TransactionController;
@@ -154,6 +155,9 @@ $router->get('/debt', fn (Request $r): mixed => $debtController->index($r));
 
 $planningController = new PlanningController();
 $router->get('/planning', fn (): mixed => $planningController->index());
+
+$rulesInputsController = new RulesInputsController();
+$router->get('/rules-inputs', fn (): mixed => $rulesInputsController->index());
 
 $businessController = new BusinessController();
 $router->get('/business/overview', fn (): mixed => $businessController->overview());

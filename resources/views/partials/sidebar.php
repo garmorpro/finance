@@ -65,7 +65,7 @@ $notificationCount = (new NotificationService())->badgeCount((int) AuthMiddlewar
         <?= $link('planning', '/planning', 'Planning') ?>
         <?= $link('debt', '/debt', 'Debts') ?>
         <?= $link('reports', '/reports', 'Reports') ?>
-        <?= $link('rules', '/settings/rules', 'Rules &amp; Inputs') ?>
+        <?= $link('rules', '/rules-inputs', 'Rules &amp; Inputs') ?>
 
         <div class="pt-2 mt-2 border-t border-stone-100 dark:border-stone-800">
             <div class="px-3 pb-1.5 pt-1 flex items-center gap-2">

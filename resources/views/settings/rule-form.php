@@ -40,7 +40,7 @@ foreach ($actions as $action) {
 </head>
 <body>
     <div class="app-shell">
-        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'rules']); ?>
+        <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'settings']); ?>
 
         <div class="app-content">
             <main class="page-main">
