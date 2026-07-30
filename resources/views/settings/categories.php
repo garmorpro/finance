@@ -9,10 +9,14 @@
 /** @var string|null $notice */
 /** @var array $old */
 
+use App\Support\CategoryGroupIcons;
 use App\Support\SettingsIcons;
 use App\Support\View;
 
 $editingId = $old['id'] ?? null;
+
+$arrowUpIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+$arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
 
 $renderCategoryRow = function (array $category) use ($csrfToken, $editingId, $old, $expenseGroups, $incomeGroups): void {
     $isEditing = $editingId !== null && (string) $category['id'] === (string) $editingId;
@@ -25,6 +29,7 @@ $renderCategoryRow = function (array $category) use ($csrfToken, $editingId, $ol
         <form method="POST" action="/settings/categories/<?= (int) $category['id'] ?>" class="flex items-center gap-2 flex-1 min-w-0">
             <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
             <input type="hidden" name="type" value="<?= View::e($category['type']) ?>">
+            <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: <?= View::e($category['color'] ?: '#a8a29e') ?>" title="Category color"></span>
             <input type="text" name="name" value="<?= View::e($name) ?>" class="field-input flex-1 min-w-0">
             <select name="group_id" class="field-input" style="max-width: 9.5rem;">
                 <option value="">Ungrouped</option>
@@ -48,7 +53,10 @@ $renderSections = function (array $sections) use ($csrfToken, $renderCategoryRow
         ?>
         <div class="card">
             <div class="flex items-center justify-between mb-1">
-                <h3 class="font-medium text-stone-900 dark:text-white"><?= View::e($group['name'] ?? 'Ungrouped') ?></h3>
+                <span class="flex items-center gap-2.5 min-w-0">
+                    <span class="budget-group-icon"><?= CategoryGroupIcons::forName($group['name'] ?? null) ?></span>
+                    <h3 class="font-medium text-stone-900 dark:text-white truncate"><?= View::e($group['name'] ?? 'Ungrouped') ?></h3>
+                </span>
                 <?php if ($group !== null): ?>
                     <details class="text-sm">
                         <summary class="cursor-pointer text-terracotta-600 dark:text-terracotta-400 hover:underline list-none">Edit</summary>
@@ -136,7 +144,10 @@ $renderSections = function (array $sections) use ($csrfToken, $renderCategoryRow
                 </div>
 
                 <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Expenses</h2>
+                    <span class="flex items-center gap-2.5">
+                        <span class="metric-icon" style="background: rgba(226, 105, 75, .14); color: #c94f32;"><?= $arrowDownIcon ?></span>
+                        <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Expenses</h2>
+                    </span>
                     <details class="text-sm">
                         <summary class="cursor-pointer text-terracotta-600 dark:text-terracotta-400 hover:underline list-none">+ Create group</summary>
                         <form method="POST" action="/settings/category-groups" class="mt-2 flex items-center gap-2">
@@ -152,7 +163,10 @@ $renderSections = function (array $sections) use ($csrfToken, $renderCategoryRow
                 </div>
 
                 <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Income</h2>
+                    <span class="flex items-center gap-2.5">
+                        <span class="metric-icon" style="background: rgba(52, 211, 153, .14); color: #059669;"><?= $arrowUpIcon ?></span>
+                        <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Income</h2>
+                    </span>
                     <details class="text-sm">
                         <summary class="cursor-pointer text-terracotta-600 dark:text-terracotta-400 hover:underline list-none">+ Create group</summary>
                         <form method="POST" action="/settings/category-groups" class="mt-2 flex items-center gap-2">
