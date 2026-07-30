@@ -8,6 +8,7 @@
 /** @var string|null $notice */
 /** @var string|null $error */
 
+use App\Support\SettingsIcons;
 use App\Support\View;
 
 $conditionLabel = function (array $condition) use ($accountNames): string {
@@ -63,7 +64,10 @@ $actionLabels = function (array $actions) use ($categoryNames, $tagNames): array
                     <div class="space-y-6">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Rules</h2>
+                                <div class="flex items-center gap-2.5">
+                                    <span class="text-stone-400 dark:text-stone-500"><?= SettingsIcons::svg('rules') ?></span>
+                                    <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Rules</h2>
+                                </div>
                                 <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Automatically categorize, rename, tag, or mark transactions as they come in — from manual entry, CSV import, or recurring bills.</p>
                             </div>
                             <a href="/settings/rules/create" class="btn-primary">New rule</a>

@@ -6,6 +6,7 @@
 /** @var string|null $notice */
 /** @var array $old */
 
+use App\Support\SettingsIcons;
 use App\Support\View;
 
 $editingId = $old['id'] ?? null;
@@ -32,7 +33,10 @@ $editingId = $old['id'] ?? null;
 
                     <div class="space-y-6">
                         <div>
-                            <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Tags</h2>
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-stone-400 dark:text-stone-500"><?= SettingsIcons::svg('tags') ?></span>
+                                <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Tags</h2>
+                            </div>
                             <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Free-form labels you can attach to any transaction, independent of category.</p>
                         </div>
 

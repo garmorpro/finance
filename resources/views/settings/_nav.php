@@ -2,11 +2,13 @@
 
 /** @var string $active */
 
+use App\Support\SettingsIcons;
+
 $active = $active ?? '';
 
 $navLink = function (string $key, string $href, string $label) use ($active): string {
     $class = $key === $active ? 'settings-nav-link-active' : 'settings-nav-link';
-    return '<a href="' . $href . '" class="' . $class . '">' . $label . '</a>';
+    return '<a href="' . $href . '" class="' . $class . '">' . SettingsIcons::svg($key) . '<span>' . $label . '</span></a>';
 };
 
 ?>

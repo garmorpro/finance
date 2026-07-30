@@ -8,6 +8,7 @@ use App\Http\Request;
 use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AuditLogRepository;
+use App\Repositories\HouseholdRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserSessionRepository;
 use App\Support\Csrf;
@@ -23,9 +24,12 @@ final class ProfileController
         AuthMiddleware::requireAuth();
 
         $user = (new UserRepository())->findById((int) AuthMiddleware::userId());
+        $householdId = AuthMiddleware::householdId();
 
         Response::html(View::render('settings/profile', [
             'user' => $user,
+            'household' => $householdId !== null ? (new HouseholdRepository())->findById($householdId) : null,
+            'role' => AuthMiddleware::role(),
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,

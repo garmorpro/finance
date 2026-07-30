@@ -8,7 +8,16 @@
 /** @var string|null $error */
 /** @var string|null $notice */
 
+use App\Support\SettingsIcons;
 use App\Support\View;
+
+$initialsFor = function (string $name): string {
+    $parts = preg_split('/\s+/', trim($name), -1, PREG_SPLIT_NO_EMPTY);
+    if ($parts === false || $parts === []) {
+        return '?';
+    }
+    return strtoupper(mb_substr($parts[0], 0, 1) . (count($parts) > 1 ? mb_substr(end($parts), 0, 1) : ''));
+};
 
 ?>
 <!DOCTYPE html>
@@ -32,7 +41,10 @@ use App\Support\View;
 
                     <div class="space-y-6">
                         <div>
-                            <h2 class="text-lg font-semibold text-stone-900 dark:text-white"><?= View::e($household['name'] ?? 'Household') ?></h2>
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-stone-400 dark:text-stone-500"><?= SettingsIcons::svg('household') ?></span>
+                                <h2 class="text-lg font-semibold text-stone-900 dark:text-white"><?= View::e($household['name'] ?? 'Household') ?></h2>
+                            </div>
                             <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Members and pending invitations for your household.</p>
                         </div>
 
@@ -52,7 +64,12 @@ use App\Support\View;
                                 <tbody>
                                     <?php foreach ($members as $member): ?>
                                         <tr>
-                                            <td class="font-medium text-stone-900 dark:text-white"><?= View::e($member['name']) ?></td>
+                                            <td class="font-medium text-stone-900 dark:text-white">
+                                                <div class="flex items-center gap-2.5">
+                                                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-terracotta-600 text-white text-xs font-semibold flex-shrink-0"><?= View::e($initialsFor($member['name'])) ?></span>
+                                                    <?= View::e($member['name']) ?>
+                                                </div>
+                                            </td>
                                             <td><?= View::e($member['email']) ?></td>
                                             <td><span class="<?= $member['role'] === 'owner' ? 'badge-owner' : 'badge' ?>"><?= View::e(ucfirst($member['role'])) ?></span></td>
                                         </tr>

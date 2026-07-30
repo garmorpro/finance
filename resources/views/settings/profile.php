@@ -1,11 +1,19 @@
 <?php
 
 /** @var array $user */
+/** @var array|null $household */
+/** @var string|null $role */
 /** @var string $csrfToken */
 /** @var string|null $error */
 /** @var string|null $notice */
 
+use App\Support\SettingsIcons;
 use App\Support\View;
+
+$nameParts = preg_split('/\s+/', trim($user['name']), -1, PREG_SPLIT_NO_EMPTY);
+$initials = $nameParts !== false && $nameParts !== []
+    ? strtoupper(mb_substr($nameParts[0], 0, 1) . (count($nameParts) > 1 ? mb_substr(end($nameParts), 0, 1) : ''))
+    : '?';
 
 ?>
 <!DOCTYPE html>
@@ -28,9 +36,9 @@ use App\Support\View;
                     <?php View::partial('settings/_nav', ['active' => 'profile']); ?>
 
                     <div class="space-y-6">
-                        <div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-stone-400 dark:text-stone-500"><?= SettingsIcons::svg('profile') ?></span>
                             <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Profile</h2>
-                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Your name and email address.</p>
                         </div>
 
                         <?php if (!empty($error)): ?>
@@ -40,7 +48,22 @@ use App\Support\View;
                             <div class="alert-success"><?= View::e($notice) ?></div>
                         <?php endif; ?>
 
+                        <div class="card flex items-center gap-4">
+                            <div class="flex items-center justify-center w-14 h-14 rounded-full bg-terracotta-600 text-white text-lg font-semibold flex-shrink-0"><?= View::e($initials) ?></div>
+                            <div class="min-w-0">
+                                <div class="text-lg font-semibold text-stone-900 dark:text-white truncate"><?= View::e($user['name']) ?></div>
+                                <div class="text-sm text-stone-500 dark:text-stone-400 truncate"><?= View::e($user['email']) ?></div>
+                                <?php if ($household !== null): ?>
+                                    <div class="flex items-center gap-2 mt-1.5">
+                                        <span class="text-xs text-stone-500 dark:text-stone-400 truncate"><?= View::e($household['name']) ?></span>
+                                        <span class="<?= $role === 'owner' ? 'badge-owner' : 'badge' ?> flex-shrink-0"><?= View::e(ucfirst((string) $role)) ?></span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
                         <div class="card max-w-lg">
+                            <h3 class="text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-4">Name &amp; email</h3>
                             <form method="POST" action="/settings/profile" class="space-y-4">
                                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                                 <div>
