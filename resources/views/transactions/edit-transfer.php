@@ -1,6 +1,7 @@
 <?php
 
 /** @var array $transaction */
+/** @var array|null $sourceAccount */
 /** @var string|null $pairAccountName */
 /** @var string $csrfToken */
 /** @var string|null $error */
@@ -9,6 +10,8 @@ use App\Support\Money;
 use App\Support\View;
 
 $isOutgoing = $transaction['transaction_type'] === 'transfer' && str_starts_with($transaction['amount'], '-');
+$accountColor = ($sourceAccount['color'] ?? null) ?: '#a8a29e';
+$transferIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
 
 ?>
 <!DOCTYPE html>
@@ -25,33 +28,36 @@ $isOutgoing = $transaction['transaction_type'] === 'transfer' && str_starts_with
 
         <div class="app-content">
             <main class="page-main">
-                <div>
-                    <a href="/transactions" class="text-sm text-stone-500 dark:text-stone-400 hover:underline">&larr; Transactions</a>
-                    <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white mt-1">Transfer</h1>
-                </div>
+                <a href="/transactions" class="text-sm text-stone-500 dark:text-stone-400 hover:underline">&larr; Transactions</a>
 
                 <?php if (!empty($error)): ?>
                     <div class="alert-error"><?= View::e($error) ?></div>
                 <?php endif; ?>
 
-                <div class="card">
-                    <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">
-                        The amount, date, and accounts on a transfer can't be edited directly — delete it below and create a new one if those need to change. This keeps both sides of the transfer (and both account balances) in sync.
-                    </p>
-                    <div class="grid grid-cols-2 gap-4 text-sm mb-2">
-                        <div>
-                            <div class="label-text">Direction</div>
-                            <div class="text-stone-900 dark:text-white"><?= $isOutgoing ? 'To' : 'From' ?> <?= View::e($pairAccountName ?? 'another account') ?></div>
-                        </div>
-                        <div>
-                            <div class="label-text">Amount</div>
-                            <div class="text-stone-900 dark:text-white"><?= Money::format($transaction['amount']) ?></div>
-                        </div>
-                        <div>
-                            <div class="label-text">Date</div>
-                            <div class="text-stone-900 dark:text-white"><?= View::e($transaction['transaction_date']) ?></div>
+                <div class="account-card" style="background-color: <?= View::e($accountColor) ?>;">
+                    <div class="flex items-start justify-between">
+                        <span class="account-card-icon"><?= $transferIcon ?></span>
+                        <span class="text-[10px] font-semibold uppercase tracking-wide text-white/70">Transfer</span>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-lg font-semibold truncate"><?= $isOutgoing ? 'To' : 'From' ?> <?= View::e($pairAccountName ?? 'another account') ?></div>
+                        <?php if ($sourceAccount !== null): ?>
+                            <div class="text-sm text-white/70 truncate"><?= View::e($sourceAccount['name']) ?> &middot; <?= View::e($transaction['transaction_date']) ?></div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="flex items-end justify-between mt-2">
+                        <span class="text-lg tracking-widest text-white/60" aria-hidden="true">&bull;&bull;&bull;&bull;</span>
+                        <div class="text-right">
+                            <div class="text-[10px] font-semibold uppercase tracking-wide text-white/60">Amount</div>
+                            <div class="text-2xl font-semibold"><?= Money::format($transaction['amount']) ?></div>
                         </div>
                     </div>
+                </div>
+
+                <div class="card">
+                    <p class="text-sm text-stone-500 dark:text-stone-400">
+                        The amount, date, and accounts on a transfer can't be edited directly — delete it below and create a new one if those need to change. This keeps both sides of the transfer (and both account balances) in sync.
+                    </p>
                 </div>
 
                 <form method="POST" action="/transactions/<?= (int) $transaction['id'] ?>" class="card space-y-4">

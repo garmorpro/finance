@@ -279,6 +279,7 @@ final class TransactionController
 
             Response::html(View::render('transactions/edit-transfer', [
                 'transaction' => $transaction,
+                'sourceAccount' => (new AccountRepository())->findById((int) $transaction['account_id'], $householdId),
                 'pairAccountName' => $pairAccountName,
                 'csrfToken' => Csrf::token(),
                 'error' => $_SESSION['_flash_error'] ?? null,
