@@ -174,9 +174,12 @@ $router->get('/reports/export', fn (Request $r): mixed => $reportController->exp
 $categoryController = new CategoryController();
 $router->get('/settings/categories', fn (): mixed => $categoryController->index());
 $router->post('/settings/categories', fn (Request $r): mixed => $categoryController->store($r));
+$router->post('/settings/categories/reorder', fn (Request $r): mixed => $categoryController->reorder($r));
 $router->post('/settings/categories/{id}', fn (Request $r): mixed => $categoryController->update($r));
 $router->post('/settings/categories/{id}/archive', fn (Request $r): mixed => $categoryController->archive($r));
 $router->post('/settings/categories/{id}/restore', fn (Request $r): mixed => $categoryController->restore($r));
+$router->get('/settings/categories/{id}/merge', fn (Request $r): mixed => $categoryController->showMergeForm($r));
+$router->post('/settings/categories/{id}/merge', fn (Request $r): mixed => $categoryController->mergeCategories($r));
 
 $categoryGroupController = new CategoryGroupController();
 $router->post('/settings/category-groups', fn (Request $r): mixed => $categoryGroupController->store($r));
