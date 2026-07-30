@@ -11,6 +11,7 @@
 /** @var string|null $error */
 /** @var string|null $notice */
 
+use App\Support\Money;
 use App\Support\View;
 
 $absoluteAmount = ltrim($transaction['amount'], '-');
@@ -27,6 +28,19 @@ $formatFileSize = function (int $bytes): string {
     return round($bytes / 1024) . ' KB';
 };
 
+$transactionAccount = null;
+foreach ($accounts as $account) {
+    if ((int) $account['id'] === (int) $transaction['account_id']) {
+        $transactionAccount = $account;
+        break;
+    }
+}
+$accountColor = ($transactionAccount['color'] ?? null) ?: '#a8a29e';
+$isIncome = $transaction['transaction_type'] === 'income';
+$typeIcon = $isIncome
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,10 +56,7 @@ $formatFileSize = function (int $bytes): string {
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div>
-                    <a href="/transactions" class="text-sm text-stone-500 dark:text-stone-400 hover:underline">&larr; Transactions</a>
-                    <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white mt-1">Edit transaction</h1>
-                </div>
+                <a href="/transactions" class="text-sm text-stone-500 dark:text-stone-400 hover:underline">&larr; Transactions</a>
 
                 <?php if (!empty($error)): ?>
                     <div class="alert-error"><?= View::e($error) ?></div>
@@ -53,6 +64,26 @@ $formatFileSize = function (int $bytes): string {
                 <?php if (!empty($notice)): ?>
                     <div class="alert-success"><?= View::e($notice) ?></div>
                 <?php endif; ?>
+
+                <div class="account-card" style="background-color: <?= View::e($accountColor) ?>;">
+                    <div class="flex items-start justify-between">
+                        <span class="account-card-icon"><?= $typeIcon ?></span>
+                        <span class="text-[10px] font-semibold uppercase tracking-wide text-white/70"><?= $isIncome ? 'Income' : 'Expense' ?></span>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-lg font-semibold truncate"><?= View::e($transaction['payee']) ?></div>
+                        <?php if ($transactionAccount !== null): ?>
+                            <div class="text-sm text-white/70 truncate"><?= View::e($transactionAccount['name']) ?> &middot; <?= View::e($transaction['transaction_date']) ?></div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="flex items-end justify-between mt-2">
+                        <span class="text-lg tracking-widest text-white/60" aria-hidden="true">&bull;&bull;&bull;&bull;</span>
+                        <div class="text-right">
+                            <div class="text-[10px] font-semibold uppercase tracking-wide text-white/60">Amount</div>
+                            <div class="text-2xl font-semibold"><?= Money::format($absoluteAmount) ?></div>
+                        </div>
+                    </div>
+                </div>
 
                 <form method="POST" action="/transactions/<?= (int) $transaction['id'] ?>" class="card space-y-6">
                     <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
