@@ -134,8 +134,17 @@
     @apply inline-flex items-center justify-center w-8 h-8 rounded-lg text-stone-300 dark:text-stone-700 cursor-default;
   }
 
+  /*
+   * Capped and centered as one unit (nav + content together), not just
+   * the content column — without this, a simple two-field form (Profile,
+   * Security) stretches its column to the page's full wide-layout width,
+   * leaving the actual form floating in a large dead-space to its right
+   * on anything wider than a laptop. Richer settings pages (Household,
+   * Categories, Tags) still have plenty of room at this width; nothing
+   * there needs edge-to-edge.
+   */
   .settings-layout {
-    @apply grid grid-cols-1 gap-6 items-start;
+    @apply grid grid-cols-1 gap-6 items-start max-w-5xl mx-auto w-full;
     grid-template-columns: 1fr;
   }
 
