@@ -135,22 +135,22 @@
   }
 
   /*
-   * Capped and centered as one unit (nav + content together), not just
-   * the content column — without this, a simple two-field form (Profile,
-   * Security) stretches its column to the page's full wide-layout width,
-   * leaving the actual form floating in a large dead-space to its right
-   * on anything wider than a laptop. Richer settings pages (Household,
-   * Categories, Tags) still have plenty of room at this width; nothing
-   * there needs edge-to-edge.
+   * The content column is capped directly (42rem, matching .page-main's
+   * own single-column width elsewhere in the app) rather than letting it
+   * stretch to fill the page's wide layout — a stretched 1fr column left
+   * simple forms (Profile, Security) floating in a large dead-space to
+   * their right, since their own card is much narrower than the column
+   * around it. Nothing in Settings (not even the richer Household/
+   * Categories/Tags pages) actually needs more room than this.
    */
   .settings-layout {
-    @apply grid grid-cols-1 gap-6 items-start max-w-5xl mx-auto w-full;
+    @apply grid grid-cols-1 gap-6 items-start;
     grid-template-columns: 1fr;
   }
 
   @screen lg {
     .settings-layout {
-      grid-template-columns: 240px minmax(0, 1fr);
+      grid-template-columns: 240px minmax(0, 42rem);
     }
   }
 
