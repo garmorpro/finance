@@ -43,7 +43,7 @@ foreach ($actions as $action) {
         <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'settings']); ?>
 
         <div class="app-content">
-            <main class="page-main">
+            <main class="page-main-wide">
                 <div>
                     <a href="/settings/rules" class="text-sm text-stone-500 dark:text-stone-400 hover:underline">&larr; Rules</a>
                     <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white mt-1"><?= $isEdit ? 'Edit rule' : 'New rule' ?></h1>
@@ -125,12 +125,15 @@ foreach ($actions as $action) {
                             </div>
                             <?php if ($tags !== []): ?>
                                 <div class="sm:col-span-2">
-                                    <label for="tag_ids" class="field-label">Add tags</label>
-                                    <select id="tag_ids" name="tag_ids[]" multiple class="field-input" size="4">
-                                        <?php foreach ($tags as $tag): ?>
-                                            <option value="<?= (int) $tag['id'] ?>" <?= in_array((int) $tag['id'], $selectedTagIds, true) ? 'selected' : '' ?>><?= View::e($tag['name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <div class="field-label">Add tags</div>
+                                    <?php View::partial('partials/checkbox-group', [
+                                        'name' => 'tag_ids',
+                                        'options' => array_map(fn (array $tag): array => [
+                                            'value' => (int) $tag['id'],
+                                            'label' => $tag['name'],
+                                            'checked' => in_array((int) $tag['id'], $selectedTagIds, true),
+                                        ], $tags),
+                                    ]); ?>
                                 </div>
                             <?php endif; ?>
                         </div>

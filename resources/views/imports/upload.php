@@ -22,7 +22,7 @@ use App\Support\View;
         <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'transactions']); ?>
 
         <div class="app-content">
-            <main class="page-main">
+            <main class="page-main-wide">
                 <div>
                     <a href="/transactions" class="text-sm text-stone-500 dark:text-stone-400 hover:underline">&larr; Transactions</a>
                     <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white mt-1">Import from CSV</h1>

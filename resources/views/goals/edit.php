@@ -43,7 +43,7 @@ $barWidth = max(0, min(100, $progressPercent));
         <?php View::partial('partials/sidebar', ['csrfToken' => $csrfToken, 'active' => 'goals']); ?>
 
         <div class="app-content">
-            <main class="page-main">
+            <main class="page-main-wide">
                 <div>
                     <a href="/goals" class="text-sm text-stone-500 dark:text-stone-400 hover:underline">&larr; Goals</a>
                     <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white mt-1"><?= View::e($goal['name']) ?></h1>
@@ -132,58 +132,65 @@ $barWidth = max(0, min(100, $progressPercent));
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" action="/goals/<?= (int) $goal['id'] ?>" class="card space-y-4">
+                <form method="POST" action="/goals/<?= (int) $goal['id'] ?>" class="card space-y-6">
                     <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                     <h2 class="font-medium text-stone-900 dark:text-white">Details</h2>
 
                     <div>
-                        <label for="name" class="field-label">Name</label>
-                        <input type="text" id="name" name="name" required value="<?= View::e($goal['name']) ?>" class="field-input">
+                        <h3 class="text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-3">Basic info</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="name" class="field-label">Name</label>
+                                <input type="text" id="name" name="name" required value="<?= View::e($goal['name']) ?>" class="field-input">
+                            </div>
+                            <div>
+                                <label for="description" class="field-label">Description (optional)</label>
+                                <textarea id="description" name="description" rows="2" class="field-input"><?= View::e($goal['description'] ?? '') ?></textarea>
+                            </div>
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="description" class="field-label">Description (optional)</label>
-                        <textarea id="description" name="description" rows="2" class="field-input"><?= View::e($goal['description'] ?? '') ?></textarea>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label for="goal_type" class="field-label">Goal type</label>
-                            <select id="goal_type" name="goal_type" required class="field-input">
-                                <?php foreach ($goalTypes as $type): ?>
-                                    <option value="<?= View::e($type) ?>" <?= $goal['goal_type'] === $type ? 'selected' : '' ?>><?= View::e($goalTypeLabel[$type] ?? $type) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="target_amount" class="field-label">Target amount</label>
-                            <input type="text" inputmode="decimal" id="target_amount" name="target_amount" required value="<?= View::e($goal['target_amount']) ?>" class="field-input">
-                        </div>
-                        <div>
-                            <label for="target_date" class="field-label">Target date (optional)</label>
-                            <input type="date" id="target_date" name="target_date" value="<?= View::e($goal['target_date'] ?? '') ?>" class="field-input">
-                        </div>
-                        <div>
-                            <label for="planned_monthly_contribution" class="field-label">Planned monthly contribution (optional)</label>
-                            <input type="text" inputmode="decimal" id="planned_monthly_contribution" name="planned_monthly_contribution" value="<?= View::e($goal['planned_monthly_contribution'] ?? '') ?>" class="field-input">
-                        </div>
-                        <div>
-                            <label for="responsible_user_id" class="field-label">Responsible member (optional)</label>
-                            <select id="responsible_user_id" name="responsible_user_id" class="field-input">
-                                <option value="">Whole household</option>
-                                <?php foreach ($members as $member): ?>
-                                    <option value="<?= (int) $member['id'] ?>" <?= (string) $member['id'] === (string) $goal['responsible_user_id'] ? 'selected' : '' ?>><?= View::e($member['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="linked_account_id" class="field-label">Linked account (optional)</label>
-                            <select id="linked_account_id" name="linked_account_id" class="field-input">
-                                <option value="">None</option>
-                                <?php foreach ($accounts as $account): ?>
-                                    <option value="<?= (int) $account['id'] ?>" <?= (string) $account['id'] === (string) $goal['linked_account_id'] ? 'selected' : '' ?>><?= View::e($account['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                    <div class="border-t border-stone-100 dark:border-stone-800 pt-6">
+                        <h3 class="text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-3">Goal details</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label for="goal_type" class="field-label">Goal type</label>
+                                <select id="goal_type" name="goal_type" required class="field-input">
+                                    <?php foreach ($goalTypes as $type): ?>
+                                        <option value="<?= View::e($type) ?>" <?= $goal['goal_type'] === $type ? 'selected' : '' ?>><?= View::e($goalTypeLabel[$type] ?? $type) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="target_amount" class="field-label">Target amount</label>
+                                <input type="text" inputmode="decimal" id="target_amount" name="target_amount" required value="<?= View::e($goal['target_amount']) ?>" class="field-input">
+                            </div>
+                            <div>
+                                <label for="target_date" class="field-label">Target date (optional)</label>
+                                <input type="date" id="target_date" name="target_date" value="<?= View::e($goal['target_date'] ?? '') ?>" class="field-input">
+                            </div>
+                            <div>
+                                <label for="planned_monthly_contribution" class="field-label">Planned monthly contribution (optional)</label>
+                                <input type="text" inputmode="decimal" id="planned_monthly_contribution" name="planned_monthly_contribution" value="<?= View::e($goal['planned_monthly_contribution'] ?? '') ?>" class="field-input">
+                            </div>
+                            <div>
+                                <label for="responsible_user_id" class="field-label">Responsible member (optional)</label>
+                                <select id="responsible_user_id" name="responsible_user_id" class="field-input">
+                                    <option value="">Whole household</option>
+                                    <?php foreach ($members as $member): ?>
+                                        <option value="<?= (int) $member['id'] ?>" <?= (string) $member['id'] === (string) $goal['responsible_user_id'] ? 'selected' : '' ?>><?= View::e($member['name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="linked_account_id" class="field-label">Linked account (optional)</label>
+                                <select id="linked_account_id" name="linked_account_id" class="field-input">
+                                    <option value="">None</option>
+                                    <?php foreach ($accounts as $account): ?>
+                                        <option value="<?= (int) $account['id'] ?>" <?= (string) $account['id'] === (string) $goal['linked_account_id'] ? 'selected' : '' ?>><?= View::e($account['name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
