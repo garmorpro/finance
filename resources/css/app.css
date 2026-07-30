@@ -287,6 +287,99 @@
     @apply rounded-xl px-6 py-3.5 bg-stone-50 dark:bg-stone-800/50 mt-3;
   }
 
+  /*
+   * Budget Review — a guided, one-category-group-at-a-time walkthrough.
+   * Deliberately not wrapped in .app-shell/sidebar like every other page:
+   * this is meant to be sat down with (a monthly household budget
+   * meeting), so it takes over the screen the way a focused task like
+   * checkout or onboarding would, with its own "Exit review" way out
+   * instead of the usual nav.
+   */
+  .review-shell {
+    @apply min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100;
+  }
+
+  .review-topbar {
+    @apply sticky top-0 z-10 border-b border-stone-200 dark:border-stone-800 bg-stone-50/90 dark:bg-stone-950/90;
+    backdrop-filter: blur(8px);
+  }
+
+  .review-topbar-inner {
+    @apply max-w-2xl mx-auto px-5 py-4;
+  }
+
+  .review-progress-track {
+    @apply flex gap-1 h-1 rounded-full mt-3;
+  }
+
+  .review-progress-seg {
+    @apply flex-1 rounded-full bg-stone-200 dark:bg-stone-800 relative overflow-hidden;
+  }
+
+  .review-progress-seg::after {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-terracotta-600;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform .3s ease;
+  }
+
+  .review-progress-seg.done::after,
+  .review-progress-seg.active::after {
+    transform: scaleX(1);
+  }
+
+  .review-stage {
+    @apply max-w-2xl mx-auto px-5 pt-9;
+    padding-bottom: 7rem;
+  }
+
+  .review-step {
+    @apply hidden;
+  }
+
+  .review-step.active {
+    @apply block;
+  }
+
+  .review-cat-row {
+    @apply flex items-center justify-between gap-4 px-5 py-4 border-b border-stone-100 dark:border-stone-800;
+  }
+
+  .review-cat-row:last-child {
+    @apply border-b-0;
+  }
+
+  .review-cat-input-wrap {
+    @apply flex items-center gap-1.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-1.5;
+  }
+
+  .review-cat-input-wrap:focus-within {
+    @apply border-terracotta-500 dark:border-terracotta-400 ring-2 ring-terracotta-500/30 dark:ring-terracotta-400/30;
+  }
+
+  .review-cat-input {
+    @apply w-24 text-right text-sm font-semibold bg-transparent border-none text-stone-900 dark:text-white;
+    padding: 0;
+  }
+
+  .review-cat-input:focus {
+    outline: none;
+  }
+
+  .review-group-total {
+    @apply flex items-center justify-between px-5 py-3.5 text-sm bg-stone-50 dark:bg-stone-800/50;
+  }
+
+  .review-footer-nav {
+    @apply fixed bottom-0 inset-x-0 border-t border-stone-200 dark:border-stone-800 bg-stone-50/95 dark:bg-stone-950/95;
+    backdrop-filter: blur(8px);
+  }
+
+  .review-footer-inner {
+    @apply max-w-2xl mx-auto px-5 py-4 flex items-center justify-between gap-3;
+  }
+
   .sidebar-icon-btn svg {
     @apply w-[18px] h-[18px];
   }

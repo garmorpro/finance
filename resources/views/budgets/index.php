@@ -235,6 +235,9 @@ $leftToBudgetPositive = bccomp($leftToBudget, '0.00', 2) >= 0;
                                 <button type="submit" class="btn-secondary">Copy last month</button>
                             </form>
                         <?php endif; ?>
+                        <?php if ($canManage): ?>
+                            <a href="/budgets/review?month=<?= View::e(substr($periodMonth, 0, 7)) ?>" class="btn-primary">Review &amp; plan &rarr;</a>
+                        <?php endif; ?>
                     </div>
                 </div>
 

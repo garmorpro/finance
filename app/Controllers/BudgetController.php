@@ -31,41 +31,7 @@ final class BudgetController
         $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
 
         $budgetRepo = new BudgetRepository();
-        $budget = $budgetRepo->findForMonth($householdId, $periodMonth);
-        $items = $budget !== null ? $budgetRepo->listItemsForBudget((int) $budget['id']) : [];
-
-        $itemsByCategory = [];
-        foreach ($items as $item) {
-            $itemsByCategory[(int) $item['category_id']] = $item;
-        }
-
-        // Standing "apply to all future months" defaults fill in any
-        // category without an explicit line for this month — an explicit
-        // budget_items row always wins over a default, and this never
-        // writes anything; it only affects what's displayed.
-        foreach ($budgetRepo->defaultsForHousehold($householdId, $periodMonth) as $categoryId => $defaultAmount) {
-            if (!isset($itemsByCategory[$categoryId])) {
-                $itemsByCategory[$categoryId] = ['category_id' => $categoryId, 'planned_amount' => $defaultAmount];
-            }
-        }
-
-        $actualExpenseByCategory = $budgetRepo->actualByCategory($householdId, 'expense', $periodMonth, $monthEnd);
-        $actualIncomeByCategory = $budgetRepo->actualByCategory($householdId, 'income', $periodMonth, $monthEnd);
-
-        // Non-archived categories only, but every category of the type
-        // shows up here (not just budgeted ones) — the budget page doubles
-        // as a full view of how income/expenses are organized into sections.
-        $allCategories = (new CategoryRepository())->listForHousehold($householdId, true);
-        $activeCategories = array_values(array_filter($allCategories, fn (array $c): bool => $c['archived_at'] === null));
-        $expenseCategories = array_values(array_filter($activeCategories, fn (array $c): bool => $c['type'] === 'expense'));
-        $incomeCategories = array_values(array_filter($activeCategories, fn (array $c): bool => $c['type'] === 'income'));
-
-        $groupRepo = new CategoryGroupRepository();
-        $expenseGroups = $groupRepo->listForHousehold($householdId, 'expense');
-        $incomeGroups = $groupRepo->listForHousehold($householdId, 'income');
-
-        $expenseSections = $this->buildSections($expenseCategories, $expenseGroups, $itemsByCategory, $actualExpenseByCategory);
-        $incomeSections = $this->buildSections($incomeCategories, $incomeGroups, $itemsByCategory, $actualIncomeByCategory);
+        ['incomeSections' => $incomeSections, 'expenseSections' => $expenseSections] = $this->loadSections($budgetRepo, $householdId, $periodMonth);
 
         $expenseTotals = $this->sectionTotals($expenseSections);
         $incomeTotals = $this->sectionTotals($incomeSections);
@@ -112,6 +78,81 @@ final class BudgetController
         ]));
 
         unset($_SESSION['_flash_error'], $_SESSION['_flash_notice']);
+    }
+
+    /**
+     * A guided, one-category-group-at-a-time walkthrough for planning a
+     * month in one sitting — same underlying data and the same
+     * /budgets/items autosave endpoint as the main page, just presented
+     * as a linear sequence instead of a page of collapsed sections. Each
+     * row also gets a trailing 3-month average so an unplanned category
+     * shows up with a sensible starting number instead of blank.
+     */
+    public function showReview(Request $request): void
+    {
+        AuthMiddleware::requireRole(self::MANAGE_ROLES);
+
+        $householdId = (int) AuthMiddleware::householdId();
+        $periodMonth = $this->resolveMonth($request->query('month'));
+
+        $budgetRepo = new BudgetRepository();
+        ['incomeSections' => $incomeSections, 'expenseSections' => $expenseSections] = $this->loadSections($budgetRepo, $householdId, $periodMonth);
+
+        // Steps only ever cover sections that actually have categories in
+        // them — an empty group (real but nothing assigned to it yet)
+        // would otherwise render as a blank, pointless step.
+        $incomeSteps = array_values(array_filter($incomeSections, fn (array $s): bool => $s['rows'] !== []));
+        $expenseSteps = array_values(array_filter($expenseSections, fn (array $s): bool => $s['rows'] !== []));
+
+        $withAverages = function (array $steps, string $type) use ($budgetRepo, $householdId, $periodMonth): array {
+            foreach ($steps as &$section) {
+                foreach ($section['rows'] as &$row) {
+                    $trailing = array_values($budgetRepo->actualsByCategoryTrailingMonths(
+                        $householdId,
+                        (int) $row['category']['id'],
+                        $type,
+                        $periodMonth,
+                        3
+                    ));
+
+                    $average = '0.00';
+                    foreach ($trailing as $amount) {
+                        $average = bcadd($average, $amount, 2);
+                    }
+                    if ($trailing !== []) {
+                        $average = bcdiv($average, (string) count($trailing), 2);
+                    }
+
+                    $row['average'] = $average;
+                }
+                unset($row);
+            }
+            unset($section);
+
+            return $steps;
+        };
+
+        $goalRepo = new GoalRepository();
+        $plannedGoalContributions = '0.00';
+        foreach ($goalRepo->listForHousehold($householdId) as $goal) {
+            if ($goal['status'] === 'active' && $goal['planned_monthly_contribution'] !== null) {
+                $plannedGoalContributions = bcadd($plannedGoalContributions, $goal['planned_monthly_contribution'], 2);
+            }
+        }
+
+        Response::html(View::render('budgets/review', [
+            'periodMonth' => $periodMonth,
+            'monthLabel' => date('F Y', strtotime($periodMonth)),
+            'incomeSteps' => $withAverages($incomeSteps, 'income'),
+            'expenseSteps' => $withAverages($expenseSteps, 'expense'),
+            'plannedGoalContributions' => $plannedGoalContributions,
+            'hasPreviousBudget' => $budgetRepo->findForMonth($householdId, date('Y-m-d', strtotime($periodMonth . ' -1 month'))) !== null,
+            'csrfToken' => Csrf::token(),
+            'notice' => $_SESSION['_flash_notice'] ?? null,
+            'error' => $_SESSION['_flash_error'] ?? null,
+        ]));
+
+        unset($_SESSION['_flash_notice'], $_SESSION['_flash_error']);
     }
 
     public function saveItem(Request $request): void
@@ -240,9 +281,15 @@ final class BudgetController
         $periodMonth = $this->resolveMonth($request->post('period_month'));
         $monthQuery = substr($periodMonth, 0, 7);
 
+        // The review flow offers the same "copy last month" action; rather
+        // than accept an arbitrary redirect target (an open-redirect risk),
+        // this is a plain boolean flag choosing between the only two valid
+        // destinations.
+        $returnPath = $request->post('from_review') === '1' ? '/budgets/review' : '/budgets';
+
         if (!Csrf::verify($request->post('csrf_token'))) {
             $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
-            header('Location: /budgets?month=' . $monthQuery);
+            header('Location: ' . $returnPath . '?month=' . $monthQuery);
             return;
         }
 
@@ -252,7 +299,7 @@ final class BudgetController
 
         if ($previousBudget === null) {
             $_SESSION['_flash_error'] = 'No budget found for the previous month to copy.';
-            header('Location: /budgets?month=' . $monthQuery);
+            header('Location: ' . $returnPath . '?month=' . $monthQuery);
             return;
         }
 
@@ -272,7 +319,60 @@ final class BudgetController
         $_SESSION['_flash_notice'] = $copied > 0
             ? 'Copied ' . $copied . ' budget line' . ($copied === 1 ? '' : 's') . ' from last month.'
             : 'Nothing new to copy — every category already has a budget line this month.';
-        header('Location: /budgets?month=' . $monthQuery);
+        header('Location: ' . $returnPath . '?month=' . $monthQuery);
+    }
+
+    /**
+     * The shared fetch-and-group pipeline behind both the main Budgets
+     * page and the guided review flow: this month's saved lines (layered
+     * with standing "apply to future months" defaults), this month's
+     * actual activity, and every active category bucketed into its
+     * category_group. Both callers build their own totals/steps from the
+     * sections this returns.
+     *
+     * @return array{incomeSections: list<array{group: array|null, rows: list<array>}>, expenseSections: list<array{group: array|null, rows: list<array>}>}
+     */
+    private function loadSections(BudgetRepository $budgetRepo, int $householdId, string $periodMonth): array
+    {
+        $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
+
+        $budget = $budgetRepo->findForMonth($householdId, $periodMonth);
+        $items = $budget !== null ? $budgetRepo->listItemsForBudget((int) $budget['id']) : [];
+
+        $itemsByCategory = [];
+        foreach ($items as $item) {
+            $itemsByCategory[(int) $item['category_id']] = $item;
+        }
+
+        // Standing "apply to all future months" defaults fill in any
+        // category without an explicit line for this month — an explicit
+        // budget_items row always wins over a default, and this never
+        // writes anything; it only affects what's displayed.
+        foreach ($budgetRepo->defaultsForHousehold($householdId, $periodMonth) as $categoryId => $defaultAmount) {
+            if (!isset($itemsByCategory[$categoryId])) {
+                $itemsByCategory[$categoryId] = ['category_id' => $categoryId, 'planned_amount' => $defaultAmount];
+            }
+        }
+
+        $actualExpenseByCategory = $budgetRepo->actualByCategory($householdId, 'expense', $periodMonth, $monthEnd);
+        $actualIncomeByCategory = $budgetRepo->actualByCategory($householdId, 'income', $periodMonth, $monthEnd);
+
+        // Non-archived categories only, but every category of the type
+        // shows up here (not just budgeted ones) — the budget page doubles
+        // as a full view of how income/expenses are organized into sections.
+        $allCategories = (new CategoryRepository())->listForHousehold($householdId, true);
+        $activeCategories = array_values(array_filter($allCategories, fn (array $c): bool => $c['archived_at'] === null));
+        $expenseCategories = array_values(array_filter($activeCategories, fn (array $c): bool => $c['type'] === 'expense'));
+        $incomeCategories = array_values(array_filter($activeCategories, fn (array $c): bool => $c['type'] === 'income'));
+
+        $groupRepo = new CategoryGroupRepository();
+        $expenseGroups = $groupRepo->listForHousehold($householdId, 'expense');
+        $incomeGroups = $groupRepo->listForHousehold($householdId, 'income');
+
+        return [
+            'incomeSections' => $this->buildSections($incomeCategories, $incomeGroups, $itemsByCategory, $actualIncomeByCategory),
+            'expenseSections' => $this->buildSections($expenseCategories, $expenseGroups, $itemsByCategory, $actualExpenseByCategory),
+        ];
     }
 
     /**
