@@ -62,8 +62,8 @@ $actionLabels = function (array $actions) use ($categoryNames, $tagNames): array
                     <?php View::partial('settings/_nav', ['active' => 'rules']); ?>
 
                     <div class="space-y-6">
-                        <div class="flex items-center justify-between">
-                            <div>
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div class="min-w-0">
                                 <div class="flex items-center gap-2.5">
                                     <span class="text-stone-400 dark:text-stone-500"><?= SettingsIcons::svg('rules') ?></span>
                                     <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Rules</h2>
