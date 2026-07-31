@@ -10,7 +10,7 @@
 
 @layer components {
   .card {
-    @apply bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-sm p-6;
+    @apply bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-sm p-4 sm:p-6;
   }
 
   /*
@@ -55,11 +55,11 @@
   }
 
   .page-main {
-    @apply max-w-2xl mx-auto px-6 py-10 space-y-6;
+    @apply max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6;
   }
 
   .page-main-wide {
-    @apply w-full px-8 py-10 space-y-6;
+    @apply w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6;
   }
 
   /* Fixed sidebar layout — sidebar stays put; only .app-content scrolls. */
@@ -198,7 +198,7 @@
    * shown.
    */
   .stat-hero {
-    @apply relative overflow-hidden rounded-2xl border p-8;
+    @apply relative overflow-hidden rounded-2xl border p-5 sm:p-8;
   }
 
   .stat-hero-positive {
