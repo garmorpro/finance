@@ -104,18 +104,24 @@ $renderChildRow = function (array $child, array $groups, array $parentOptions) u
 
 $renderCatCard = function (array $category, array $children, array $groups, array $parentOptions, bool $isArchived) use ($csrfToken, $dragHandleIcon, $renderChildRow, $renderManageForm, $renderDangerZone): void {
     $count = count($children);
-    $meta = $isArchived ? 'Archived' : ($count > 0 ? $count . ' subcategor' . ($count === 1 ? 'y' : 'ies') : 'No subcategories');
+    // No line at all for a plain top-level category — "No subcategories"
+    // read as if something were missing on every card in a section that
+    // just doesn't nest anything, which is the common case, not an
+    // exception worth calling out.
+    $meta = $isArchived ? 'Archived' : ($count > 0 ? $count . ' subcategor' . ($count === 1 ? 'y' : 'ies') : null);
     ?>
     <div class="cat-card <?= $isArchived ? 'opacity-60' : '' ?>" <?= $isArchived ? '' : 'draggable="true" data-category-id="' . (int) $category['id'] . '"' ?>>
         <div class="cat-card-bar" style="background-color: <?= View::e($category['color'] ?: '#a8a29e') ?>"></div>
         <div class="p-4">
-            <div class="flex items-start justify-between gap-2 mb-0.5">
+            <div class="flex items-start justify-between gap-2 <?= $meta !== null ? 'mb-0.5' : 'mb-3' ?>">
                 <h4 class="font-semibold text-stone-900 dark:text-white truncate"><?= View::e($category['name']) ?></h4>
                 <?php if (!$isArchived): ?>
                     <span class="text-stone-300 dark:text-stone-700 hover:text-stone-500 dark:hover:text-stone-500 flex-shrink-0 cursor-grab mt-0.5" style="width:.9rem;height:.9rem;" title="Drag to reorder"><?= $dragHandleIcon ?></span>
                 <?php endif; ?>
             </div>
-            <p class="text-xs text-stone-500 dark:text-stone-400 mb-3"><?= View::e($meta) ?></p>
+            <?php if ($meta !== null): ?>
+                <p class="text-xs text-stone-500 dark:text-stone-400 mb-3"><?= View::e($meta) ?></p>
+            <?php endif; ?>
 
             <?php if ($children !== []): ?>
                 <div class="space-y-0.5 mb-3 border-t border-stone-100 dark:border-stone-800 pt-1">
