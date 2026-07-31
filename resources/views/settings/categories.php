@@ -372,6 +372,7 @@ $renderSections = function (array $sections, array $groups, array $parentOptions
         </div>
     </div>
 
+    <script src="<?= View::asset('/assets/js/modals.js') ?>" defer></script>
     <script src="<?= View::asset('/assets/js/settings-categories.js') ?>" defer></script>
 </body>
 </html>

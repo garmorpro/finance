@@ -11,6 +11,29 @@ use App\Support\View;
 
 $editingId = $old['id'] ?? null;
 
+/**
+ * Same popup shell as Settings → Categories (`resources/views/settings/
+ * categories.php`) — duplicated rather than shared, since it's short and
+ * this is only the second page that needs it; wired up by the same
+ * shared `modals.js` both pages load.
+ */
+$modalStart = function (string $id, string $title) use ($csrfToken): void {
+    ?>
+    <div id="<?= View::e($id) ?>" class="modal-overlay hidden fixed inset-0 z-30 items-center justify-center bg-stone-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="<?= View::e($id) ?>-title">
+        <div class="card w-full max-w-sm max-h-[85vh] overflow-y-auto">
+            <div class="flex items-start justify-between gap-3 mb-4">
+                <h2 id="<?= View::e($id) ?>-title" class="text-lg font-semibold text-stone-900 dark:text-white"><?= View::e($title) ?></h2>
+                <button type="button" data-modal-close="<?= View::e($id) ?>" class="text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 flex-shrink-0" aria-label="Close">&times;</button>
+            </div>
+    <?php
+};
+$modalEnd = function (): void {
+    ?>
+        </div>
+    </div>
+    <?php
+};
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -53,7 +76,7 @@ $editingId = $old['id'] ?? null;
                                 <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                                 <div>
                                     <label for="color" class="field-label">Color</label>
-                                    <input type="color" id="color" name="color" value="<?= $editingId === null ? View::e($old['color'] ?? '#e2694b') : '#e2694b' ?>" class="field-input h-10 w-14 p-0.5">
+                                    <input type="color" id="color" name="color" value="<?= $editingId === null ? View::e($old['color'] ?? '#e2694b') : '#e2694b' ?>" class="field-color">
                                 </div>
                                 <div class="flex-1 min-w-[10rem]">
                                     <label for="name" class="field-label">Name</label>
@@ -69,37 +92,48 @@ $editingId = $old['id'] ?? null;
                             </div>
                         <?php else: ?>
                             <div class="card">
-                                <table class="table-base">
-                                    <thead>
-                                        <tr><th>Tag</th><th>Used on</th><th></th></tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($tags as $tag): ?>
-                                            <?php
-                                            $isEditing = $editingId !== null && (string) $tag['id'] === (string) $editingId;
-                                            $name = $isEditing ? ($old['name'] ?? $tag['name']) : $tag['name'];
-                                            $color = $isEditing ? ($old['color'] ?? $tag['color']) : $tag['color'];
-                                            ?>
-                                            <tr>
-                                                <td>
-                                                    <form method="POST" action="/settings/tags/<?= (int) $tag['id'] ?>" class="flex items-center gap-2">
-                                                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                                                        <input type="color" name="color" value="<?= View::e($color ?? '#e2694b') ?>" class="field-input h-8 w-10 p-0.5">
-                                                        <input type="text" name="name" required maxlength="50" value="<?= View::e($name) ?>" class="field-input" style="max-width: 14rem;">
-                                                        <button type="submit" class="btn-secondary">Save</button>
-                                                    </form>
-                                                </td>
-                                                <td class="text-stone-500 dark:text-stone-400"><?= (int) $tag['usage_count'] ?> transaction<?= (int) $tag['usage_count'] === 1 ? '' : 's' ?></td>
-                                                <td class="text-right">
-                                                    <form method="POST" action="/settings/tags/<?= (int) $tag['id'] ?>/delete" onsubmit="return confirm('Delete the \'<?= View::e($tag['name']) ?>\' tag? It will be removed from every transaction that has it.');">
-                                                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                                                        <button type="submit" class="btn-secondary">Delete</button>
-                                                    </form>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                                <div class="flex flex-wrap gap-2">
+                                    <?php foreach ($tags as $tag): ?>
+                                        <?php
+                                        $tagId = (int) $tag['id'];
+                                        $modalId = 'manage-tag-modal-' . $tagId;
+                                        $color = $tag['color'] ?: '#e2694b';
+                                        $usageCount = (int) $tag['usage_count'];
+                                        ?>
+                                        <button type="button" data-modal-open="<?= View::e($modalId) ?>" class="inline-flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-full border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/60 hover:bg-stone-100 dark:hover:bg-stone-800 text-sm">
+                                            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: <?= View::e($color) ?>"></span>
+                                            <span class="font-medium text-stone-900 dark:text-white"><?= View::e($tag['name']) ?></span>
+                                            <?php if ($usageCount > 0): ?>
+                                                <span class="text-xs text-stone-500 dark:text-stone-400"><?= $usageCount ?></span>
+                                            <?php endif; ?>
+                                        </button>
+
+                                        <?php $modalStart($modalId, 'Manage "' . $tag['name'] . '"'); ?>
+                                            <form method="POST" action="/settings/tags/<?= $tagId ?>" class="space-y-2.5">
+                                                <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                                                <div class="flex items-end gap-3">
+                                                    <div class="flex-1">
+                                                        <label class="field-label">Name</label>
+                                                        <input type="text" name="name" required maxlength="50" value="<?= View::e($tag['name']) ?>" class="field-input">
+                                                    </div>
+                                                    <div>
+                                                        <label class="field-label">Color</label>
+                                                        <input type="color" name="color" value="<?= View::e($color) ?>" class="field-color">
+                                                    </div>
+                                                </div>
+                                                <button type="submit" class="btn-secondary btn-sm">Save</button>
+                                            </form>
+                                            <p class="text-xs text-stone-500 dark:text-stone-400 mt-3">Used on <?= $usageCount ?> transaction<?= $usageCount === 1 ? '' : 's' ?>.</p>
+                                            <div class="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-stone-100 dark:border-stone-800">
+                                                <span class="text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-600">Danger zone</span>
+                                                <form method="POST" action="/settings/tags/<?= $tagId ?>/delete" onsubmit="return confirm('Delete the \'<?= View::e($tag['name']) ?>\' tag? It will be removed from every transaction that has it.');">
+                                                    <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                                                    <button type="submit" class="btn-secondary btn-sm text-red-600 dark:text-red-400">Delete</button>
+                                                </form>
+                                            </div>
+                                        <?php $modalEnd(); ?>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -107,5 +141,7 @@ $editingId = $old['id'] ?? null;
             </main>
         </div>
     </div>
+
+    <script src="<?= View::asset('/assets/js/modals.js') ?>" defer></script>
 </body>
 </html>
