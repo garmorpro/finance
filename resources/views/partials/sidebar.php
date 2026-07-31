@@ -119,49 +119,95 @@ require __DIR__ . '/_modal_shell.php';
  * form. `redirect_to` carries the current page back through
  * TransactionController::store() so a quick add doesn't yank you to
  * the Transactions list from wherever you actually were.
+ *
+ * Styled deliberately more elevated than the plain popup shell every
+ * other page's "Manage" uses (see the .quickadd-* classes in app.css)
+ * — this one's meant to be opened many times a day, not tucked away
+ * for occasional edits, so it doesn't share $modalStart()/$modalEnd().
+ * Still uses modals.js's generic open/close/focus-trap via the same
+ * .modal-overlay / [data-modal-open] / [data-modal-close] contract.
  */
 ?>
-<button type="button" data-modal-open="quick-add-modal" class="fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full bg-terracotta-600 hover:bg-terracotta-500 text-white shadow-lg flex items-center justify-center transition-colors" aria-label="Quick add transaction">
+<button type="button" data-modal-open="quick-add-modal" class="quickadd-fab fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full text-white flex items-center justify-center transition-transform" aria-label="Quick add transaction">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:1.5rem;height:1.5rem;" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
-<?php $modalStart('quick-add-modal', 'Quick add transaction'); ?>
-    <form method="POST" action="/transactions" class="space-y-3">
-        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-        <input type="hidden" name="transaction_type" value="expense">
-        <input type="hidden" name="transaction_date" value="<?= View::e(date('Y-m-d')) ?>">
-        <input type="hidden" name="redirect_to" value="<?= View::e($_SERVER['REQUEST_URI'] ?? '/') ?>">
+<div id="quick-add-modal" class="modal-overlay quickadd-overlay hidden fixed inset-0 z-30 items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="quick-add-modal-title">
+    <div class="quickadd-modal">
+        <div class="flex items-start justify-between gap-4 mb-1">
+            <div class="flex items-center gap-3">
+                <span class="quickadd-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:1.2rem;height:1.2rem;" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </span>
+                <div>
+                    <h2 id="quick-add-modal-title" class="text-[1.0625rem] font-bold tracking-tight text-stone-900 dark:text-white">Quick add</h2>
+                    <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">Log a transaction in seconds</p>
+                </div>
+            </div>
+            <button type="button" data-modal-close="quick-add-modal" class="quickadd-close" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
 
-        <div>
-            <label for="quick-add-amount" class="field-label">Amount</label>
-            <input type="text" inputmode="decimal" id="quick-add-amount" name="amount" required class="field-input" placeholder="0.00">
-        </div>
-        <div>
-            <label for="quick-add-payee" class="field-label">Payee</label>
-            <input type="text" id="quick-add-payee" name="payee" required class="field-input">
-        </div>
-        <div>
-            <label for="quick-add-account" class="field-label">Account</label>
-            <select id="quick-add-account" name="account_id" required class="field-input">
-                <option value="">Select an account&hellip;</option>
-                <?php foreach ($quickAddAccounts as $account): ?>
-                    <option value="<?= (int) $account['id'] ?>"><?= View::e($account['name']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div>
-            <label for="quick-add-category" class="field-label">Category (optional)</label>
-            <select id="quick-add-category" name="category_id" class="field-input">
-                <option value="">No category</option>
-                <?php foreach ($quickAddCategories as $category): ?>
-                    <option value="<?= (int) $category['id'] ?>"><?= View::e($category['name']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <button type="submit" class="btn-primary btn-block">Add transaction</button>
-    </form>
-    <p class="text-xs text-stone-500 dark:text-stone-400 mt-3">Need to split it, add notes, or log income? Use the <a href="/transactions/create" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">full form</a> instead.</p>
-<?php $modalEnd(); ?>
+        <div class="quickadd-rule"></div>
 
+        <form method="POST" action="/transactions">
+            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+            <input type="hidden" name="transaction_type" value="expense">
+            <input type="hidden" name="transaction_date" value="<?= View::e(date('Y-m-d')) ?>">
+            <input type="hidden" name="redirect_to" value="<?= View::e($_SERVER['REQUEST_URI'] ?? '/') ?>">
+
+            <div class="quickadd-amount-box">
+                <p class="quickadd-amount-eyebrow">Amount</p>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-2xl font-semibold text-stone-500 dark:text-stone-400">$</span>
+                    <input type="text" inputmode="decimal" id="quick-add-amount" name="amount" required placeholder="0.00" class="quickadd-amount-input">
+                </div>
+            </div>
+
+            <div class="quickadd-field">
+                <label for="quick-add-payee" class="quickadd-field-label">Payee</label>
+                <div class="quickadd-input-shell">
+                    <svg class="quickadd-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21v-6h6v6"/></svg>
+                    <input type="text" id="quick-add-payee" name="payee" required class="quickadd-input">
+                </div>
+            </div>
+
+            <div class="quickadd-field">
+                <label for="quick-add-account" class="quickadd-field-label">Account</label>
+                <div class="quickadd-input-shell">
+                    <svg class="quickadd-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>
+                    <select id="quick-add-account" name="account_id" required class="quickadd-select" data-swatch-target="quick-add-account-swatch">
+                        <option value="">Select an account&hellip;</option>
+                        <?php foreach ($quickAddAccounts as $account): ?>
+                            <option value="<?= (int) $account['id'] ?>" data-color="<?= View::e($account['color'] ?: '#a8a29e') ?>"><?= View::e($account['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span id="quick-add-account-swatch" class="quickadd-swatch" aria-hidden="true"></span>
+                </div>
+            </div>
+
+            <div class="quickadd-field">
+                <label for="quick-add-category" class="quickadd-field-label">Category <span class="normal-case font-medium tracking-normal">(optional)</span></label>
+                <div class="quickadd-input-shell">
+                    <svg class="quickadd-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41 13.42 20.58a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/></svg>
+                    <select id="quick-add-category" name="category_id" class="quickadd-select" data-swatch-target="quick-add-category-swatch">
+                        <option value="">No category</option>
+                        <?php foreach ($quickAddCategories as $category): ?>
+                            <option value="<?= (int) $category['id'] ?>" data-color="<?= View::e($category['color'] ?: '#a8a29e') ?>"><?= View::e($category['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span id="quick-add-category-swatch" class="quickadd-swatch" aria-hidden="true"></span>
+                </div>
+            </div>
+
+            <button type="submit" class="quickadd-cta">Add transaction</button>
+        </form>
+
+        <p class="quickadd-footnote">Need to split it, add notes, or log income? Use the <a href="/transactions/create">full form</a> instead.</p>
+    </div>
+</div>
+
+<script src="<?= View::asset('/assets/js/quick-add.js') ?>" defer></script>
 <script src="<?= View::asset('/assets/js/modals.js') ?>" defer></script>
 <script src="<?= View::asset('/assets/js/sidebar.js') ?>" defer></script>

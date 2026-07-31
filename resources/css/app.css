@@ -684,6 +684,194 @@
   .print-only {
     display: none;
   }
+
+  /*
+   * Quick-add transaction popup (sidebar.php) — deliberately more
+   * elevated than the plain .modal-overlay/.card shell every other
+   * popup in the app uses (Categories/Tags "Manage", "New category"),
+   * since this is the one popup meant to be opened many times a day
+   * from anywhere and the user specifically asked for a premium
+   * treatment. Not folded into the generic modal shell as a "variant"
+   * flag — a one-off look, not a pattern the rest of the app's popups
+   * need.
+   */
+  /*
+   * Only the background/blur live here — display/positioning
+   * (hidden/fixed/inset-0/flex/etc.) stay as literal utility classes
+   * directly on the element in the view, same as .modal-overlay,
+   * because modals.js toggles "hidden"/"flex" as individual classList
+   * tokens on open/close. Baking them into this class via @apply would
+   * make them un-toggleable — the element would never have a literal
+   * "hidden" token for classList.remove('hidden') to find.
+   */
+  .quickadd-overlay {
+    background:
+      radial-gradient(60% 50% at 50% 38%, rgba(226, 105, 75, .16), transparent 70%),
+      radial-gradient(45% 40% at 82% 78%, rgba(181, 133, 78, .14), transparent 70%),
+      rgba(28, 25, 23, .42);
+    backdrop-filter: blur(22px) saturate(1.5);
+    -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  }
+  @media (prefers-color-scheme: dark) {
+    .quickadd-overlay {
+      background:
+        radial-gradient(60% 50% at 50% 38%, rgba(226, 105, 75, .22), transparent 70%),
+        radial-gradient(45% 40% at 82% 78%, rgba(205, 160, 106, .16), transparent 70%),
+        rgba(5, 4, 3, .58);
+      backdrop-filter: blur(26px) saturate(1.6);
+      -webkit-backdrop-filter: blur(26px) saturate(1.6);
+    }
+  }
+
+  .quickadd-modal {
+    @apply relative w-full max-w-sm rounded-[1.5rem] border border-stone-900/10 dark:border-white/10 p-7 pb-6;
+    background: linear-gradient(165deg, #ffffff, #fbfaf9);
+    box-shadow: 0 30px 60px -20px rgba(28, 25, 23, .28), 0 10px 24px -12px rgba(28, 25, 23, .18), inset 0 1px 0 rgba(255, 255, 255, .9);
+    animation: quickadd-rise .38s cubic-bezier(.22, 1, .36, 1);
+  }
+  @media (prefers-color-scheme: dark) {
+    .quickadd-modal {
+      background: linear-gradient(165deg, #1d1a18, #131110);
+      box-shadow: 0 30px 70px -18px rgba(0, 0, 0, .65), 0 12px 30px -14px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .quickadd-modal {
+      animation: none;
+    }
+  }
+  @keyframes quickadd-rise {
+    from { opacity: 0; transform: translateY(10px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  /* A soft spotlight sitting just behind the card — reads as the card
+     catching its own ambient light rather than a flat drop shadow. */
+  .quickadd-modal::before {
+    content: "";
+    position: absolute;
+    inset: -14%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(226, 105, 75, .16), transparent 72%);
+    filter: blur(38px);
+    opacity: .9;
+  }
+  @media (prefers-color-scheme: dark) {
+    .quickadd-modal::before {
+      background: radial-gradient(closest-side, rgba(226, 105, 75, .22), transparent 72%);
+    }
+  }
+
+  .quickadd-mark {
+    @apply inline-flex items-center justify-center w-10 h-10 rounded-2xl flex-shrink-0 text-white;
+    background: linear-gradient(155deg, #e2694b, #a53d27);
+    box-shadow: 0 6px 16px -4px rgba(201, 79, 50, .55), inset 0 1px 0 rgba(255, 255, 255, .25);
+  }
+
+  /* The FAB that opens the popup gets the same gradient/glow treatment
+     as the mark/CTA inside it, so opening it doesn't feel like a jump
+     from a plain flat button into a suddenly-elevated popup. */
+  .quickadd-fab {
+    background: linear-gradient(155deg, #e2694b, #a53d27);
+    box-shadow: 0 10px 24px -8px rgba(201, 79, 50, .55), inset 0 1px 0 rgba(255, 255, 255, .22);
+  }
+  .quickadd-fab:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+  }
+
+  .quickadd-close {
+    @apply w-8 h-8 rounded-xl flex-shrink-0 inline-flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/5 hover:text-stone-900 dark:hover:text-white transition-colors;
+  }
+
+  .quickadd-rule {
+    @apply h-px mb-5 opacity-80;
+    background: linear-gradient(90deg, transparent, #b5854e, transparent);
+  }
+
+  .quickadd-amount-box {
+    @apply rounded-2xl border p-4 pb-3.5 mb-4;
+    background: linear-gradient(160deg, #fbf4ee, #f7e9dd);
+    border-color: rgba(181, 133, 78, .35);
+  }
+  @media (prefers-color-scheme: dark) {
+    .quickadd-amount-box {
+      background: linear-gradient(160deg, #241c14, #1a140e);
+      border-color: rgba(205, 160, 106, .28);
+    }
+  }
+
+  .quickadd-amount-eyebrow {
+    @apply text-[.625rem] font-bold uppercase tracking-[.12em] mb-1;
+    color: #b5854e;
+  }
+  @media (prefers-color-scheme: dark) {
+    .quickadd-amount-eyebrow {
+      color: #e3c491;
+    }
+  }
+
+  .quickadd-amount-input {
+    @apply flex-1 min-w-0 bg-transparent border-none outline-none text-4xl font-bold tracking-tight text-stone-900 dark:text-stone-100 p-0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .quickadd-field {
+    @apply mb-3.5;
+  }
+
+  .quickadd-field-label {
+    @apply block text-[.6875rem] font-bold uppercase tracking-wide text-stone-400 dark:text-stone-600 mb-1.5;
+  }
+
+  .quickadd-input-shell {
+    @apply relative flex items-center;
+  }
+
+  .quickadd-input-icon {
+    @apply absolute left-3 w-4 h-4 text-stone-400 dark:text-stone-600 pointer-events-none;
+  }
+
+  .quickadd-input {
+    @apply w-full text-sm rounded-2xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 py-3 pl-10 pr-3.5 transition-shadow;
+  }
+  .quickadd-input:focus {
+    @apply outline-none border-terracotta-500 dark:border-terracotta-400;
+    box-shadow: 0 0 0 3.5px rgba(226, 105, 75, .18);
+  }
+
+  .quickadd-select {
+    @apply quickadd-input appearance-none pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2378716c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right .8rem center;
+    background-size: 1rem;
+  }
+
+  .quickadd-swatch {
+    @apply absolute right-3 w-2.5 h-2.5 rounded-full pointer-events-none;
+  }
+
+  .quickadd-cta {
+    @apply w-full rounded-2xl py-3.5 text-sm font-bold text-white transition-transform mt-1;
+    background: linear-gradient(155deg, #e2694b, #a53d27);
+    box-shadow: 0 12px 28px -10px rgba(201, 79, 50, .55), inset 0 1px 0 rgba(255, 255, 255, .22);
+  }
+  .quickadd-cta:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+    box-shadow: 0 16px 32px -10px rgba(201, 79, 50, .62), inset 0 1px 0 rgba(255, 255, 255, .25);
+  }
+  .quickadd-cta:active {
+    transform: translateY(0);
+  }
+
+  .quickadd-footnote {
+    @apply text-center text-xs text-stone-400 dark:text-stone-600 mt-4 leading-relaxed;
+  }
+  .quickadd-footnote a {
+    @apply text-terracotta-600 dark:text-terracotta-400 font-semibold hover:underline;
+  }
 }
 
 /*
