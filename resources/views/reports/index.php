@@ -167,7 +167,7 @@ $listIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Reports · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
