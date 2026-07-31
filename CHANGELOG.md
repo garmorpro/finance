@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed the quick-add popup's Account/Category color swatch sitting directly on top of the select's chevron instead of beside it — both were positioned at effectively the same `right` offset. Swatch moved further left (`right: 2.1rem`) and the select's `padding-right` widened to fit both without either overlapping the option text.
+
 - Disabled pinch-zoom on mobile (`maximum-scale=1.0, user-scalable=no` added to the viewport meta tag across all 50 view files — the tag was identical everywhere with no shared layout to change it in one place). Noted for the record: this is a known accessibility tradeoff (WCAG 1.4.4/1.4.10 — some low-vision users rely on pinch-zoom to read content), done at explicit user request for this household's own instance.
 
 - Reduced padding on mobile for the three most-shared layout primitives — `.card` (was a flat `p-6` everywhere, now `p-4 sm:p-6`), `.page-main`/`.page-main-wide` (`px-8`/`py-10` everywhere → `px-4 sm:px-6 lg:px-8` / `py-6 sm:py-10`), and `.stat-hero` (`p-8` → `p-5 sm:p-8`). None of these had ever been reduced for small screens — on a ~390px-wide phone, page margin plus card padding alone was eating 60+ px of width per side before any actual content started, which is almost certainly the root cause behind the whole app feeling oversized/cramped on mobile rather than any one page being broken. Fixed at the shared class level so every page using `.card`/`.page-main*`/`.stat-hero` benefits at once, same approach as the earlier `.btn` fix.
