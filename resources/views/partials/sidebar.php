@@ -132,7 +132,7 @@ require __DIR__ . '/_modal_shell.php';
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:1.5rem;height:1.5rem;" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
-<div id="quick-add-modal" class="modal-overlay quickadd-overlay hidden fixed inset-0 z-30 items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="quick-add-modal-title">
+<div id="quick-add-modal" class="modal-overlay quickadd-overlay hidden fixed inset-0 z-50 items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="quick-add-modal-title">
     <div class="quickadd-modal">
         <div class="flex items-start justify-between gap-4 mb-1">
             <div class="flex items-center gap-3">
