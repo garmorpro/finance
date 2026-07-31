@@ -42,9 +42,9 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
                         <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white"><?= View::e($greeting) ?>, <?= View::e(explode(' ', $user['name'])[0]) ?></h1>
                         <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Your financial control center &middot; <?= View::e(gmdate('F Y')) ?></p>
                     </div>
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-4 flex-wrap">
                         <p class="text-xs text-stone-500 dark:text-stone-400">Drag tiles to rearrange</p>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3 flex-wrap">
                             <a href="/transactions/import" class="btn-secondary">Import Transactions</a>
                             <a href="/transactions/create" class="btn-primary">Add Transaction</a>
                             <button type="button" id="customize-open" class="btn-secondary">Customize</button>

@@ -128,7 +128,7 @@ require __DIR__ . '/_modal_shell.php';
  * .modal-overlay / [data-modal-open] / [data-modal-close] contract.
  */
 ?>
-<button type="button" data-modal-open="quick-add-modal" class="quickadd-fab fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full text-white flex items-center justify-center transition-transform" aria-label="Quick add transaction">
+<button type="button" data-modal-open="quick-add-modal" class="quickadd-fab fixed bottom-20 right-5 lg:bottom-6 lg:right-6 z-20 w-14 h-14 rounded-full text-white flex items-center justify-center transition-transform" aria-label="Quick add transaction">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:1.5rem;height:1.5rem;" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
