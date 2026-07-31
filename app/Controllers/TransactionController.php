@@ -249,7 +249,30 @@ final class TransactionController
         }
 
         $_SESSION['_flash_notice'] = 'Transaction added.';
-        header('Location: /transactions');
+        header('Location: ' . ($this->safeRedirectPath($request->post('redirect_to')) ?? '/transactions'));
+    }
+
+    /**
+     * The sidebar's quick-add popup can be opened from any page and
+     * posts the page it was opened from as `redirect_to`, so submitting
+     * it lands you back where you were instead of always jumping to
+     * /transactions. Never trust that value as-is — only a single
+     * leading slash (same-origin, relative) is accepted; anything else
+     * (an absolute URL, a protocol-relative "//host/..." which browsers
+     * treat as a different host, a scheme) falls back to null and the
+     * caller's own default.
+     */
+    private function safeRedirectPath(?string $path): ?string
+    {
+        if ($path === null || $path === '') {
+            return null;
+        }
+
+        if (preg_match('#^/(?!/)[A-Za-z0-9\-_/?=&.]*$#', $path) !== 1) {
+            return null;
+        }
+
+        return $path;
     }
 
     public function showEditForm(Request $request): void

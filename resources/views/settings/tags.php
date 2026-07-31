@@ -11,28 +11,7 @@ use App\Support\View;
 
 $editingId = $old['id'] ?? null;
 
-/**
- * Same popup shell as Settings → Categories (`resources/views/settings/
- * categories.php`) — duplicated rather than shared, since it's short and
- * this is only the second page that needs it; wired up by the same
- * shared `modals.js` both pages load.
- */
-$modalStart = function (string $id, string $title) use ($csrfToken): void {
-    ?>
-    <div id="<?= View::e($id) ?>" class="modal-overlay hidden fixed inset-0 z-30 items-center justify-center bg-stone-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="<?= View::e($id) ?>-title">
-        <div class="card w-full max-w-sm max-h-[85vh] overflow-y-auto">
-            <div class="flex items-start justify-between gap-3 mb-4">
-                <h2 id="<?= View::e($id) ?>-title" class="text-lg font-semibold text-stone-900 dark:text-white"><?= View::e($title) ?></h2>
-                <button type="button" data-modal-close="<?= View::e($id) ?>" class="text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 flex-shrink-0" aria-label="Close">&times;</button>
-            </div>
-    <?php
-};
-$modalEnd = function (): void {
-    ?>
-        </div>
-    </div>
-    <?php
-};
+require __DIR__ . '/../partials/_modal_shell.php';
 
 ?>
 <!DOCTYPE html>
@@ -142,6 +121,5 @@ $modalEnd = function (): void {
         </div>
     </div>
 
-    <script src="<?= View::asset('/assets/js/modals.js') ?>" defer></script>
 </body>
 </html>

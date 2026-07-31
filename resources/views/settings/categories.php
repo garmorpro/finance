@@ -22,31 +22,7 @@ $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 $dragHandleIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>';
 $chevronIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
-/**
- * Shared popup shell — every "Manage" action and "New category" open the
- * same kind of centered, backdropped dialog (mirroring the dashboard's
- * existing "Customize dashboard" modal: hidden/flex toggling via JS in
- * settings-categories.js, not the native <dialog> element) instead of
- * expanding inline, since a page with this many categories made an
- * inline form per row/card feel cramped and a permanently-open create
- * form at the top felt out of proportion with everything below it.
- */
-$modalStart = function (string $id, string $title) use ($csrfToken): void {
-    ?>
-    <div id="<?= View::e($id) ?>" class="modal-overlay hidden fixed inset-0 z-30 items-center justify-center bg-stone-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="<?= View::e($id) ?>-title">
-        <div class="card w-full max-w-sm max-h-[85vh] overflow-y-auto">
-            <div class="flex items-start justify-between gap-3 mb-4">
-                <h2 id="<?= View::e($id) ?>-title" class="text-lg font-semibold text-stone-900 dark:text-white"><?= View::e($title) ?></h2>
-                <button type="button" data-modal-close="<?= View::e($id) ?>" class="text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 flex-shrink-0" aria-label="Close">&times;</button>
-            </div>
-    <?php
-};
-$modalEnd = function (): void {
-    ?>
-        </div>
-    </div>
-    <?php
-};
+require __DIR__ . '/../partials/_modal_shell.php';
 
 /**
  * The combined rename + organize form used inside every "Manage" panel —
@@ -372,7 +348,6 @@ $renderSections = function (array $sections, array $groups, array $parentOptions
         </div>
     </div>
 
-    <script src="<?= View::asset('/assets/js/modals.js') ?>" defer></script>
     <script src="<?= View::asset('/assets/js/settings-categories.js') ?>" defer></script>
 </body>
 </html>

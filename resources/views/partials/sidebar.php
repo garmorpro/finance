@@ -4,6 +4,8 @@
 /** @var string $active */
 
 use App\Middleware\AuthMiddleware;
+use App\Repositories\AccountRepository;
+use App\Repositories\CategoryRepository;
 use App\Services\NotificationService;
 use App\Support\View;
 
@@ -14,7 +16,20 @@ $link = function (string $key, string $href, string $label) use ($active): strin
     return '<a href="' . $href . '" class="' . $class . '">' . $label . '</a>';
 };
 
-$notificationCount = (new NotificationService())->badgeCount((int) AuthMiddleware::householdId(), (int) AuthMiddleware::userId());
+$householdId = (int) AuthMiddleware::householdId();
+$notificationCount = (new NotificationService())->badgeCount($householdId, (int) AuthMiddleware::userId());
+
+// Quick-add's own data — active accounts/categories only, same defaults
+// listForHousehold() already uses elsewhere for a *new* transaction (an
+// edit form is the one place that also needs archived accounts, so it
+// can still show a transaction's current account after the fact).
+$quickAddAccounts = (new AccountRepository())->listForHousehold($householdId);
+$quickAddCategories = array_values(array_filter(
+    (new CategoryRepository())->listForHousehold($householdId),
+    fn (array $c): bool => $c['type'] === 'expense'
+));
+
+require __DIR__ . '/_modal_shell.php';
 
 ?>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -93,4 +108,60 @@ $notificationCount = (new NotificationService())->badgeCount((int) AuthMiddlewar
     </div>
 </aside>
 
+<?php
+/**
+ * Quick-add: reachable from anywhere (most useful on mobile, where
+ * there's no faster path to "log a transaction" than a full page
+ * navigation today). Deliberately minimal — Amount, Payee, Account,
+ * Category — everything else (splits, notes, tags, exclude flags)
+ * stays on the full /transactions/create form, linked below. Always
+ * an expense; logging income or a split still goes through the full
+ * form. `redirect_to` carries the current page back through
+ * TransactionController::store() so a quick add doesn't yank you to
+ * the Transactions list from wherever you actually were.
+ */
+?>
+<button type="button" data-modal-open="quick-add-modal" class="fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full bg-terracotta-600 hover:bg-terracotta-500 text-white shadow-lg flex items-center justify-center transition-colors" aria-label="Quick add transaction">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:1.5rem;height:1.5rem;" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<?php $modalStart('quick-add-modal', 'Quick add transaction'); ?>
+    <form method="POST" action="/transactions" class="space-y-3">
+        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+        <input type="hidden" name="transaction_type" value="expense">
+        <input type="hidden" name="transaction_date" value="<?= View::e(date('Y-m-d')) ?>">
+        <input type="hidden" name="redirect_to" value="<?= View::e($_SERVER['REQUEST_URI'] ?? '/') ?>">
+
+        <div>
+            <label for="quick-add-amount" class="field-label">Amount</label>
+            <input type="text" inputmode="decimal" id="quick-add-amount" name="amount" required class="field-input" placeholder="0.00">
+        </div>
+        <div>
+            <label for="quick-add-payee" class="field-label">Payee</label>
+            <input type="text" id="quick-add-payee" name="payee" required class="field-input">
+        </div>
+        <div>
+            <label for="quick-add-account" class="field-label">Account</label>
+            <select id="quick-add-account" name="account_id" required class="field-input">
+                <option value="">Select an account&hellip;</option>
+                <?php foreach ($quickAddAccounts as $account): ?>
+                    <option value="<?= (int) $account['id'] ?>"><?= View::e($account['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div>
+            <label for="quick-add-category" class="field-label">Category (optional)</label>
+            <select id="quick-add-category" name="category_id" class="field-input">
+                <option value="">No category</option>
+                <?php foreach ($quickAddCategories as $category): ?>
+                    <option value="<?= (int) $category['id'] ?>"><?= View::e($category['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <button type="submit" class="btn-primary btn-block">Add transaction</button>
+    </form>
+    <p class="text-xs text-stone-500 dark:text-stone-400 mt-3">Need to split it, add notes, or log income? Use the <a href="/transactions/create" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">full form</a> instead.</p>
+<?php $modalEnd(); ?>
+
+<script src="<?= View::asset('/assets/js/modals.js') ?>" defer></script>
 <script src="<?= View::asset('/assets/js/sidebar.js') ?>" defer></script>
