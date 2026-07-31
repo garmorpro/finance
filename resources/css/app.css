@@ -32,6 +32,20 @@
     @apply inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/15;
   }
 
+  /*
+   * Categories page's card-gallery tile — a plain card with a thin
+   * colored top edge (the category's own `color`, inline style) instead
+   * of tinting the whole card, so it reads as an accent rather than a
+   * full-bleed background the way .account-card does.
+   */
+  .cat-card {
+    @apply relative overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900;
+  }
+
+  .cat-card-bar {
+    height: 5px;
+  }
+
   .page-shell {
     @apply min-h-screen;
   }
@@ -583,6 +597,10 @@
 
   .btn-block {
     @apply w-full;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
   }
 
   .alert {

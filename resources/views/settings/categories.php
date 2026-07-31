@@ -20,69 +20,116 @@ $editingId = $old['id'] ?? null;
 $arrowUpIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
 $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
 $dragHandleIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>';
+$chevronIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
 /**
- * One category row — the primary control just renames it (group/parent
- * hidden fields preserve whatever they already are), everything else
- * (which section it's filed under, which category it nests under, merge,
- * archive) lives behind "More" so the default view isn't five controls
- * wide per row.
+ * The combined rename + organize form used inside every "Manage" panel —
+ * one form, one endpoint (CategoryController::update() already accepts
+ * name/group_id/parent_category_id together), instead of the two
+ * separate forms the row-based layout used.
  */
-$renderCategoryRow = function (array $category, array $groups, array $parentOptions, bool $isChild = false) use ($csrfToken, $dragHandleIcon): void {
-    $isArchived = $category['archived_at'] !== null;
+$renderManageForm = function (array $category, array $groups, array $parentOptions) use ($csrfToken): void {
     ?>
-    <div class="<?= $isChild ? 'ml-7' : '' ?> <?= $isArchived ? 'opacity-50' : '' ?>">
-        <div class="flex items-center justify-between gap-2 py-2">
-            <div class="flex items-center gap-2 flex-1 min-w-0">
-                <?php if (!$isChild && !$isArchived): ?>
-                    <span class="text-stone-300 dark:text-stone-700 hover:text-stone-500 dark:hover:text-stone-500 flex-shrink-0 cursor-grab" style="width:1rem;height:1rem;" title="Drag to reorder"><?= $dragHandleIcon ?></span>
+    <form method="POST" action="/settings/categories/<?= (int) $category['id'] ?>" class="space-y-2.5">
+        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+        <input type="hidden" name="type" value="<?= View::e($category['type']) ?>">
+        <div>
+            <label class="field-label">Name</label>
+            <input type="text" name="name" value="<?= View::e($category['name']) ?>" class="field-input">
+        </div>
+        <div>
+            <label class="field-label">Section</label>
+            <select name="group_id" class="field-input">
+                <option value="">Ungrouped</option>
+                <?php foreach ($groups as $group): ?>
+                    <option value="<?= (int) $group['id'] ?>" <?= (string) $group['id'] === (string) $category['group_id'] ? 'selected' : '' ?>><?= View::e($group['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div>
+            <label class="field-label">Parent category</label>
+            <select name="parent_category_id" class="field-input">
+                <option value="">No parent — top-level</option>
+                <?php foreach ($parentOptions as $parent): ?>
+                    <?php if ((int) $parent['id'] === (int) $category['id']) continue; ?>
+                    <option value="<?= (int) $parent['id'] ?>" <?= (string) $parent['id'] === (string) $category['parent_category_id'] ? 'selected' : '' ?>><?= View::e($parent['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <p class="field-help">Filed under the parent's own section when set — the section above is ignored.</p>
+        </div>
+        <button type="submit" class="btn-secondary btn-sm">Save</button>
+    </form>
+    <?php
+};
+
+$renderDangerZone = function (array $category, bool $isArchived) use ($csrfToken): void {
+    ?>
+    <div class="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-stone-100 dark:border-stone-800">
+        <span class="text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-600">Danger zone</span>
+        <div class="flex items-center gap-2">
+            <?php if (!$isArchived): ?>
+                <a href="/settings/categories/<?= (int) $category['id'] ?>/merge" class="btn-secondary btn-sm">Merge into&hellip;</a>
+            <?php endif; ?>
+            <form method="POST" action="/settings/categories/<?= (int) $category['id'] ?>/<?= $isArchived ? 'restore' : 'archive' ?>">
+                <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                <button type="submit" class="btn-secondary btn-sm <?= $isArchived ? '' : 'text-red-600 dark:text-red-400' ?>"><?= $isArchived ? 'Restore' : 'Archive' ?></button>
+            </form>
+        </div>
+    </div>
+    <?php
+};
+
+/**
+ * One subcategory, nested inside its parent's card. Collapsed it's just a
+ * small labeled row; expanding it reveals the same Manage/Danger-zone
+ * controls as a top-level card, just scaled down to fit inside the
+ * parent's card body.
+ */
+$renderChildRow = function (array $child, array $groups, array $parentOptions) use ($csrfToken, $chevronIcon, $renderManageForm, $renderDangerZone): void {
+    $isArchived = $child['archived_at'] !== null;
+    ?>
+    <details class="group/child">
+        <summary class="flex items-center gap-2 py-1.5 px-1.5 -mx-1.5 rounded-lg text-xs text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer list-none <?= $isArchived ? 'opacity-50' : '' ?>">
+            <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background-color: <?= View::e($child['color'] ?: '#a8a29e') ?>"></span>
+            <span class="flex-1 min-w-0 truncate"><?= View::e($child['name']) ?></span>
+            <span class="w-3 h-3 text-stone-400 dark:text-stone-600 flex-shrink-0 transition-transform group-open/child:rotate-180"><?= $chevronIcon ?></span>
+        </summary>
+        <div class="pl-3.5 pb-2 pt-1.5">
+            <?php $renderManageForm($child, $groups, $parentOptions); ?>
+            <?php $renderDangerZone($child, $isArchived); ?>
+        </div>
+    </details>
+    <?php
+};
+
+$renderCatCard = function (array $category, array $children, array $groups, array $parentOptions, bool $isArchived) use ($csrfToken, $dragHandleIcon, $renderChildRow, $renderManageForm, $renderDangerZone): void {
+    $count = count($children);
+    $meta = $isArchived ? 'Archived' : ($count > 0 ? $count . ' subcategor' . ($count === 1 ? 'y' : 'ies') : 'No subcategories');
+    ?>
+    <div class="cat-card <?= $isArchived ? 'opacity-60' : '' ?>" <?= $isArchived ? '' : 'draggable="true" data-category-id="' . (int) $category['id'] . '"' ?>>
+        <div class="cat-card-bar" style="background-color: <?= View::e($category['color'] ?: '#a8a29e') ?>"></div>
+        <div class="p-4">
+            <div class="flex items-start justify-between gap-2 mb-0.5">
+                <h4 class="font-semibold text-stone-900 dark:text-white truncate"><?= View::e($category['name']) ?></h4>
+                <?php if (!$isArchived): ?>
+                    <span class="text-stone-300 dark:text-stone-700 hover:text-stone-500 dark:hover:text-stone-500 flex-shrink-0 cursor-grab mt-0.5" style="width:.9rem;height:.9rem;" title="Drag to reorder"><?= $dragHandleIcon ?></span>
                 <?php endif; ?>
-                <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: <?= View::e($category['color'] ?: '#a8a29e') ?>" title="Category color"></span>
-                <form method="POST" action="/settings/categories/<?= (int) $category['id'] ?>" class="flex items-center gap-2 flex-1 min-w-0">
-                    <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                    <input type="hidden" name="type" value="<?= View::e($category['type']) ?>">
-                    <input type="hidden" name="group_id" value="<?= $category['group_id'] !== null ? (int) $category['group_id'] : '' ?>">
-                    <input type="hidden" name="parent_category_id" value="<?= $category['parent_category_id'] !== null ? (int) $category['parent_category_id'] : '' ?>">
-                    <input type="text" name="name" value="<?= View::e($category['name']) ?>" class="field-input flex-1 min-w-0">
-                    <button type="submit" class="btn-secondary">Save</button>
-                </form>
             </div>
-            <details class="text-sm flex-shrink-0">
-                <summary class="cursor-pointer text-stone-500 dark:text-stone-400 hover:underline list-none">More</summary>
-                <div class="mt-3 pb-1">
-                    <form method="POST" action="/settings/categories/<?= (int) $category['id'] ?>" class="flex flex-wrap items-end gap-3 mb-3">
-                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                        <input type="hidden" name="name" value="<?= View::e($category['name']) ?>">
-                        <input type="hidden" name="type" value="<?= View::e($category['type']) ?>">
-                        <div>
-                            <label class="field-label">Section</label>
-                            <select name="group_id" class="field-input" style="max-width: 11rem;">
-                                <option value="">Ungrouped</option>
-                                <?php foreach ($groups as $group): ?>
-                                    <option value="<?= (int) $group['id'] ?>" <?= (string) $group['id'] === (string) $category['group_id'] ? 'selected' : '' ?>><?= View::e($group['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="field-label">Parent category</label>
-                            <select name="parent_category_id" class="field-input" style="max-width: 11rem;">
-                                <option value="">No parent — top-level</option>
-                                <?php foreach ($parentOptions as $parent): ?>
-                                    <?php if ((int) $parent['id'] === (int) $category['id']) continue; ?>
-                                    <option value="<?= (int) $parent['id'] ?>" <?= (string) $parent['id'] === (string) $category['parent_category_id'] ? 'selected' : '' ?>><?= View::e($parent['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <p class="field-help">Filed under the parent's own section when set — the section above is ignored. A category with its own subcategories can't become one itself.</p>
-                        </div>
-                        <button type="submit" class="btn-secondary">Save</button>
-                    </form>
-                    <div class="flex items-center gap-2">
-                        <a href="/settings/categories/<?= (int) $category['id'] ?>/merge" class="btn-secondary">Merge into&hellip;</a>
-                        <form method="POST" action="/settings/categories/<?= (int) $category['id'] ?>/<?= $isArchived ? 'restore' : 'archive' ?>">
-                            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                            <button type="submit" class="btn-secondary"><?= $isArchived ? 'Restore' : 'Archive' ?></button>
-                        </form>
-                    </div>
+            <p class="text-xs text-stone-500 dark:text-stone-400 mb-3"><?= View::e($meta) ?></p>
+
+            <?php if ($children !== []): ?>
+                <div class="space-y-0.5 mb-3 border-t border-stone-100 dark:border-stone-800 pt-1">
+                    <?php foreach ($children as $child): ?>
+                        <?php $renderChildRow($child, $groups, $parentOptions); ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <details>
+                <summary class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline cursor-pointer list-none">Manage</summary>
+                <div class="mt-3">
+                    <?php $renderManageForm($category, $groups, $parentOptions); ?>
+                    <?php $renderDangerZone($category, $isArchived); ?>
                 </div>
             </details>
         </div>
@@ -90,12 +137,12 @@ $renderCategoryRow = function (array $category, array $groups, array $parentOpti
     <?php
 };
 
-$renderSections = function (array $sections, array $groups, array $parentOptions) use ($csrfToken, $renderCategoryRow): void {
+$renderSections = function (array $sections, array $groups, array $parentOptions) use ($csrfToken, $renderCatCard): void {
     foreach ($sections as $section) {
         $group = $section['group'];
         ?>
         <div class="card">
-            <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center justify-between mb-4">
                 <span class="flex items-center gap-2.5 min-w-0">
                     <span class="budget-group-icon"><?= CategoryGroupIcons::forName($group['name'] ?? null) ?></span>
                     <h3 class="font-medium text-stone-900 dark:text-white truncate"><?= View::e($group['name'] ?? 'Ungrouped') ?></h3>
@@ -124,29 +171,19 @@ $renderSections = function (array $sections, array $groups, array $parentOptions
                 <?php if ($section['active'] === []): ?>
                     <p class="text-sm text-stone-500 dark:text-stone-400 py-2">No active categories in this section.</p>
                 <?php else: ?>
-                    <div class="divide-y divide-stone-100 dark:divide-stone-800 category-group-list" data-group-id="<?= $group !== null ? (int) $group['id'] : 0 ?>">
+                    <div class="category-group-list grid grid-cols-1 sm:grid-cols-2 gap-3" data-group-id="<?= $group !== null ? (int) $group['id'] : 0 ?>">
                         <?php foreach ($section['active'] as $row): ?>
-                            <div draggable="true" data-category-id="<?= (int) $row['category']['id'] ?>">
-                                <?php $renderCategoryRow($row['category'], $groups, $parentOptions); ?>
-                                <?php foreach ($row['children'] as $child): ?>
-                                    <?php $renderCategoryRow($child, $groups, $parentOptions, true); ?>
-                                <?php endforeach; ?>
-                            </div>
+                            <?php $renderCatCard($row['category'], $row['children'], $groups, $parentOptions, false); ?>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
 
                 <?php if ($section['archived'] !== []): ?>
-                    <details class="mt-3 border-t border-stone-100 dark:border-stone-800 pt-3">
+                    <details class="mt-4 border-t border-stone-100 dark:border-stone-800 pt-3">
                         <summary class="cursor-pointer text-sm text-stone-500 dark:text-stone-400 hover:underline list-none"><?= count($section['archived']) ?> archived</summary>
-                        <div class="divide-y divide-stone-100 dark:divide-stone-800 mt-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                             <?php foreach ($section['archived'] as $row): ?>
-                                <div>
-                                    <?php $renderCategoryRow($row['category'], $groups, $parentOptions); ?>
-                                    <?php foreach ($row['children'] as $child): ?>
-                                        <?php $renderCategoryRow($child, $groups, $parentOptions, true); ?>
-                                    <?php endforeach; ?>
-                                </div>
+                                <?php $renderCatCard($row['category'], $row['children'], $groups, $parentOptions, true); ?>
                             <?php endforeach; ?>
                         </div>
                     </details>
@@ -183,7 +220,7 @@ $renderSections = function (array $sections, array $groups, array $parentOptions
                         <span class="text-stone-400 dark:text-stone-500"><?= SettingsIcons::svg('categories') ?></span>
                         <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Categories</h2>
                     </div>
-                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Changes here apply everywhere categories are used — transactions, budgets, and reports. Drag a category to reorder it within its section, or open "More" on any row to move it, nest it under another category, merge it into another, or archive it.</p>
+                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Changes here apply everywhere categories are used — transactions, budgets, and reports. Drag a card to reorder it within its section, or open "Manage" on any card to rename it, move it, nest it, merge it, or archive it. Subcategories live inside their parent's card — expand one to edit it directly.</p>
                 </div>
 
                 <?php if (!empty($error)): ?>
@@ -194,59 +231,64 @@ $renderSections = function (array $sections, array $groups, array $parentOptions
                 <?php endif; ?>
 
                 <div class="card">
-                    <h2 class="font-medium text-stone-900 dark:text-white mb-4">Create category</h2>
-                    <form method="POST" action="/settings/categories" class="space-y-3">
-                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                        <div class="flex flex-wrap items-end gap-3">
-                            <div class="flex-1 min-w-[10rem]">
-                                <label for="name" class="field-label">Name</label>
-                                <input type="text" id="name" name="name" required value="<?= $editingId === null ? View::e($old['name'] ?? '') : '' ?>" class="field-input">
+                    <details>
+                        <summary class="cursor-pointer list-none flex items-center gap-2 text-sm font-semibold text-terracotta-600 dark:text-terracotta-400">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:.9rem;height:.9rem;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New category
+                        </summary>
+                        <form method="POST" action="/settings/categories" class="space-y-3 mt-4">
+                            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                            <div class="flex flex-wrap items-end gap-3">
+                                <div class="flex-1 min-w-[10rem]">
+                                    <label for="name" class="field-label">Name</label>
+                                    <input type="text" id="name" name="name" required value="<?= $editingId === null ? View::e($old['name'] ?? '') : '' ?>" class="field-input">
+                                </div>
+                                <div>
+                                    <label for="type" class="field-label">Type</label>
+                                    <select id="type" name="type" class="field-input">
+                                        <option value="expense" <?= ($editingId === null ? ($old['type'] ?? 'expense') : 'expense') === 'expense' ? 'selected' : '' ?>>Expense</option>
+                                        <option value="income" <?= $editingId === null && ($old['type'] ?? '') === 'income' ? 'selected' : '' ?>>Income</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label for="type" class="field-label">Type</label>
-                                <select id="type" name="type" class="field-input">
-                                    <option value="expense" <?= ($editingId === null ? ($old['type'] ?? 'expense') : 'expense') === 'expense' ? 'selected' : '' ?>>Expense</option>
-                                    <option value="income" <?= $editingId === null && ($old['type'] ?? '') === 'income' ? 'selected' : '' ?>>Income</option>
-                                </select>
+                            <div class="flex flex-wrap items-end gap-3">
+                                <div>
+                                    <label for="group_id" class="field-label">Section (optional)</label>
+                                    <select id="group_id" name="group_id" class="field-input" style="max-width: 12rem;">
+                                        <option value="">Ungrouped</option>
+                                        <optgroup label="Expense">
+                                            <?php foreach ($expenseGroups as $group): ?>
+                                                <option value="<?= (int) $group['id'] ?>"><?= View::e($group['name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <optgroup label="Income">
+                                            <?php foreach ($incomeGroups as $group): ?>
+                                                <option value="<?= (int) $group['id'] ?>"><?= View::e($group['name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="parent_category_id" class="field-label">Parent category (optional)</label>
+                                    <select id="parent_category_id" name="parent_category_id" class="field-input" style="max-width: 12rem;">
+                                        <option value="">No parent — top-level</option>
+                                        <optgroup label="Expense">
+                                            <?php foreach ($expenseParentOptions as $parent): ?>
+                                                <option value="<?= (int) $parent['id'] ?>"><?= View::e($parent['name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <optgroup label="Income">
+                                            <?php foreach ($incomeParentOptions as $parent): ?>
+                                                <option value="<?= (int) $parent['id'] ?>"><?= View::e($parent['name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                    </select>
+                                    <p class="field-help">Must match the Type above, and files this into the parent's own section.</p>
+                                </div>
+                                <button type="submit" class="btn-primary">Create category</button>
                             </div>
-                        </div>
-                        <div class="flex flex-wrap items-end gap-3">
-                            <div>
-                                <label for="group_id" class="field-label">Section (optional)</label>
-                                <select id="group_id" name="group_id" class="field-input" style="max-width: 12rem;">
-                                    <option value="">Ungrouped</option>
-                                    <optgroup label="Expense">
-                                        <?php foreach ($expenseGroups as $group): ?>
-                                            <option value="<?= (int) $group['id'] ?>"><?= View::e($group['name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </optgroup>
-                                    <optgroup label="Income">
-                                        <?php foreach ($incomeGroups as $group): ?>
-                                            <option value="<?= (int) $group['id'] ?>"><?= View::e($group['name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </optgroup>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="parent_category_id" class="field-label">Parent category (optional)</label>
-                                <select id="parent_category_id" name="parent_category_id" class="field-input" style="max-width: 12rem;">
-                                    <option value="">No parent — top-level</option>
-                                    <optgroup label="Expense">
-                                        <?php foreach ($expenseParentOptions as $parent): ?>
-                                            <option value="<?= (int) $parent['id'] ?>"><?= View::e($parent['name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </optgroup>
-                                    <optgroup label="Income">
-                                        <?php foreach ($incomeParentOptions as $parent): ?>
-                                            <option value="<?= (int) $parent['id'] ?>"><?= View::e($parent['name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </optgroup>
-                                </select>
-                                <p class="field-help">Must match the Type above, and files this into the parent's own section.</p>
-                            </div>
-                            <button type="submit" class="btn-primary">Create category</button>
-                        </div>
-                    </form>
+                        </form>
+                    </details>
                 </div>
 
                 <div class="flex items-center justify-between">
