@@ -153,7 +153,7 @@ final class CategoryController
             return;
         }
 
-        $categoryId = (new CategoryRepository())->create($householdId, $input['name'], $input['type'], null, $parentId, $groupId);
+        $categoryId = (new CategoryRepository())->create($householdId, $input['name'], $input['type'], $input['color'], $parentId, $groupId);
 
         (new AuditLogRepository())->log(
             (int) AuthMiddleware::userId(),
@@ -209,7 +209,7 @@ final class CategoryController
             return;
         }
 
-        $categoryRepo->update($categoryId, $householdId, $input['name'], $input['type'], $category['color'], $groupId, $parentId);
+        $categoryRepo->update($categoryId, $householdId, $input['name'], $input['type'], $input['color'], $groupId, $parentId);
 
         (new AuditLogRepository())->log(
             (int) AuthMiddleware::userId(),
@@ -407,6 +407,7 @@ final class CategoryController
             'id' => $request->post('id') !== '' ? $request->post('id') : null,
             'name' => trim($request->post('name')),
             'type' => $request->post('type'),
+            'color' => $request->post('color') !== '' ? $request->post('color') : null,
             'group_id' => $request->post('group_id') !== '' ? $request->post('group_id') : null,
             'parent_category_id' => $request->post('parent_category_id') !== '' ? $request->post('parent_category_id') : null,
         ];
@@ -420,6 +421,10 @@ final class CategoryController
 
         if (!in_array($input['type'], ['income', 'expense'], true)) {
             return 'Please choose a valid category type.';
+        }
+
+        if ($input['color'] !== null && preg_match('/^#[0-9a-fA-F]{6}$/', $input['color']) !== 1) {
+            return 'Please choose a valid color.';
         }
 
         return null;

@@ -59,9 +59,15 @@ $renderManageForm = function (array $category, array $groups, array $parentOptio
     <form method="POST" action="/settings/categories/<?= (int) $category['id'] ?>" class="space-y-2.5">
         <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
         <input type="hidden" name="type" value="<?= View::e($category['type']) ?>">
-        <div>
-            <label class="field-label">Name</label>
-            <input type="text" name="name" value="<?= View::e($category['name']) ?>" class="field-input">
+        <div class="flex items-end gap-3">
+            <div class="flex-1">
+                <label class="field-label">Name</label>
+                <input type="text" name="name" value="<?= View::e($category['name']) ?>" class="field-input">
+            </div>
+            <div>
+                <label class="field-label">Color</label>
+                <input type="color" name="color" value="<?= View::e($category['color'] ?: '#a8a29e') ?>" class="field-color">
+            </div>
         </div>
         <div>
             <label class="field-label">Section</label>
@@ -269,9 +275,15 @@ $renderSections = function (array $sections, array $groups, array $parentOptions
                 <?php $modalStart('new-category-modal', 'New category'); ?>
                     <form method="POST" action="/settings/categories" class="space-y-3">
                         <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                        <div>
-                            <label for="name" class="field-label">Name</label>
-                            <input type="text" id="name" name="name" required value="<?= $editingId === null ? View::e($old['name'] ?? '') : '' ?>" class="field-input">
+                        <div class="flex items-end gap-3">
+                            <div class="flex-1">
+                                <label for="name" class="field-label">Name</label>
+                                <input type="text" id="name" name="name" required value="<?= $editingId === null ? View::e($old['name'] ?? '') : '' ?>" class="field-input">
+                            </div>
+                            <div>
+                                <label for="color" class="field-label">Color</label>
+                                <input type="color" id="color" name="color" value="<?= $editingId === null ? View::e($old['color'] ?? '#a8a29e') : '#a8a29e' ?>" class="field-color">
+                            </div>
                         </div>
                         <div>
                             <label for="type" class="field-label">Type</label>
