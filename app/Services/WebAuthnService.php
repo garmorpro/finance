@@ -8,6 +8,9 @@ use App\Repositories\WebAuthnCredentialRepository;
 use Cose\Algorithm\Manager as CoseAlgorithmManager;
 use Cose\Algorithm\Signature\ECDSA\ES256;
 use Cose\Algorithm\Signature\RSA\RS256;
+use Webauthn\AttestationStatement\AttestationObjectLoader;
+use Webauthn\AttestationStatement\AttestationStatementSupportManager;
+use Webauthn\AttestationStatement\NoneAttestationStatementSupport;
 use Webauthn\AuthenticatorAssertionResponse;
 use Webauthn\AuthenticatorAssertionResponseValidator;
 use Webauthn\AuthenticatorAttestationResponse;
@@ -221,6 +224,14 @@ final class WebAuthnService
 
     private function loader(): PublicKeyCredentialLoader
     {
-        return PublicKeyCredentialLoader::create();
+        // Only "none" attestation is ever requested (see class doc
+        // comment), so that's the only attestation statement format
+        // this app's loader needs to know how to parse.
+        $attestationStatementSupportManager = AttestationStatementSupportManager::create();
+        $attestationStatementSupportManager->add(NoneAttestationStatementSupport::create());
+
+        return PublicKeyCredentialLoader::create(
+            AttestationObjectLoader::create($attestationStatementSupportManager)
+        );
     }
 }
