@@ -76,7 +76,14 @@ final class WebAuthnController
         try {
             (new WebAuthnService())->verifyRegistration($credential, $options, $deviceName);
         } catch (\Throwable $e) {
-            Response::json(['error' => "Couldn't save that passkey. Please try again."], 422);
+            error_log('WebAuthn registration failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            // TEMPORARY: exposing the real exception message while this
+            // feature is still being debugged end-to-end. This endpoint
+            // is authenticated (Settings → Security) so it's not handing
+            // internals to an anonymous visitor, but it should still go
+            // back to the generic message below once registration is
+            // confirmed working.
+            Response::json(['error' => $e->getMessage() . ' (' . get_class($e) . ')'], 422);
             return;
         } finally {
             unset($_SESSION['webauthn_registration_options']);
