@@ -16,7 +16,6 @@ use Webauthn\AuthenticatorAssertionResponseValidator;
 use Webauthn\AuthenticatorAttestationResponse;
 use Webauthn\AuthenticatorAttestationResponseValidator;
 use Webauthn\AuthenticatorSelectionCriteria;
-use Webauthn\CeremonyStep\CeremonyStepManagerFactory;
 use Webauthn\PublicKeyCredential;
 use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialDescriptor;
@@ -150,8 +149,16 @@ final class WebAuthnService
             throw new \RuntimeException('Expected an attestation response for a registration ceremony.');
         }
 
-        $csmFactory = new CeremonyStepManagerFactory();
-        $validator = AuthenticatorAttestationResponseValidator::create($csmFactory->creationCeremony());
+        // create()'s first argument is a deprecated way to plug in a
+        // custom AttestationStatementSupportManager — leaving it (and
+        // every other param) null makes the validator build its own
+        // default CeremonyStepManager internally the first time check()
+        // runs, which already knows how to handle "none" attestation.
+        // Passing a CeremonyStepManager instance here (the previous,
+        // wrong version of this code) doesn't match this parameter's
+        // type at all — that's a separate, later construction step
+        // that's entirely handled for us when this is left null.
+        $validator = AuthenticatorAttestationResponseValidator::create();
 
         $source = $validator->check($response, $expectedOptions, $this->rpId());
         $source->otherUI = ['device_name' => $deviceName !== '' ? $deviceName : 'Passkey'];
@@ -202,8 +209,13 @@ final class WebAuthnService
             throw new \RuntimeException('Unrecognized passkey.');
         }
 
-        $csmFactory = new CeremonyStepManagerFactory();
-        $validator = AuthenticatorAssertionResponseValidator::create($csmFactory->requestCeremony());
+        // Same reasoning as the attestation validator above — leave
+        // create() unargumented rather than passing a CeremonyStepManager
+        // into a parameter slot that isn't one. Not yet confirmed against
+        // this version's actual source the way the attestation validator
+        // was; fix this one first if the assertion/login flow errors
+        // differently than expected.
+        $validator = AuthenticatorAssertionResponseValidator::create();
 
         // userHandle from the platform must match the stored owner —
         // check() itself verifies the signature/counter/rpId, but this
