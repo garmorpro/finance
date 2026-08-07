@@ -58,18 +58,31 @@ final class WebAuthnService
 
     private function rpId(): string
     {
-        $host = parse_url((string) ($_ENV['APP_URL'] ?? ''), PHP_URL_HOST);
+        // The browser's own Host header is the source of truth for "what
+        // origin is this actually being served from" — the one thing
+        // WebAuthn's rp.id must match. APP_URL is only a fallback for the
+        // rare case a request somehow arrives with no Host header at
+        // all; it was wrongly given priority before, and on at least
+        // this server $_ENV['APP_URL'] wasn't resolving to anything
+        // usable, silently falling through to a hardcoded "localhost".
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        if ($host !== '') {
+            // Host can include a port ("example.com:8443") — rp.id must
+            // be a bare hostname, no port or scheme.
+            return explode(':', $host)[0];
+        }
 
-        return is_string($host) && $host !== '' ? $host : ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $fallback = parse_url((string) ($_ENV['APP_URL'] ?? ''), PHP_URL_HOST);
+
+        return is_string($fallback) && $fallback !== '' ? $fallback : 'localhost';
     }
 
     private function rpEntity(): PublicKeyCredentialRpEntity
     {
-        // WebAuthn's PublicKeyCredentialRpEntity dictionary is {id, name}
-        // in that order per spec, and the library's named constructor
-        // mirrors it — id (the domain) first, display name second. Easy
-        // to get backwards since "name" reads first in English.
-        return PublicKeyCredentialRpEntity::create($this->rpId(), 'MyCFO+');
+        // Confirmed against this library's actual output (not just
+        // assumed from spec field order, which turned out backwards
+        // from the constructor's real parameter order): create(name, id).
+        return PublicKeyCredentialRpEntity::create('MyCFO+', $this->rpId());
     }
 
     /**
@@ -80,10 +93,11 @@ final class WebAuthnService
      */
     public function registrationOptions(int $userId, string $email, string $displayName): PublicKeyCredentialCreationOptions
     {
-        // Same {id, name, displayName} spec ordering as the RP entity
-        // above — id (this app's own user id) first, then the WebAuthn
-        // "name" (email), then displayName.
-        $userEntity = PublicKeyCredentialUserEntity::create((string) $userId, $email, $displayName);
+        // Same create(name, id, displayName) order as the RP entity —
+        // name is the human-readable identifier shown in the platform's
+        // passkey picker (the email), id is the opaque handle stored
+        // alongside the credential (this app's own user id).
+        $userEntity = PublicKeyCredentialUserEntity::create($email, (string) $userId, $displayName);
 
         $existing = $this->credentials->findAllForUserEntity($userEntity);
         $excludeCredentials = array_map(
