@@ -26,6 +26,7 @@ use App\Controllers\RulesInputsController;
 use App\Controllers\SearchController;
 use App\Controllers\TagController;
 use App\Controllers\TransactionController;
+use App\Controllers\WebAuthnController;
 use App\Database\Connection;
 use App\Http\Request;
 use App\Http\Response;
@@ -63,6 +64,13 @@ $router->get('/login', fn (): mixed => $authController->showLogin());
 $router->post('/login', fn (Request $r): mixed => $authController->login($r));
 $router->get('/login/verify', fn (): mixed => $authController->showTwoFactorChallenge());
 $router->post('/login/verify', fn (Request $r): mixed => $authController->verifyTwoFactor($r));
+
+$webAuthnController = new WebAuthnController();
+$router->get('/login/webauthn/options', fn (): mixed => $webAuthnController->loginOptions());
+$router->post('/login/webauthn/verify', fn (Request $r): mixed => $webAuthnController->loginVerify($r));
+$router->get('/settings/security/webauthn/register-options', fn (): mixed => $webAuthnController->registerOptions());
+$router->post('/settings/security/webauthn/register', fn (Request $r): mixed => $webAuthnController->register($r));
+$router->post('/settings/security/webauthn/{id}/delete', fn (Request $r): mixed => $webAuthnController->destroy($r));
 $router->post('/logout', fn (Request $r): mixed => $authController->logout($r));
 
 $passwordResetController = new PasswordResetController();

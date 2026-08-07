@@ -68,6 +68,53 @@ Authenticator, Authy, 1Password, etc.), enabled from Settings → Security.
   it isn't one, since that flow only ever creates a brand-new user
   account, which by definition has no 2FA configured yet.
 
+## Passkeys (WebAuthn)
+
+Optional per-user passkey sign-in (Face ID, Touch ID, Windows Hello, or
+a platform's own screen lock), registered from Settings → Security and
+offered as a "Sign in with a passkey" option on the login page.
+
+- Built on `web-auth/webauthn-lib` rather than a hand-rolled
+  implementation — unlike TOTP's straightforward HMAC math, WebAuthn's
+  CBOR/COSE-encoded attestation and assertion objects are genuinely
+  easy to get subtly wrong in ways that matter for security, and this
+  is a mature, widely-used library for exactly that reason. All of the
+  app's library usage is isolated in `App\Services\WebAuthnService`.
+- Attestation is always requested as `none` — this app has no fleet
+  policy that cares which authenticator model was used, only a privacy
+  cost to verifying an attestation chain (it can fingerprint hardware).
+- Registration requires a *resident/discoverable* credential
+  (`residentKey: required`) and `userVerification: required`. Resident
+  keys are what let the login page offer a passkey option without
+  asking for an email address first — the browser's own passkey picker
+  enumerates whichever credentials are registered for this site, and
+  the assertion response's `userHandle` (this app's own user id) tells
+  the server who just authenticated. `userVerification: required` means
+  the platform must actually enforce Face ID/Touch ID/a PIN, not merely
+  confirm the authenticator is present.
+- The relying party ID is derived from `APP_URL`'s host — every
+  registered passkey is permanently tied to that exact string, so it
+  must never change once passkeys exist (would invalidate every one).
+- A passkey satisfies two-factor authentication on its own by default
+  (`users.webauthn_skip_two_factor`, defaults on) — combining "something
+  you have" (the device) with "something you are" (biometric) or
+  "something you know" (device PIN) is the standard justification for
+  treating it as MFA-equivalent, and requiring a *second* TOTP prompt
+  after Face ID would defeat the point of it existing. A user can flip
+  that column off if they specifically want both.
+- Registration and authentication challenges are single-use, stored
+  server-side in `$_SESSION` between the options request and the
+  verification request, and never accepted from anywhere else — the
+  browser can't replay an old challenge or supply its own.
+- `WebAuthnCredentialRepository::findOneByCredentialId()` looks up by a
+  SHA-256 hash column rather than the raw (TEXT, variably-sized)
+  credential ID, since MySQL can't put a plain `UNIQUE` index on TEXT
+  without an awkward prefix length.
+- Removing a passkey (Settings → Security) doesn't require password
+  confirmation the way disabling 2FA does — it's not disabling a
+  control, just removing one sign-in method while password (and TOTP,
+  if enabled and not skipped) remain fully intact.
+
 ## Active session management
 
 Settings → Security lists every device currently signed in and can log

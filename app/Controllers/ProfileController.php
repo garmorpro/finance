@@ -11,6 +11,7 @@ use App\Repositories\AuditLogRepository;
 use App\Repositories\HouseholdRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserSessionRepository;
+use App\Repositories\WebAuthnCredentialRepository;
 use App\Support\Csrf;
 use App\Support\Totp;
 use App\Support\UserAgent;
@@ -62,6 +63,7 @@ final class ProfileController
         Response::html(View::render('settings/security', [
             'twoFactorEnabled' => $user !== null && $user['two_factor_enabled_at'] !== null,
             'sessions' => $sessions,
+            'passkeys' => (new WebAuthnCredentialRepository())->listForUser($userId),
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,

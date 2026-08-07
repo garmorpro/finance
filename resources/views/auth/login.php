@@ -77,11 +77,25 @@ use App\Support\View;
             </div>
             <button type="submit" class="btn-primary btn-block">Log in</button>
         </form>
+
+        <div class="flex items-center gap-3 my-5" aria-hidden="true">
+            <div class="flex-1 h-px bg-stone-200 dark:bg-stone-800"></div>
+            <span class="text-xs font-medium text-stone-400 dark:text-stone-600">or</span>
+            <div class="flex-1 h-px bg-stone-200 dark:bg-stone-800"></div>
+        </div>
+
+        <button type="button" id="webauthn-login" class="btn-secondary btn-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="16" r="1.5"/><path d="M7 11V7a5 5 0 0 1 10 0"/></svg>
+            Sign in with a passkey
+        </button>
+        <p id="webauthn-login-status" class="text-sm text-center text-stone-500 dark:text-stone-400 mt-2"></p>
+
         <p class="mt-5 text-sm text-center">
             <a href="/forgot-password" class="text-terracotta-600 dark:text-terracotta-400 hover:underline font-medium">Forgot password?</a>
         </p>
     </div>
 
+    <script src="<?= View::asset('/assets/js/webauthn.js') ?>" defer></script>
     <script src="<?= View::asset('/assets/js/auth.js') ?>" defer></script>
 </body>
 </html>

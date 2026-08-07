@@ -2,6 +2,7 @@
 
 /** @var bool $twoFactorEnabled */
 /** @var list<array{id: int, label: string, ip_address: ?string, last_active_at: string, is_current: bool}> $sessions */
+/** @var list<array{id: int, device_name: string, created_at: string, last_used_at: ?string}> $passkeys */
 /** @var string $csrfToken */
 /** @var string|null $error */
 /** @var string|null $notice */
@@ -63,6 +64,36 @@ use App\Support\View;
                                 </div>
                                 <button type="submit" class="btn-primary">Update password</button>
                             </form>
+                        </div>
+
+                        <div class="card max-w-lg">
+                            <div class="flex items-start justify-between gap-4 mb-1">
+                                <h2 class="font-medium text-stone-900 dark:text-white">Passkeys</h2>
+                                <span class="<?= $passkeys !== [] ? 'badge-owner' : 'badge' ?>"><?= count($passkeys) ?></span>
+                            </div>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Sign in with Face ID, Touch ID, or your device's screen lock instead of typing your password — a passkey satisfies two-factor on its own, so it skips the code step below too.</p>
+
+                            <?php if ($passkeys !== []): ?>
+                                <div class="divide-y divide-stone-100 dark:divide-stone-800 mb-4">
+                                    <?php foreach ($passkeys as $passkey): ?>
+                                        <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                                            <div class="min-w-0">
+                                                <div class="text-sm font-medium text-stone-900 dark:text-white"><?= View::e($passkey['device_name']) ?></div>
+                                                <div class="text-xs text-stone-500 dark:text-stone-400">
+                                                    Added <?= View::e($passkey['created_at']) ?><?= $passkey['last_used_at'] !== null ? ' &middot; last used ' . View::e($passkey['last_used_at']) : '' ?>
+                                                </div>
+                                            </div>
+                                            <form method="POST" action="/settings/security/webauthn/<?= (int) $passkey['id'] ?>/delete" class="shrink-0" onsubmit="return confirm('Remove this passkey? You will need your password (and 2FA code, if this was your only passkey) to sign in from that device again.');">
+                                                <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                                                <button type="submit" class="btn-secondary">Remove</button>
+                                            </form>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <button type="button" id="webauthn-register" class="btn-primary">Add a passkey</button>
+                            <p id="webauthn-register-status" class="text-sm text-stone-500 dark:text-stone-400 mt-2"></p>
                         </div>
 
                         <div class="card max-w-lg">
@@ -130,5 +161,7 @@ use App\Support\View;
             </main>
         </div>
     </div>
+
+    <script src="<?= View::asset('/assets/js/webauthn.js') ?>" defer></script>
 </body>
 </html>

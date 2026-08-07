@@ -166,7 +166,14 @@ final class AuthController
         $this->completeLogin($user, $request, new HouseholdRepository(), new AuditLogRepository());
     }
 
-    private function completeLogin(array $user, Request $request, HouseholdRepository $householdRepo, AuditLogRepository $auditLog): void
+    /**
+     * Public so WebAuthnController::loginVerify() can establish a real
+     * session after a passkey assertion the same way a password (plus
+     * 2FA, where required) does — one place that sets user_id, rotates
+     * the session id, records the session/audit log, rather than a
+     * second copy of that logic living in the passkey flow.
+     */
+    public function completeLogin(array $user, Request $request, HouseholdRepository $householdRepo, AuditLogRepository $auditLog): void
     {
         session_regenerate_id(true);
         $_SESSION['user_id'] = (int) $user['id'];
