@@ -65,7 +65,11 @@ final class WebAuthnService
 
     private function rpEntity(): PublicKeyCredentialRpEntity
     {
-        return PublicKeyCredentialRpEntity::create('MyCFO+', $this->rpId());
+        // WebAuthn's PublicKeyCredentialRpEntity dictionary is {id, name}
+        // in that order per spec, and the library's named constructor
+        // mirrors it — id (the domain) first, display name second. Easy
+        // to get backwards since "name" reads first in English.
+        return PublicKeyCredentialRpEntity::create($this->rpId(), 'MyCFO+');
     }
 
     /**
@@ -76,7 +80,10 @@ final class WebAuthnService
      */
     public function registrationOptions(int $userId, string $email, string $displayName): PublicKeyCredentialCreationOptions
     {
-        $userEntity = PublicKeyCredentialUserEntity::create($email, (string) $userId, $displayName);
+        // Same {id, name, displayName} spec ordering as the RP entity
+        // above — id (this app's own user id) first, then the WebAuthn
+        // "name" (email), then displayName.
+        $userEntity = PublicKeyCredentialUserEntity::create((string) $userId, $email, $displayName);
 
         $existing = $this->credentials->findAllForUserEntity($userEntity);
         $excludeCredentials = array_map(
