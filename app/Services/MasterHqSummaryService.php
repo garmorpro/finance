@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Repositories\AccountRepository;
+
 /**
  * Builds the JSON payload for `GET /api/master-hq/v1/summary` — a
  * read-only, high-level financial summary for an external consumer
@@ -29,7 +31,8 @@ final class MasterHqSummaryService
     private const CURRENCY = 'USD';
 
     public function __construct(
-        private readonly ReportingService $reporting = new ReportingService()
+        private readonly ReportingService $reporting = new ReportingService(),
+        private readonly AccountRepository $accounts = new AccountRepository()
     ) {
     }
 
@@ -67,6 +70,8 @@ final class MasterHqSummaryService
         }
         $ytdNet = bcsub($ytdIncome, $ytdExpenses, 2);
 
+        $netWorth = $this->netWorth($householdId);
+
         $allocationSummary = $this->reporting->monthlyAllocationSummary($householdId, $currentMonthStart);
         $savingsRate = $this->reporting->savingsRate($allocationSummary);
 
@@ -98,6 +103,8 @@ final class MasterHqSummaryService
                 'changePercent' => $this->percentChange($currentMonth['net'], $previousMonth['net']),
             ],
 
+            'netWorth' => $netWorth,
+
             'savingsRate' => $savingsRate,
 
             'trend' => array_map(
@@ -112,6 +119,42 @@ final class MasterHqSummaryService
             'incomeSources' => $this->incomeSources($householdId, $currentMonthStart),
 
             'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'),
+        ];
+    }
+
+    /**
+     * `current` reuses AccountRepository::netWorthSummary() — the exact
+     * live calculation the dashboard's own "Net Worth" stat already
+     * shows (assets minus liabilities, only accounts with
+     * include_in_net_worth = 1), not a separate reimplementation.
+     *
+     * `previousMonth` reuses ReportingService::netWorthTrend(), the same
+     * reconstruction-from-account_balance_history the Net Worth Trend
+     * chart already draws from — this app *does* support a historical
+     * point-in-time figure, so this isn't the "not supported, return
+     * null" case. It inherits that method's two documented
+     * simplifications, carried into docs/api.md: an account archived
+     * between then and now drops out of the reconstructed past figure
+     * too (not just future ones), and an account with no recorded
+     * balance-history entries falls back to its current balance for any
+     * cutoff, rather than a true historical value. `previousMonth` is
+     * only null when there are no net-worth-eligible accounts at all
+     * (nothing for netWorthTrend() to compute) — a household with
+     * eligible accounts always gets a real, if imperfect, comparison.
+     *
+     * @return array{current: string, previousMonth: string|null, changePercent: float|null}
+     */
+    private function netWorth(int $householdId): array
+    {
+        $current = $this->accounts->netWorthSummary($householdId)['net'];
+
+        $history = $this->reporting->netWorthTrend($householdId, 2);
+        $previousMonth = count($history) >= 2 ? $history[0]['netWorth'] : null;
+
+        return [
+            'current' => $current,
+            'previousMonth' => $previousMonth,
+            'changePercent' => $previousMonth === null ? null : $this->percentChange($current, $previousMonth),
         ];
     }
 

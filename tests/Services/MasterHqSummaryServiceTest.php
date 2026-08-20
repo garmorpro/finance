@@ -309,4 +309,125 @@ final class MasterHqSummaryServiceTest extends DatabaseTestCase
             $this->assertNotContains($forbiddenKey, $keys, "response must never expose a \"{$forbiddenKey}\" field");
         }
     }
+
+    public function test_net_worth_current_is_assets_minus_liabilities(): void
+    {
+        $household = $this->makeHousehold();
+        $this->makeAccount($household['household_id'], $household['user_id'], [
+            'name' => 'Checking',
+            'account_type' => 'checking',
+            'current_balance' => '5000.00',
+        ]);
+        $this->makeAccount($household['household_id'], $household['user_id'], [
+            'name' => 'Credit Card',
+            'account_type' => 'credit_card',
+            'current_balance' => '1200.00',
+        ]);
+
+        $summary = (new MasterHqSummaryService())->buildSummary($household['household_id']);
+
+        $this->assertSame('3800.00', $summary['netWorth']['current']);
+    }
+
+    public function test_net_worth_excludes_accounts_not_included_in_net_worth(): void
+    {
+        $household = $this->makeHousehold();
+        $this->makeAccount($household['household_id'], $household['user_id'], [
+            'current_balance' => '5000.00',
+            'include_in_net_worth' => true,
+        ]);
+        $this->makeAccount($household['household_id'], $household['user_id'], [
+            'current_balance' => '9999.00',
+            'include_in_net_worth' => false,
+        ]);
+
+        $summary = (new MasterHqSummaryService())->buildSummary($household['household_id']);
+
+        $this->assertSame('5000.00', $summary['netWorth']['current']);
+    }
+
+    public function test_net_worth_previous_month_is_a_real_historical_reconstruction(): void
+    {
+        $household = $this->makeHousehold();
+        $accountId = $this->makeAccount($household['household_id'], $household['user_id'], [
+            'current_balance' => '2000.00',
+        ]);
+
+        // Backdate the account itself so netWorthTrend()'s "was this
+        // account old enough to count last month" check includes it —
+        // otherwise it's correctly (and separately) excluded, which is
+        // covered by the zero-previous-month test below instead.
+        $pdo = self::$pdo;
+        $pdo->prepare('UPDATE accounts SET created_at = :created_at WHERE id = :id')
+            ->execute(['created_at' => date('Y-m-d H:i:s', strtotime('-2 months')), 'id' => $accountId]);
+
+        $summary = (new MasterHqSummaryService())->buildSummary($household['household_id']);
+
+        // No account_balance_history rows exist for this account, so
+        // netWorthTrend() falls back to its current balance for any
+        // cutoff (a documented, known simplification — see
+        // ReportingService::netWorthTrend()) rather than null.
+        $this->assertSame('2000.00', $summary['netWorth']['previousMonth']);
+        $this->assertIsFloat($summary['netWorth']['changePercent'] ?? 0.0);
+    }
+
+    public function test_net_worth_previous_month_is_null_with_no_net_worth_eligible_accounts(): void
+    {
+        $household = $this->makeHousehold();
+
+        $summary = (new MasterHqSummaryService())->buildSummary($household['household_id']);
+
+        $this->assertNull($summary['netWorth']['previousMonth']);
+        $this->assertNull($summary['netWorth']['changePercent']);
+    }
+
+    public function test_net_worth_change_percent_is_null_when_previous_month_is_zero(): void
+    {
+        $household = $this->makeHousehold();
+        // Created "now" (the fixture default), so netWorthTrend() finds
+        // it too new to have existed at last month's cutoff — that
+        // month's reconstructed net worth is legitimately 0.00, a real
+        // value, not an absence.
+        $this->makeAccount($household['household_id'], $household['user_id'], [
+            'current_balance' => '2000.00',
+        ]);
+
+        $summary = (new MasterHqSummaryService())->buildSummary($household['household_id']);
+
+        $this->assertSame('0.00', $summary['netWorth']['previousMonth']);
+        $this->assertNull($summary['netWorth']['changePercent'], 'a percent change from zero is undefined');
+    }
+
+    public function test_net_worth_values_are_decimal_strings(): void
+    {
+        $household = $this->makeHousehold();
+        $this->makeAccount($household['household_id'], $household['user_id'], ['current_balance' => '1234.56']);
+
+        $summary = (new MasterHqSummaryService())->buildSummary($household['household_id']);
+
+        $this->assertIsString($summary['netWorth']['current']);
+        $this->assertMatchesRegularExpression('/^-?\d+\.\d{2}$/', $summary['netWorth']['current']);
+    }
+
+    public function test_net_worth_never_exposes_underlying_account_detail(): void
+    {
+        $household = $this->makeHousehold();
+        $this->makeAccount($household['household_id'], $household['user_id'], [
+            'name' => 'Chase Checking ...4821',
+            'institution_name' => 'Chase Bank',
+            'current_balance' => '1000.00',
+        ]);
+
+        $summary = (new MasterHqSummaryService())->buildSummary($household['household_id']);
+
+        // Exactly the three documented fields, nothing else leaking
+        // through from AccountRepository::netWorthSummary()'s own
+        // return shape (which also has assetCount/liabilityCount/count)
+        // or ReportingService::netWorthTrend()'s (assets/liabilities/label).
+        $this->assertSame(['current', 'previousMonth', 'changePercent'], array_keys($summary['netWorth']));
+
+        $encoded = json_encode($summary);
+        $this->assertStringNotContainsString('Chase', $encoded);
+        $this->assertStringNotContainsString('4821', $encoded);
+    }
 }

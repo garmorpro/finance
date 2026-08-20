@@ -128,6 +128,9 @@ as the monthly series it sits alongside.
 | `expenses.*` | same shape as `income.*` | Always a positive magnitude, not the transaction table's stored negative sign. |
 | `net.monthToDate` / `.yearToDate` | string | `income - expenses` for the respective period. |
 | `net.changePercent` | number \| null | Month-to-date net vs. previous month's net, same null-on-zero rule. |
+| `netWorth.current` | string | Total assets minus total liabilities, right now — the exact figure the dashboard's own "Net Worth" stat shows (`AccountRepository::netWorthSummary()`), only accounts with `include_in_net_worth = 1`. |
+| `netWorth.previousMonth` | string \| null | Reconstructed net worth as of the end of the previous calendar month (`ReportingService::netWorthTrend()` — the same calculation the Net Worth Trend chart draws from). `null` only when the household has no net-worth-eligible accounts at all; see "Net worth calculation notes" below for two smaller known simplifications this inherits. |
+| `netWorth.changePercent` | number \| null | `current` vs. `previousMonth`, same null-on-zero-or-missing rule as every other `changePercent` field. |
 | `savingsRate` | number \| null | Percent of month-to-date income logged as `goal_contributions` this month (exactly what the dashboard's "Savings Rate" stat already means — see `ReportingService::savingsRate()`). `null` when month-to-date income is `0`. |
 | `trend` | array | One entry per calendar day from the 1st of the current month through today, zero-filled for days with no activity. Deliberately daily rather than a raw transaction feed. |
 | `trend[].date` | string | `YYYY-MM-DD`. |
@@ -161,6 +164,38 @@ requires a new entity in MyCFO+ itself (a dedicated income-source table
 with its own fields) — out of scope for this endpoint, which only
 reshapes data that already exists.
 
+### Net worth calculation notes
+
+`netWorth.current` is exact — it's the same live, direct calculation
+(`AccountRepository::netWorthSummary()`) the dashboard's own "Net
+Worth" stat shows: sum of `current_balance` across every account with
+`include_in_net_worth = 1`, liabilities subtracted from assets.
+
+`netWorth.previousMonth`, unlike `incomeSources`' limitations above,
+**is genuinely supported** — this app reconstructs historical net
+worth from `account_balance_history` (`ReportingService::
+netWorthTrend()`, the same method behind the Net Worth Trend chart),
+so this field returns a real value, not a guess. It inherits that
+method's two existing, documented simplifications:
+
+- An account **archived** between last month and now drops out of the
+  reconstructed *past* figure too, not only future ones — the
+  historical comparison always reflects the household's *current* set
+  of net-worth-eligible accounts, not whichever accounts actually
+  existed at that point in time.
+- An account with **no recorded balance-history entries** (its balance
+  has never been explicitly adjusted since creation) falls back to its
+  *current* balance for any historical cutoff, since there's nothing
+  else to reconstruct from — so a never-adjusted account contributes
+  the same number to both `current` and `previousMonth`.
+
+`previousMonth` is `null` only when the household has no net-worth-
+eligible accounts at all (nothing for the underlying calculation to
+produce a series from). It can legitimately be `"0.00"` — e.g. every
+current account was created after last month's cutoff — which is a
+real reconstructed value, not a stand-in for "unavailable"; only the
+`null` case means "not available."
+
 ### Example request
 
 ```bash
@@ -189,6 +224,11 @@ curl -s \
     "monthToDate": "1036.92",
     "yearToDate": "7940.15",
     "changePercent": 47.9
+  },
+  "netWorth": {
+    "current": "84250.18",
+    "previousMonth": "81890.44",
+    "changePercent": 2.9
   },
   "savingsRate": 12.5,
   "trend": [
