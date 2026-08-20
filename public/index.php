@@ -15,6 +15,7 @@ use App\Controllers\DebtController;
 use App\Controllers\GoalController;
 use App\Controllers\HouseholdController;
 use App\Controllers\ImportController;
+use App\Controllers\MasterHqController;
 use App\Controllers\NotificationController;
 use App\Controllers\PasswordResetController;
 use App\Controllers\PlanningController;
@@ -250,5 +251,11 @@ $router->get('/health', function (): void {
         'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
     ]);
 });
+
+// Read-only, server-to-server API for Master HQ — bearer-token
+// authenticated (App\Support\MasterHqAuth), not session/CSRF, since the
+// caller is another server, not a signed-in browser. See docs/api.md.
+$masterHqController = new MasterHqController();
+$router->get('/api/master-hq/v1/summary', fn (Request $r): mixed => $masterHqController->summary($r));
 
 $router->dispatch(new Request());

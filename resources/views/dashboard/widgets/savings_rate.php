@@ -4,12 +4,10 @@
 /** @var string $widgetKey */
 /** @var bool $isWide */
 
+use App\Services\ReportingService;
 use App\Support\View;
 
-$savingsRate = null;
-if ($allocationSummary !== null && bccomp($allocationSummary['income'], '0.00', 2) > 0) {
-    $savingsRate = (float) bcdiv(bcmul($allocationSummary['savings'], '100', 4), $allocationSummary['income'], 1);
-}
+$savingsRate = (new ReportingService())->savingsRate($allocationSummary);
 
 View::partial('dashboard/widgets/_header', ['title' => 'Savings Rate', 'widgetKey' => $widgetKey, 'isWide' => $isWide, 'resizable' => false]);
 

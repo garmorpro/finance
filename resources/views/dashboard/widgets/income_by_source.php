@@ -1,6 +1,6 @@
 <?php
 
-/** @var list<array{name: string, color: string|null, amount: string}> $incomeByCategory */
+/** @var list<array{id: int, name: string, color: string|null, amount: string}> $incomeByCategory */
 /** @var string $widgetKey */
 /** @var bool $isWide */
 

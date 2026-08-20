@@ -181,6 +181,57 @@ final class ReportingService
     }
 
     /**
+     * Daily income/expense series for a date range — every other trend
+     * series in this class (`cashFlow()`, `netWorthTrend()`) is monthly;
+     * this is the first daily granularity, added for the Master HQ
+     * summary API's chart data rather than any page in this app itself.
+     * Same conventions as `monthlyIncomeExpense()`: transfers excluded
+     * via the transaction_type filter, exclude_from_reports honored,
+     * expenses returned as a positive magnitude. Zero-filled for days
+     * with no activity, oldest first.
+     *
+     * @return list<array{date: string, income: string, expenses: string}>
+     */
+    public function dailyIncomeExpense(int $householdId, string $startDate, string $endDateExclusive): array
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT transaction_date, transaction_type, amount FROM transactions
+             WHERE household_id = :household_id AND deleted_at IS NULL AND exclude_from_reports = 0
+               AND transaction_type IN ("income", "expense")
+               AND transaction_date >= :start_date AND transaction_date < :end_date'
+        );
+        $stmt->execute(['household_id' => $householdId, 'start_date' => $startDate, 'end_date' => $endDateExclusive]);
+
+        $byDate = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $date = $row['transaction_date'];
+            $byDate[$date]['income'] ??= '0.00';
+            $byDate[$date]['expenses'] ??= '0.00';
+
+            if ($row['transaction_type'] === 'income') {
+                $byDate[$date]['income'] = bcadd($byDate[$date]['income'], $row['amount'], 2);
+            } else {
+                $byDate[$date]['expenses'] = bcadd($byDate[$date]['expenses'], bcmul($row['amount'], '-1', 2), 2);
+            }
+        }
+
+        $dayCount = (int) ((strtotime($endDateExclusive) - strtotime($startDate)) / 86400);
+        $dayCount = max(0, $dayCount);
+
+        $series = [];
+        for ($i = 0; $i < $dayCount; $i++) {
+            $dateKey = date('Y-m-d', strtotime($startDate . " +{$i} days"));
+            $series[] = [
+                'date' => $dateKey,
+                'income' => $byDate[$dateKey]['income'] ?? '0.00',
+                'expenses' => $byDate[$dateKey]['expenses'] ?? '0.00',
+            ];
+        }
+
+        return $series;
+    }
+
+    /**
      * Expense totals by category for one month, descending by amount.
      * Split lines are read individually rather than the parent
      * transaction's row — see BudgetRepository::actualByCategory()'s
@@ -253,7 +304,7 @@ final class ReportingService
      * dashboard widget — income amounts are already stored positive (no
      * sign flip needed, unlike expense amounts).
      *
-     * @return list<array{name: string, color: string|null, amount: string}>
+     * @return list<array{id: int, name: string, color: string|null, amount: string}>
      */
     public function incomeByCategory(int $householdId, string $periodMonth): array
     {
@@ -303,7 +354,7 @@ final class ReportingService
                 continue;
             }
             if (!isset($totals[$categoryId])) {
-                $totals[$categoryId] = ['name' => $categoryById[$categoryId]['name'], 'color' => $categoryById[$categoryId]['color'], 'amount' => '0.00'];
+                $totals[$categoryId] = ['id' => $categoryId, 'name' => $categoryById[$categoryId]['name'], 'color' => $categoryById[$categoryId]['color'], 'amount' => '0.00'];
             }
             $totals[$categoryId]['amount'] = bcadd($totals[$categoryId]['amount'], $row['amount'], 2);
         }
@@ -373,6 +424,26 @@ final class ReportingService
             'giving' => $giving,
             'remaining' => $remaining,
         ];
+    }
+
+    /**
+     * Percentage of income directed to savings/investing this month —
+     * the "Savings Rate" dashboard stat and the Master HQ summary API's
+     * `savingsRate` field. Extracted from what was originally inline
+     * logic in `resources/views/dashboard/widgets/savings_rate.php` so a
+     * second caller doesn't have to re-derive the same formula. "Savings"
+     * here is exactly what `monthlyAllocationSummary()['savings']` is:
+     * logged `goal_contributions` for the period, not a category-based
+     * guess. Null when there's no income to divide by, rather than a
+     * misleading 0%/infinite figure.
+     */
+    public function savingsRate(?array $allocationSummary): ?float
+    {
+        if ($allocationSummary === null || bccomp($allocationSummary['income'], '0.00', 2) <= 0) {
+            return null;
+        }
+
+        return (float) bcdiv(bcmul($allocationSummary['savings'], '100', 4), $allocationSummary['income'], 1);
     }
 
     /**

@@ -104,6 +104,33 @@ final class Request
     }
 
     /**
+     * Reads an arbitrary request header (e.g. "Authorization") — nothing
+     * in this app has needed one before now (session-cookie auth doesn't
+     * require reading headers), so this didn't exist previously. Falls
+     * back to getallheaders() because some Apache/PHP-FPM setups don't
+     * populate $_SERVER['HTTP_AUTHORIZATION'] specifically unless
+     * explicitly configured (a long-standing PHP/Apache quirk, unrelated
+     * to this app) — getallheaders() often sees it when $_SERVER doesn't.
+     */
+    public function header(string $name): ?string
+    {
+        $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
+        if (isset($_SERVER[$key]) && is_string($_SERVER[$key])) {
+            return $_SERVER[$key];
+        }
+
+        if (function_exists('getallheaders')) {
+            foreach (getallheaders() as $headerName => $value) {
+                if (strcasecmp($headerName, $name) === 0) {
+                    return $value;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Distinguishes a fetch()-driven autosave call from a plain form post,
      * so a handler can return JSON instead of a redirect without needing a
      * separate route.

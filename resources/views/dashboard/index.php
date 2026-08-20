@@ -8,7 +8,7 @@
 /** @var array{income: string, livingExpenses: string, debtPayments: string, savings: string, giving: string, remaining: string}|null $allocationSummary */
 /** @var float|null $runwayMonths */
 /** @var array{label: string, income: string, expenses: string, net: string, cumulative: string}|null $thisMonthCashFlow */
-/** @var list<array{name: string, color: string|null, amount: string}> $incomeByCategory */
+/** @var list<array{id: int, name: string, color: string|null, amount: string}> $incomeByCategory */
 /** @var list<array{name: string, color: string|null, amount: string}> $topExpenseCategories */
 /** @var list<string> $statsOrder */
 /** @var list<string> $mainOrder */
