@@ -41,7 +41,12 @@
    * A label row spanning a .table-base table — used by the Accounts
    * page to group rows by account type (Cash, Credit Cards, Loans, …)
    * within one continuous table instead of separate boxed sections.
-   * Generic enough to reuse anywhere else a grouped table is useful.
+   * The label cell spans everything except the last column, and the
+   * subtotal gets its own right-aligned cell — same column position as
+   * every data row's Balance cell below it, so every number in the
+   * table lines up in one place instead of the subtotal sitting off
+   * on its own near the left edge. Generic enough to reuse anywhere
+   * else a grouped table is useful.
    */
   .table-group-row td {
     @apply bg-stone-50 dark:bg-stone-800/50 text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400;
@@ -50,11 +55,6 @@
   }
   .table-group-row-total {
     @apply normal-case font-semibold text-stone-700 dark:text-stone-300;
-    margin-left: 0.5rem;
-  }
-  .table-group-row-total::before {
-    content: '\00b7';
-    margin-right: 0.5rem;
   }
 
   /*

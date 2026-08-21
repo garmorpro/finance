@@ -95,10 +95,8 @@ $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
                     <tbody>
                         <?php foreach ($sections as $section): ?>
                             <tr class="table-group-row">
-                                <td colspan="3">
-                                    <?= View::e($section['label']) ?>
-                                    <span class="table-group-row-total tabular-nums"><?= Money::format($section['total']) ?></span>
-                                </td>
+                                <td colspan="2"><?= View::e($section['label']) ?></td>
+                                <td class="text-right table-group-row-total tabular-nums"><?= Money::format($section['total']) ?></td>
                             </tr>
                             <?php foreach ($section['accounts'] as $account): ?>
                                 <?php $accountColor = $account['color'] ?: '#a8a29e'; ?>
