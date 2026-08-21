@@ -296,6 +296,44 @@
   }
 
   /*
+   * A neutral (non-semantic) variant of .stat-hero for pages like an
+   * account's own detail page, where the hero isn't a "good/bad" figure
+   * the way Budgets' left-to-budget or a cash-flow number is — just a
+   * calm card that carries the account's own color via its icon badge
+   * instead of tinting the whole background.
+   */
+  .stat-hero-neutral {
+    @apply border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900;
+  }
+
+  /* Account Details page: each subsection as its own tinted panel,
+     instead of border-top dividers inside one long card. */
+  .account-detail-panel {
+    @apply rounded-xl p-5 bg-stone-50 dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800/60;
+  }
+
+  .color-swatch {
+    @apply block rounded-lg flex-shrink-0 border-2 border-stone-200 dark:border-stone-700;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  /*
+   * The native color input sits invisibly on top of the swatch, so the
+   * swatch itself reads as the clickable control instead of the
+   * browser's own color-picker button chrome. Must be inline-flex (not
+   * inline-block): .color-swatch is a plain <span>, and a non-flex
+   * parent won't "blockify" it, so its width/height would be silently
+   * ignored and it'd collapse to a sliver.
+   */
+  .color-swatch-picker {
+    @apply relative inline-flex cursor-pointer;
+  }
+  .color-swatch-picker input[type="color"] {
+    @apply absolute inset-0 w-full h-full opacity-0 cursor-pointer border-0 p-0;
+  }
+
+  /*
    * A solid opaque base (bg-white/dark:bg-stone-900, same as .card)
    * with the tint layered on top as a separate background-image,
    * rather than one background gradient that fades to alpha 0 — this
