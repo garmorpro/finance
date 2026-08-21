@@ -576,6 +576,24 @@
     border-color: rgba(255, 255, 255, .22);
   }
 
+  /*
+   * .field-input's own bg-white/dark:bg-stone-900 assumes it's sitting
+   * on an ordinary themed page — wrong on the hero, which is dark in
+   * both themes. Used by Cash Flow's "Last N months" select, living in
+   * .dash-hero-top the same way the Overview/Transactions/Accounts
+   * heroes put their action buttons there.
+   */
+  .field-input-dark {
+    @apply block w-full rounded-lg shadow-sm text-sm py-2 px-3;
+    background: rgba(255, 255, 255, .07);
+    border: 1px solid rgba(255, 255, 255, .14);
+    color: #f5f5f4;
+  }
+  .field-input-dark:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, .3);
+  }
+
   .dash-hero-body {
     @apply flex items-stretch gap-8 flex-wrap;
   }

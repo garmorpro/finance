@@ -40,58 +40,65 @@ $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div class="flex items-end justify-between">
-                    <div>
-                        <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Cash Flow</h1>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Money in vs. money out over time. Transfers between your own accounts aren't counted.</p>
-                    </div>
-                    <form method="GET" action="/cash-flow">
-                        <label for="months" class="sr-only">Time range</label>
-                        <select id="months" name="months" class="field-input" onchange="this.form.submit()">
-                            <?php foreach ($monthOptions as $option): ?>
-                                <option value="<?= $option ?>" <?= $option === $months ? 'selected' : '' ?>>Last <?= $option ?> months</option>
-                            <?php endforeach; ?>
-                        </select>
-                    </form>
-                </div>
-
                 <?php if (!$hasActivity): ?>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Cash Flow</h1>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Money in vs. money out over time. Transfers between your own accounts aren't counted.</p>
+                        </div>
+                        <form method="GET" action="/cash-flow">
+                            <label for="months" class="sr-only">Time range</label>
+                            <select id="months" name="months" class="field-input" onchange="this.form.submit()">
+                                <?php foreach ($monthOptions as $option): ?>
+                                    <option value="<?= $option ?>" <?= $option === $months ? 'selected' : '' ?>>Last <?= $option ?> months</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </form>
+                    </div>
                     <div class="card text-center py-12">
                         <p class="text-stone-500 dark:text-stone-400 mb-2">No income or expense transactions in this period.</p>
                         <a href="/transactions/create" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add a transaction &rarr;</a>
                     </div>
                 <?php else: ?>
-                    <div class="stat-hero <?= $netPositive ? 'stat-hero-positive' : 'stat-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
-                        <span class="stat-hero-icon <?= $netPositive ? 'text-emerald-600' : 'text-red-600' ?>">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        </span>
-                        <div style="position: relative;">
-                            <div class="text-xs font-bold uppercase tracking-wide <?= $netPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' ?> mb-2">Net Cash Flow</div>
-                            <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($netCashFlow) ?></div>
-                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Total income minus total expenses over the last <?= $months ?> months.</p>
+                    <div class="dash-hero">
+                        <div class="dash-hero-top">
+                            <div>
+                                <h1>Cash Flow</h1>
+                                <p class="sub">Money in vs. money out over time. Transfers between your own accounts aren't counted.</p>
+                            </div>
+                            <form method="GET" action="/cash-flow">
+                                <label for="months" class="sr-only">Time range</label>
+                                <select id="months" name="months" class="field-input-dark" onchange="this.form.submit()">
+                                    <?php foreach ($monthOptions as $option): ?>
+                                        <option value="<?= $option ?>" <?= $option === $months ? 'selected' : '' ?>>Last <?= $option ?> months</option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </form>
                         </div>
-                    </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="card">
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="metric-icon" style="background: rgba(52, 211, 153, .14); color: #059669;"><?= $arrowUpIcon ?></span>
-                                <div>
-                                    <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Total Income</div>
-                                    <div class="text-xs text-stone-500 dark:text-stone-400">Last <?= $months ?> months</div>
+                        <div class="dash-hero-body">
+                            <div class="dash-hero-nw">
+                                <p class="dash-hero-eyebrow">Net Cash Flow</p>
+                                <div class="dash-hero-nw-value tabular-nums" style="<?= $netPositive ? '' : 'color:#fca5a5;' ?>"><?= Money::format($netCashFlow) ?></div>
+                                <p class="dash-hero-nw-caption" style="margin-top:0.85rem; max-width:42ch;">Total income minus total expenses over the last <?= $months ?> months.</p>
+                            </div>
+
+                            <div class="dash-hero-stats">
+                                <div class="dash-hero-stat">
+                                    <span class="dash-hero-stat-icon income"><?= $arrowUpIcon ?></span>
+                                    <span>
+                                        <span class="dash-hero-stat-label">Total Income &middot; Last <?= $months ?> months</span>
+                                        <span class="dash-hero-stat-value tabular-nums"><?= Money::format($totalIncome) ?></span>
+                                    </span>
+                                </div>
+                                <div class="dash-hero-stat">
+                                    <span class="dash-hero-stat-icon expense"><?= $arrowDownIcon ?></span>
+                                    <span>
+                                        <span class="dash-hero-stat-label">Total Expenses &middot; Last <?= $months ?> months</span>
+                                        <span class="dash-hero-stat-value tabular-nums"><?= Money::format($totalExpenses) ?></span>
+                                    </span>
                                 </div>
                             </div>
-                            <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($totalIncome) ?></div>
-                        </div>
-                        <div class="card">
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="metric-icon" style="background: rgba(226, 105, 75, .14); color: #c94f32;"><?= $arrowDownIcon ?></span>
-                                <div>
-                                    <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Total Expenses</div>
-                                    <div class="text-xs text-stone-500 dark:text-stone-400">Last <?= $months ?> months</div>
-                                </div>
-                            </div>
-                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($totalExpenses) ?></div>
                         </div>
                     </div>
 
