@@ -47,6 +47,59 @@ $netPositive = bccomp($sums['net'], '0.00', 2) >= 0;
 $arrowUpIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
 $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
 
+/**
+ * Filter toolbar pill labels — each pill shows its plain name until
+ * that filter actually has a value, then switches to a short "Name:
+ * value" label and its active/filled style. Kept as small closures
+ * here rather than a helper class since they're one-off presentation
+ * derived straight from $filters/$accounts/$categories/$tags, the
+ * same convention $sortLink/$sortIndicator above already use.
+ */
+$findName = static function (array $items, string $id): ?string {
+    if ($id === '') {
+        return null;
+    }
+    foreach ($items as $item) {
+        if ((string) $item['id'] === $id) {
+            return $item['name'];
+        }
+    }
+
+    return null;
+};
+
+$typeLabels = ['income' => 'Income', 'expense' => 'Expense', 'transfer' => 'Transfer'];
+
+$dateRangeLabel = static function (string $from, string $to): ?string {
+    if ($from === '' && $to === '') {
+        return null;
+    }
+    $fmt = static fn (string $d): string => date('M j', strtotime($d));
+    if ($from !== '' && $to !== '') {
+        return $fmt($from) . ' – ' . $fmt($to);
+    }
+
+    return $from !== '' ? 'From ' . $fmt($from) : 'Through ' . $fmt($to);
+};
+
+$amountRangeLabel = static function (string $min, string $max): ?string {
+    if ($min === '' && $max === '') {
+        return null;
+    }
+    if ($min !== '' && $max !== '') {
+        return '$' . $min . '–$' . $max;
+    }
+
+    return $min !== '' ? '≥ $' . $min : '≤ $' . $max;
+};
+
+$accountLabel = $findName($accounts, $filters['account_id']);
+$categoryLabel = $findName($categories, $filters['category_id']);
+$tagLabel = $findName($tags, $filters['tag_id']);
+$typeLabel = $typeLabels[$filters['type']] ?? null;
+$dateLabel = $dateRangeLabel($filters['date_from'], $filters['date_to']);
+$amountLabel = $amountRangeLabel($filters['amount_min'], $filters['amount_max']);
+
 // Per-row payee icon on the table below — same three icons and the
 // same "category's own color, gray for a transfer" convention as the
 // dashboard's Recent Transactions widget (see dashboard/widgets/
@@ -120,9 +173,18 @@ $rowIcons = [
                     </div>
                 </div>
 
-                <form method="GET" action="/transactions" class="card">
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                        <div>
+                <form method="GET" action="/transactions" class="card filter-toolbar">
+                    <div class="filter-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        <input type="text" name="search" aria-label="Search payee or notes" placeholder="Search payee or notes" value="<?= View::e($filters['search']) ?>">
+                    </div>
+
+                    <details class="filter-pill" name="txn-filter-pill">
+                        <summary class="<?= $accountLabel !== null ? 'active' : '' ?>">
+                            <?= $accountLabel !== null ? 'Account: ' . View::e($accountLabel) : 'Account' ?>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </summary>
+                        <div class="filter-pill-panel">
                             <label for="f-account" class="field-label">Account</label>
                             <select id="f-account" name="account_id" class="field-input">
                                 <option value="">All</option>
@@ -131,7 +193,14 @@ $rowIcons = [
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div>
+                    </details>
+
+                    <details class="filter-pill" name="txn-filter-pill">
+                        <summary class="<?= $categoryLabel !== null ? 'active' : '' ?>">
+                            <?= $categoryLabel !== null ? 'Category: ' . View::e($categoryLabel) : 'Category' ?>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </summary>
+                        <div class="filter-pill-panel">
                             <label for="f-category" class="field-label">Category</label>
                             <select id="f-category" name="category_id" class="field-input">
                                 <option value="">All</option>
@@ -140,7 +209,14 @@ $rowIcons = [
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div>
+                    </details>
+
+                    <details class="filter-pill" name="txn-filter-pill">
+                        <summary class="<?= $typeLabel !== null ? 'active' : '' ?>">
+                            <?= $typeLabel !== null ? 'Type: ' . View::e($typeLabel) : 'Type' ?>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </summary>
+                        <div class="filter-pill-panel">
                             <label for="f-type" class="field-label">Type</label>
                             <select id="f-type" name="type" class="field-input">
                                 <option value="">All</option>
@@ -149,8 +225,15 @@ $rowIcons = [
                                 <option value="transfer" <?= $filters['type'] === 'transfer' ? 'selected' : '' ?>>Transfer</option>
                             </select>
                         </div>
-                        <?php if ($tags !== []): ?>
-                        <div>
+                    </details>
+
+                    <?php if ($tags !== []): ?>
+                    <details class="filter-pill" name="txn-filter-pill">
+                        <summary class="<?= $tagLabel !== null ? 'active' : '' ?>">
+                            <?= $tagLabel !== null ? 'Tag: ' . View::e($tagLabel) : 'Tag' ?>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </summary>
+                        <div class="filter-pill-panel">
                             <label for="f-tag" class="field-label">Tag</label>
                             <select id="f-tag" name="tag_id" class="field-input">
                                 <option value="">All</option>
@@ -159,32 +242,45 @@ $rowIcons = [
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <?php endif; ?>
-                        <div>
-                            <label for="f-from" class="field-label">From</label>
-                            <input type="date" id="f-from" name="date_from" value="<?= View::e($filters['date_from']) ?>" class="field-input">
+                    </details>
+                    <?php endif; ?>
+
+                    <details class="filter-pill" name="txn-filter-pill">
+                        <summary class="<?= $dateLabel !== null ? 'active' : '' ?>">
+                            <?= $dateLabel !== null ? View::e($dateLabel) : 'Date' ?>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </summary>
+                        <div class="filter-pill-panel filter-pill-panel-wide">
+                            <div>
+                                <label for="f-from" class="field-label">From</label>
+                                <input type="date" id="f-from" name="date_from" value="<?= View::e($filters['date_from']) ?>" class="field-input">
+                            </div>
+                            <div>
+                                <label for="f-to" class="field-label">To</label>
+                                <input type="date" id="f-to" name="date_to" value="<?= View::e($filters['date_to']) ?>" class="field-input">
+                            </div>
                         </div>
-                        <div>
-                            <label for="f-to" class="field-label">To</label>
-                            <input type="date" id="f-to" name="date_to" value="<?= View::e($filters['date_to']) ?>" class="field-input">
+                    </details>
+
+                    <details class="filter-pill" name="txn-filter-pill">
+                        <summary class="<?= $amountLabel !== null ? 'active' : '' ?>">
+                            <?= $amountLabel !== null ? View::e($amountLabel) : 'Amount' ?>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </summary>
+                        <div class="filter-pill-panel filter-pill-panel-wide">
+                            <div>
+                                <label for="f-amount-min" class="field-label">Min amount</label>
+                                <input type="text" inputmode="decimal" id="f-amount-min" name="amount_min" value="<?= View::e($filters['amount_min']) ?>" class="field-input" placeholder="0.00">
+                            </div>
+                            <div>
+                                <label for="f-amount-max" class="field-label">Max amount</label>
+                                <input type="text" inputmode="decimal" id="f-amount-max" name="amount_max" value="<?= View::e($filters['amount_max']) ?>" class="field-input" placeholder="0.00">
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex items-end flex-wrap gap-3 mt-3">
-                        <div class="flex-1 min-w-[12rem]">
-                            <label for="f-search" class="field-label">Search payee or notes</label>
-                            <input type="text" id="f-search" name="search" value="<?= View::e($filters['search']) ?>" class="field-input">
-                        </div>
-                        <div>
-                            <label for="f-amount-min" class="field-label">Min amount</label>
-                            <input type="text" inputmode="decimal" id="f-amount-min" name="amount_min" value="<?= View::e($filters['amount_min']) ?>" class="field-input" placeholder="0.00" style="max-width: 8rem;">
-                        </div>
-                        <div>
-                            <label for="f-amount-max" class="field-label">Max amount</label>
-                            <input type="text" inputmode="decimal" id="f-amount-max" name="amount_max" value="<?= View::e($filters['amount_max']) ?>" class="field-input" placeholder="0.00" style="max-width: 8rem;">
-                        </div>
-                        <button type="submit" class="btn-secondary">Filter</button>
-                        <a href="/transactions" class="btn-secondary">Clear</a>
-                    </div>
+                    </details>
+
+                    <button type="submit" class="btn-primary">Filter</button>
+                    <a href="/transactions" class="filter-clear">Clear</a>
                 </form>
 
                 <?php if ($transactions === []): ?>

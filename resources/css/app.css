@@ -878,6 +878,78 @@
   }
 
   /*
+   * Transactions page filter toolbar — a search box plus one <details>
+   * "pill" per filter (Account, Category, Type, Tag, Date, Amount)
+   * instead of a grid of always-visible boxed selects. Every pill's
+   * actual <select>/<input> still lives inside the one surrounding
+   * <form>, so the existing GET-and-reload filtering (Filter/Clear)
+   * keeps working exactly as before — only the layout changed. Native
+   * <details name="txn-filter-pill"> gives "only one pill open at a
+   * time" behavior for free in modern browsers; older ones just fall
+   * back to independent (non-exclusive) disclosures, which is a
+   * harmless degradation, not a broken one.
+   */
+  .filter-toolbar {
+    @apply flex items-center gap-2 flex-wrap;
+  }
+
+  .filter-search {
+    @apply flex items-center gap-2 flex-1 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2;
+    min-width: 12rem;
+  }
+  .filter-search svg {
+    @apply w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0;
+  }
+  .filter-search input {
+    @apply flex-1 bg-transparent border-none text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-stone-500;
+    outline: none;
+  }
+
+  .filter-pill {
+    @apply relative;
+  }
+
+  .filter-pill summary {
+    @apply inline-flex items-center gap-1.5 text-sm font-semibold rounded-full border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 cursor-pointer select-none whitespace-nowrap;
+    list-style: none;
+    padding: 0.5rem 0.9rem;
+  }
+  .filter-pill summary::-webkit-details-marker {
+    display: none;
+  }
+  .filter-pill summary:hover {
+    @apply border-stone-400 dark:border-stone-600;
+  }
+  .filter-pill summary.active {
+    @apply bg-terracotta-100 dark:bg-terracotta-950 border-transparent text-terracotta-700 dark:text-terracotta-300;
+  }
+  .filter-pill summary svg {
+    @apply w-3 h-3 opacity-60;
+    transition: transform 0.15s ease;
+  }
+  .filter-pill[open] summary svg {
+    transform: rotate(180deg);
+  }
+
+  .filter-pill-panel {
+    @apply absolute left-0 z-20 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-lg;
+    top: calc(100% + 0.5rem);
+    min-width: 14rem;
+    padding: 0.85rem;
+  }
+  .filter-pill-panel-wide {
+    @apply flex gap-3;
+    min-width: 18rem;
+  }
+  .filter-pill-panel-wide > div {
+    @apply flex-1;
+  }
+
+  .filter-clear {
+    @apply text-sm font-semibold text-terracotta-600 dark:text-terracotta-400 hover:underline;
+  }
+
+  /*
    * Native <input type="color"> ships with its own odd default padding
    * and a hard rectangular swatch — this reshapes it into a plain
    * rounded square so it sits next to a .field-input the same height,
