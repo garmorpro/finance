@@ -634,59 +634,53 @@
   }
 
   /*
-   * "The Lifecycle of a Dollar" — now a fixed waterfall read left to
-   * right, replacing both the old Capital Allocation donut and the old
-   * sticky sidebar list with one flow. See waterfall.php.
+   * "The Lifecycle of a Dollar" — replaced by the Insights card
+   * (dashboard/widgets/insights.php, App\Services\InsightsService) —
+   * a short list of plain-language observations instead of a chart.
+   * Went through a waterfall-bar treatment and then a flow-ribbon
+   * treatment first; both read as "just a chart" rather than telling
+   * the household anything, which is what insights are for.
    */
-  .waterfall {
-    @apply flex items-end gap-1 overflow-x-auto pb-1;
+  .insight-list {
+    @apply flex flex-col gap-2.5;
   }
 
-  .wf-col {
-    @apply flex flex-col items-center flex-shrink-0;
-    width: 6.75rem;
+  .insight-row {
+    @apply flex items-start gap-3 rounded-xl bg-stone-50 dark:bg-stone-800/50;
+    padding: 0.7rem 0.85rem;
   }
 
-  .wf-amt {
-    @apply text-sm font-bold whitespace-nowrap mb-2;
+  .insight-icon {
+    @apply flex items-center justify-center rounded-lg flex-shrink-0;
+    width: 2rem;
+    height: 2rem;
   }
-  .wf-amt.neg {
-    @apply font-semibold text-stone-500 dark:text-stone-400;
+  .insight-icon svg {
+    @apply w-[1.05rem] h-[1.05rem];
   }
-
-  .wf-bar-wrap {
-    @apply relative;
-    width: 2.875rem;
-    height: 10.625rem;
+  .insight-icon-warn {
+    @apply bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400;
   }
-
-  .wf-bar {
-    @apply absolute left-0 right-0 rounded;
+  .insight-icon-positive {
+    @apply bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400;
   }
-
-  .wf-label {
-    @apply flex items-center justify-center gap-1.5 text-center mt-2 text-stone-500 dark:text-stone-400;
-    font-size: 0.74rem;
+  .insight-icon-info {
+    @apply bg-terracotta-100 text-terracotta-700 dark:bg-terracotta-950 dark:text-terracotta-300;
   }
 
-  .wf-dot {
-    @apply rounded-full flex-shrink-0;
-    width: 0.4375rem;
-    height: 0.4375rem;
+  .insight-main {
+    @apply flex-1 min-w-0;
   }
-
-  .wf-arrow {
-    @apply self-center text-stone-300 dark:text-stone-700;
-    padding: 0 .1rem 2.1rem;
+  .insight-title {
+    @apply text-sm font-semibold text-stone-900 dark:text-white;
   }
-
-  .wf-col.final .wf-label,
-  .wf-col.final .wf-amt {
-    @apply text-emerald-700 dark:text-emerald-400;
+  .insight-sub {
+    @apply text-xs text-stone-500 dark:text-stone-400;
+    margin-top: 0.15rem;
   }
-  .wf-col.final.overspent .wf-label,
-  .wf-col.final.overspent .wf-amt {
-    @apply text-red-700 dark:text-red-400;
+  .insight-link {
+    @apply text-xs font-semibold text-terracotta-600 dark:text-terracotta-400 hover:underline flex-shrink-0;
+    white-space: nowrap;
   }
 
   /* Top Expense Categories — relative-spend bars, replacing the old flat name/amount rows */

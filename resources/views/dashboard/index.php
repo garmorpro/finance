@@ -10,6 +10,7 @@
 /** @var array{label: string, income: string, expenses: string, net: string, cumulative: string}|null $thisMonthCashFlow */
 /** @var list<array{id: int, name: string, color: string|null, amount: string}> $incomeByCategory */
 /** @var list<array{name: string, color: string|null, amount: string}> $topExpenseCategories */
+/** @var list<array{type: string, title: string, subtitle: string, link: array{label: string, href: string}|null}> $insights */
 /** @var string $csrfToken */
 
 use App\Support\View;
@@ -57,7 +58,7 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
                 </div>
 
                 <div class="card">
-                    <?php View::partial('dashboard/widgets/waterfall', ['allocationSummary' => $allocationSummary]); ?>
+                    <?php View::partial('dashboard/widgets/insights', ['insights' => $insights]); ?>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">

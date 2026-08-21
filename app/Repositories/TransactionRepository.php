@@ -358,6 +358,30 @@ final class TransactionRepository
     }
 
     /**
+     * Count of income/expense transactions with no category assigned in
+     * a date range — powers the dashboard's "N transactions need a
+     * category" insight. Transfers are excluded: they legitimately have
+     * no category, so counting them here would flag normal behavior as
+     * something needing attention.
+     */
+    public function countUncategorized(int $householdId, string $dateFrom, string $dateTo): int
+    {
+        $stmt = Connection::get()->prepare(
+            "SELECT COUNT(*) FROM transactions
+             WHERE household_id = :household_id AND deleted_at IS NULL
+               AND category_id IS NULL AND transaction_type != 'transfer'
+               AND transaction_date >= :date_from AND transaction_date <= :date_to"
+        );
+        $stmt->execute([
+            'household_id' => $householdId,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+        ]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
      * Unpaginated variant for CSV export — same filters as the list view,
      * but every matching row, capped at a hard ceiling so an export can't
      * be used to pull an unbounded result set.
