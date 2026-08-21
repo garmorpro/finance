@@ -221,9 +221,6 @@ $router->get('/settings/rules/{id}/apply', fn (Request $r): mixed => $ruleContro
 $router->post('/settings/rules/{id}/apply', fn (Request $r): mixed => $ruleController->applyToExisting($r));
 
 $dashboardController = new DashboardController();
-$router->post('/dashboard/layout', fn (Request $r): mixed => $dashboardController->saveLayout($r));
-$router->post('/dashboard/widgets', fn (Request $r): mixed => $dashboardController->saveVisibility($r));
-$router->post('/dashboard/width', fn (Request $r): mixed => $dashboardController->saveWidth($r));
 
 $router->get('/', function () use ($dashboardController): void {
     if (!empty($_SESSION['user_id'])) {

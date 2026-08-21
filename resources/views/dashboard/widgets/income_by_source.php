@@ -1,8 +1,6 @@
 <?php
 
 /** @var list<array{id: int, name: string, color: string|null, amount: string}> $incomeByCategory */
-/** @var string $widgetKey */
-/** @var bool $isWide */
 
 use App\Support\Money;
 use App\Support\View;
@@ -14,10 +12,10 @@ foreach ($incomeByCategory as $row) {
     $total = bcadd($total, $row['amount'], 2);
 }
 
-// Always drawn from the curated palette above (matching Capital
-// Allocation's fixed colors), rather than each category's own stored
-// color — categories are colored for the Categories/Transactions
-// pages, but this widget's donut is meant to read as part of the same
+// Always drawn from the curated palette above (matching the waterfall's
+// fixed colors), rather than each category's own stored color —
+// categories are colored for the Categories/Transactions pages, but
+// this widget's donut is meant to read as part of the same
 // terracotta/emerald dashboard palette as its neighbors.
 $slices = [];
 if (bccomp($total, '0.00', 2) > 0) {
@@ -31,9 +29,8 @@ if (bccomp($total, '0.00', 2) > 0) {
     }
 }
 
-View::partial('dashboard/widgets/_header', ['title' => 'Income by Source', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
-
 ?>
+<h3 class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white mb-3">Income by Source</h3>
 <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">Why this month's income happened.</p>
 <?php if ($slices === []): ?>
     <div class="tile-placeholder">

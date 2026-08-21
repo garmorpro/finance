@@ -1,12 +1,11 @@
 (function () {
   'use strict';
 
-  // Drag-to-reorder within one group's category list — same interaction
-  // and persistence pattern as the dashboard's tile reordering
-  // (dashboard.js's setupDragReorder): each .category-group-list is its
-  // own independent drag scope, so a category only ever reorders among
-  // its own group's siblings, never across groups (moving to a different
-  // group is what the "More" -> Section control is for).
+  // Drag-to-reorder within one group's category list: each
+  // .category-group-list is its own independent drag scope, so a
+  // category only ever reorders among its own group's siblings, never
+  // across groups (moving to a different group is what the "More" ->
+  // Section control is for).
   var csrfInput = document.querySelector('input[name="csrf_token"]');
   var csrfToken = csrfInput ? csrfInput.value : '';
 

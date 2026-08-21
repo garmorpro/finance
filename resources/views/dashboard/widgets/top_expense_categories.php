@@ -1,8 +1,6 @@
 <?php
 
 /** @var list<array{name: string, color: string|null, amount: string}> $topExpenseCategories */
-/** @var string $widgetKey */
-/** @var bool $isWide */
 
 use App\Support\Money;
 use App\Support\View;
@@ -12,9 +10,8 @@ use App\Support\View;
 // lowest, so the first row is always the 100% bar.
 $maxAmount = $topExpenseCategories !== [] ? $topExpenseCategories[0]['amount'] : '0.00';
 
-View::partial('dashboard/widgets/_header', ['title' => 'Top Expense Categories', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
-
 ?>
+<h3 class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white mb-3">Top Expense Categories</h3>
 <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">What cost the most to run your household this month.</p>
 <?php if ($topExpenseCategories === []): ?>
     <div class="tile-placeholder">

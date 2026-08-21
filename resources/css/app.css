@@ -469,65 +469,13 @@
   }
 
   /*
-   * True masonry (tiles flow into the shortest column, no gaps under a
-   * short tile next to a tall one) computed in JS, not CSS multi-column.
-   * CSS `columns` + `break-inside: avoid` + `column-span: all` + a
-   * box-shadowed child is a genuinely unreliable combination across
-   * browsers — it produced two different rendering artifacts (a ghost
-   * border sliver, then a smeared shadow band) at the column-fragment
-   * boundary next to a wide tile. JS-computed absolute positioning
-   * (dashboard.js's layoutMasonry()) sidesteps that class of bug
-   * entirely by never asking the browser to fragment a box across a
-   * column boundary in the first place. See dashboard.js.
+   * Shared empty-state treatment (Rules & Inputs, Planning, Business
+   * Overview, and the dashboard's own widgets all use this) — no longer
+   * tied to a draggable "tile" the way it once was on the dashboard;
+   * the Overview page's own tile/masonry/drag-to-reorder system was
+   * retired once Income by Source and Top Expense Categories became
+   * its only two widgets and a plain two-up grid replaced it.
    */
-  .dashboard-grid {
-    position: relative;
-  }
-
-  /*
-   * Tiles start in normal document flow (plain stacked blocks, mb-4
-   * spacing) so the dashboard is readable before dashboard.js runs — it
-   * switches each tile to `position: absolute` itself once it computes
-   * the masonry layout. Without this, a moment of zero-height/overlapping
-   * absolutely-positioned tiles could flash before JS executes.
-   */
-  .tile {
-    @apply cursor-grab active:cursor-grabbing select-none mb-4;
-    transition: top 0.2s ease, left 0.2s ease, width 0.2s ease;
-  }
-
-  .tile-card {
-    @apply card transition-shadow hover:shadow-md;
-  }
-
-  .tile-header {
-    @apply flex items-center justify-between mb-3;
-  }
-
-  /*
-   * Dashboard tile titles use .label-text for the shared uppercase/
-   * tracking-wide treatment, but bolder and full-contrast rather than
-   * .label-text's usual muted caption color — that muted style is
-   * still correct everywhere else .label-text is used (stat captions
-   * on Debt, Cash Flow, Goals, etc.), so this only overrides it inside
-   * a tile header, not the class itself.
-   */
-  .tile-header .label-text {
-    @apply font-bold text-stone-900 dark:text-white;
-  }
-
-  .tile-drag-handle {
-    @apply text-stone-300 dark:text-stone-700;
-  }
-
-  .tile-resize-btn {
-    @apply inline-flex items-center justify-center w-5 h-5 rounded text-stone-300 dark:text-stone-700 hover:text-stone-500 dark:hover:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer;
-  }
-
-  .tile-resize-btn svg {
-    @apply w-3.5 h-3.5;
-  }
-
   .tile-placeholder {
     @apply flex flex-col items-center justify-center text-center py-8 text-stone-400 dark:text-stone-600;
   }
@@ -555,8 +503,8 @@
    * conditional like the rest of the app) rather than themed like a
    * plain .card. Net Worth leads with its own trend chart; Runway,
    * Savings Rate, and Cash Flow ride along as smaller companion stats.
-   * None of the four is draggable or hideable — see hero_stats.php and
-   * App\Support\DashboardWidgets's class doc.
+   * None of the four is draggable or hideable — the Overview page has
+   * no customization left at all; see hero_stats.php.
    */
   .dash-hero {
     @apply relative overflow-hidden rounded-2xl p-6 sm:p-8;

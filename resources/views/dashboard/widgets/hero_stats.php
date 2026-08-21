@@ -1,12 +1,11 @@
 <?php
 
 /**
- * Renders inside the fixed dark hero band (see dashboard/index.php) —
- * not a registry widget itself, the same way lifecycle.php never was.
+ * Renders inside the fixed dark hero band (see dashboard/index.php).
  * Net Worth, Runway, Savings Rate, and Cash Flow used to be four
- * independently draggable/hideable "stats" tiles; they're merged into
- * one always-visible block here instead. See App\Support\
- * DashboardWidgets's class doc for why.
+ * independently draggable/hideable "stats" tiles; the Overview page
+ * has no customization left at all now, and these four are merged into
+ * one always-visible block here instead.
  *
  * @var array|null $netWorth
  * @var list<array{label: string, assets: string, liabilities: string, netWorth: string}> $netWorthTrend
