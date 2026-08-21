@@ -10,7 +10,6 @@
 /** @var array{label: string, income: string, expenses: string, net: string, cumulative: string}|null $thisMonthCashFlow */
 /** @var list<array{id: int, name: string, color: string|null, amount: string}> $incomeByCategory */
 /** @var list<array{name: string, color: string|null, amount: string}> $topExpenseCategories */
-/** @var list<string> $statsOrder */
 /** @var list<string> $mainOrder */
 /** @var list<string> $hiddenWidgets */
 /** @var list<string> $wideWidgets */
@@ -37,68 +36,53 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div class="flex items-end justify-between flex-wrap gap-3">
-                    <div>
-                        <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white"><?= View::e($greeting) ?>, <?= View::e(explode(' ', $user['name'])[0]) ?></h1>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Your financial control center &middot; <?= View::e(gmdate('F Y')) ?></p>
-                    </div>
-                    <div class="flex items-center gap-4 flex-wrap">
-                        <p class="text-xs text-stone-500 dark:text-stone-400">Drag tiles to rearrange</p>
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <a href="/transactions/import" class="btn-secondary">Import Transactions</a>
-                            <a href="/transactions/create" class="btn-primary">Add Transaction</a>
-                            <button type="button" id="customize-open" class="btn-secondary">Customize</button>
+
+                <div class="dash-hero">
+                    <div class="dash-hero-top">
+                        <div>
+                            <h1><?= View::e($greeting) ?>, <?= View::e(explode(' ', $user['name'])[0]) ?></h1>
+                            <p class="sub">Your financial control center &middot; <?= View::e(gmdate('F Y')) ?></p>
                         </div>
+                        <div class="dash-hero-actions">
+                            <a href="/transactions/import" class="btn-ghost-dark">Import Transactions</a>
+                            <a href="/transactions/create" class="btn-primary">Add Transaction</a>
+                            <button type="button" id="customize-open" class="btn-ghost-dark">Customize</button>
+                        </div>
+                    </div>
+
+                    <div class="dash-hero-body">
+                        <?php View::partial('dashboard/widgets/hero_stats', [
+                            'netWorth' => $netWorth,
+                            'netWorthTrend' => $netWorthTrend,
+                            'runwayMonths' => $runwayMonths,
+                            'allocationSummary' => $allocationSummary,
+                            'thisMonthCashFlow' => $thisMonthCashFlow,
+                        ]); ?>
                     </div>
                 </div>
 
-                <div id="stats-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-csrf-token="<?= View::e($csrfToken) ?>">
-                    <?php foreach ($statsOrder as $widgetKey): ?>
-                        <div class="tile <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
+                <div class="card">
+                    <?php View::partial('dashboard/widgets/waterfall', ['allocationSummary' => $allocationSummary]); ?>
+                </div>
+
+                <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
+                    <?php foreach ($mainOrder as $widgetKey): ?>
+                        <?php $isWide = in_array($widgetKey, $wideWidgets, true); ?>
+                        <div class="tile <?= $isWide ? 'tile-wide' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
                             <div class="tile-card">
-                                <?php View::partial('dashboard/widgets/' . $widgetKey, [
-                                    'widgetKey' => $widgetKey,
-                                    'isWide' => false,
-                                    'netWorth' => $netWorth,
-                                    'netWorthTrend' => $netWorthTrend,
-                                    'allocationSummary' => $allocationSummary,
-                                    'runwayMonths' => $runwayMonths,
-                                    'thisMonthCashFlow' => $thisMonthCashFlow,
-                                ]); ?>
+                                <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
+                                    <?php View::partial('dashboard/widgets/' . $widgetKey, [
+                                        'widgetKey' => $widgetKey,
+                                        'isWide' => $isWide,
+                                        'incomeByCategory' => $incomeByCategory,
+                                        'topExpenseCategories' => $topExpenseCategories,
+                                    ]); ?>
+                                <?php else: ?>
+                                    <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
-                </div>
-
-                <div class="flex flex-col lg:flex-row gap-6 items-start">
-                    <div class="flex-1 min-w-0 w-full">
-                        <div id="dashboard-grid" class="dashboard-grid" data-csrf-token="<?= View::e($csrfToken) ?>">
-                            <?php foreach ($mainOrder as $widgetKey): ?>
-                                <?php $isWide = in_array($widgetKey, $wideWidgets, true); ?>
-                                <div class="tile <?= $isWide ? 'tile-wide' : '' ?> <?= in_array($widgetKey, $hiddenWidgets, true) ? 'hidden' : '' ?>" draggable="true" data-widget="<?= View::e($widgetKey) ?>">
-                                    <div class="tile-card">
-                                        <?php if (DashboardWidgets::isAvailable($widgetKey)): ?>
-                                            <?php View::partial('dashboard/widgets/' . $widgetKey, [
-                                                'widgetKey' => $widgetKey,
-                                                'isWide' => $isWide,
-                                                'allocationSummary' => $allocationSummary,
-                                                'incomeByCategory' => $incomeByCategory,
-                                                'topExpenseCategories' => $topExpenseCategories,
-                                            ]); ?>
-                                        <?php else: ?>
-                                            <?php View::partial('dashboard/widgets/coming-soon', ['title' => DashboardWidgets::title($widgetKey)]); ?>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-
-                    <aside class="dashboard-sidebar-sticky w-full lg:w-[360px] flex-shrink-0">
-                        <div class="tile-card">
-                            <?php View::partial('dashboard/widgets/lifecycle', ['allocationSummary' => $allocationSummary]); ?>
-                        </div>
-                    </aside>
                 </div>
 
                 <div>
@@ -107,33 +91,18 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
                         <span class="badge-owner">New</span>
                     </div>
 
-                    <div class="card text-center py-10" style="border-style: dashed;">
-                        <div class="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 mb-3">
+                    <div class="biz-banner">
+                        <span class="biz-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.4rem;height:1.4rem;" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+                        </span>
+                        <div class="biz-copy">
+                            <p class="title">No business accounts yet</p>
+                            <p class="desc">Track revenue, expenses, and profit separately from your household finances &mdash; still fully manual, still just yours.</p>
                         </div>
-                        <p class="text-stone-700 dark:text-stone-300 font-medium mb-1">No business accounts yet</p>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mb-4 max-w-md mx-auto">When your business gets going, add a business account and MyCFO+ will track its revenue, expenses, and profit separately from your household finances &mdash; still fully manual, still just yours.</p>
-                        <a href="/business/overview" class="btn-secondary">Set up business tracking</a>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                        <div class="card tile-placeholder">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.5rem;height:1.5rem;" class="mb-2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-5 4 3 5-7"/></svg>
-                            <span class="text-sm font-medium">Business Profit</span>
-                            <span class="text-xs mt-0.5">Coming soon</span>
-                        </div>
-                        <div class="card tile-placeholder">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.5rem;height:1.5rem;" class="mb-2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-                            <span class="text-sm font-medium">Revenue by Stream</span>
-                            <span class="text-xs mt-0.5">Coming soon</span>
-                        </div>
-                        <div class="card tile-placeholder">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.5rem;height:1.5rem;" class="mb-2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
-                            <span class="text-sm font-medium">Business Insights</span>
-                            <span class="text-xs mt-0.5">Coming soon</span>
-                        </div>
+                        <a href="/business/overview" class="btn-secondary" style="flex-shrink:0;">Set up business tracking</a>
                     </div>
                 </div>
+
             </main>
         </div>
     </div>
@@ -147,7 +116,7 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
             <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Choose which tiles appear on your overview.</p>
 
             <div id="customize-list" class="space-y-1" data-csrf-token="<?= View::e($csrfToken) ?>">
-                <?php foreach ([...$statsOrder, ...$mainOrder] as $widgetKey): ?>
+                <?php foreach ($mainOrder as $widgetKey): ?>
                     <?php $isHidden = in_array($widgetKey, $hiddenWidgets, true); ?>
                     <label class="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer">
                         <span class="text-sm font-medium text-stone-700 dark:text-stone-300"><?= View::e(DashboardWidgets::title($widgetKey)) ?></span>

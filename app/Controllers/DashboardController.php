@@ -39,7 +39,6 @@ final class DashboardController
         $topExpenseCategories = $householdId !== null ? array_slice($reportingService->spendingByCategory($householdId, gmdate('Y-m-01')), 0, 5) : [];
 
         $layout = $userRepo->getDashboardLayout($userId);
-        $statsOrder = DashboardWidgets::resolveOrder('stats', $layout['statsOrder']);
         $mainOrder = DashboardWidgets::resolveOrder('main', $layout['mainOrder']);
         $hiddenWidgets = DashboardWidgets::filterKnown($layout['hidden']);
         $wideWidgets = DashboardWidgets::resolveWide($layout['wide']);
@@ -55,7 +54,6 @@ final class DashboardController
             'thisMonthCashFlow' => $thisMonthCashFlow,
             'incomeByCategory' => $incomeByCategory,
             'topExpenseCategories' => $topExpenseCategories,
-            'statsOrder' => $statsOrder,
             'mainOrder' => $mainOrder,
             'hiddenWidgets' => $hiddenWidgets,
             'wideWidgets' => $wideWidgets,
@@ -64,12 +62,13 @@ final class DashboardController
     }
 
     /**
-     * AJAX endpoint the drag-and-drop grids call to persist tile order.
-     * `group` scopes the save to just the "stats" row or the "main" grid
-     * — the two are reordered independently and never mixed. Only
-     * touches the "order" half of the saved layout — visibility is saved
-     * separately by saveVisibility() so each action can't clobber the
-     * other's most recent change.
+     * AJAX endpoint the main drag-and-drop grid calls to persist tile
+     * order. `group` is always "main" now — the old "stats" row was
+     * removed when Net Worth/Runway/Savings Rate/Cash Flow merged into
+     * the fixed hero band, so a "stats" request is rejected rather than
+     * silently accepted. Only touches the "order" half of the saved
+     * layout — visibility is saved separately by saveVisibility() so
+     * each action can't clobber the other's most recent change.
      */
     public function saveLayout(Request $request): void
     {
@@ -81,7 +80,7 @@ final class DashboardController
         }
 
         $group = $request->post('group');
-        if (!in_array($group, ['stats', 'main'], true)) {
+        if ($group !== 'main') {
             Response::json(['error' => 'Invalid widget group.'], 422);
             return;
         }

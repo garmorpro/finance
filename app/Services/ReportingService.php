@@ -428,10 +428,11 @@ final class ReportingService
 
     /**
      * Percentage of income directed to savings/investing this month —
-     * the "Savings Rate" dashboard stat and the Master HQ summary API's
+     * the dashboard hero's "Savings Rate" stat (see
+     * dashboard/widgets/hero_stats.php) and the Master HQ summary API's
      * `savingsRate` field. Extracted from what was originally inline
-     * logic in `resources/views/dashboard/widgets/savings_rate.php` so a
-     * second caller doesn't have to re-derive the same formula. "Savings"
+     * logic in one of those callers so the other doesn't have to
+     * re-derive the same formula. "Savings"
      * here is exactly what `monthlyAllocationSummary()['savings']` is:
      * logged `goal_contributions` for the period, not a category-based
      * guess. Null when there's no income to divide by, rather than a

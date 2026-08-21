@@ -7,6 +7,11 @@
 use App\Support\Money;
 use App\Support\View;
 
+// Relative-spend bar per row, scaled against the largest amount in the
+// list — spendingByCategory() already returns rows sorted highest to
+// lowest, so the first row is always the 100% bar.
+$maxAmount = $topExpenseCategories !== [] ? $topExpenseCategories[0]['amount'] : '0.00';
+
 View::partial('dashboard/widgets/_header', ['title' => 'Top Expense Categories', 'widgetKey' => $widgetKey, 'isWide' => $isWide]);
 
 ?>
@@ -17,11 +22,15 @@ View::partial('dashboard/widgets/_header', ['title' => 'Top Expense Categories',
         <a href="/transactions/create" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add a transaction &rarr;</a>
     </div>
 <?php else: ?>
-    <div class="space-y-3">
+    <div class="exp-list">
         <?php foreach ($topExpenseCategories as $category): ?>
-            <div class="flex items-center justify-between text-sm">
-                <span class="text-stone-700 dark:text-stone-300"><?= View::e($category['name']) ?></span>
-                <span class="font-medium text-stone-900 dark:text-white"><?= Money::format($category['amount']) ?></span>
+            <?php $pct = bccomp($maxAmount, '0.00', 2) > 0 ? (float) bcdiv(bcmul($category['amount'], '100', 4), $maxAmount, 4) : 0.0; ?>
+            <div class="exp-row">
+                <div class="exp-top">
+                    <span class="text-stone-700 dark:text-stone-300"><?= View::e($category['name']) ?></span>
+                    <span class="exp-amt tabular-nums"><?= Money::format($category['amount']) ?></span>
+                </div>
+                <div class="exp-bar-track"><div class="exp-bar-fill" style="width:<?= max(4, $pct) ?>%;"></div></div>
             </div>
         <?php endforeach; ?>
     </div>

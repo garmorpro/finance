@@ -2,14 +2,13 @@
   'use strict';
 
   var grid = document.getElementById('dashboard-grid');
-  var statsGrid = document.getElementById('stats-grid');
-  if (!grid && !statsGrid) {
+  if (!grid) {
     return;
   }
 
-  var csrfToken = (grid || statsGrid).dataset.csrfToken;
+  var csrfToken = grid.dataset.csrfToken;
 
-  // --- Masonry layout (main grid only) ---
+  // --- Masonry layout ---
   // Tiles flow into the shortest column, computed here rather than via
   // CSS multi-column — `columns` + `break-inside: avoid` + `column-span:
   // all` + a box-shadowed child proved unreliable across browsers (it
@@ -19,10 +18,10 @@
   // boundary because there's no column boundary as far as the browser's
   // layout engine is concerned.
   //
-  // The stats row (#stats-grid) doesn't need any of this — it's a fixed
-  // 4-up (or fewer, responsively) native CSS grid of equal-size cards,
-  // so the browser lays it out on its own; only drag-to-reorder is
-  // wired up for it below.
+  // Net Worth/Runway/Savings Rate/Cash Flow (now the fixed hero band)
+  // and the waterfall no longer live in this grid at all — the only
+  // remaining widgets here are Income by Source and Top Expense
+  // Categories.
   var GAP = 16; // px, matches Tailwind's gap-4 / 1rem
   var MIN_TWO_COL_WIDTH = 560; // px; below this a 2-column split leaves each tile too cramped
 
@@ -105,7 +104,7 @@
   // guessing at a fixed delay. Chart canvases sit in a fixed-height
   // wrapper, so this doesn't loop: width changes from layoutMasonry()
   // don't feed back into another height change.
-  if (grid && window.ResizeObserver) {
+  if (window.ResizeObserver) {
     var observer = new ResizeObserver(scheduleLayout);
     Array.prototype.forEach.call(grid.querySelectorAll('.tile-card'), function (card) {
       observer.observe(card);
@@ -113,11 +112,9 @@
   }
 
   // --- Drag to reorder ---
-  // Each group (the fixed stats row, the main masonry grid) is its own
-  // independent drag-and-drop scope: tiles only ever reorder among
-  // siblings within the same container, and each persists to its own
-  // "group" via /dashboard/layout so the two can never get mixed
-  // together in one saved order.
+  // The hero band and the waterfall are fixed chrome now, so the main
+  // masonry grid is the only drag-and-drop scope left; it still persists
+  // via its own "group" ("main") through /dashboard/layout.
   function setupDragReorder(container, group, onDrop) {
     if (!container) {
       return;
@@ -187,7 +184,6 @@
   }
 
   setupDragReorder(grid, 'main', layoutMasonry);
-  setupDragReorder(statsGrid, 'stats', null);
 
   // --- Customize modal: show/hide tiles ---
   var modal = document.getElementById('customize-modal');
@@ -289,9 +285,10 @@
         return;
       }
 
-      // The toggled widget could live in either the stats row or the
-      // main grid, so look it up across the whole document rather than
-      // scoping to one container.
+      // Look the tile up across the whole document rather than scoping
+      // to the grid specifically — harmless either way now that every
+      // toggleable widget lives in the one main grid, but keeps this
+      // resilient if a second toggleable group ever comes back.
       var tile = document.querySelector('[data-widget="' + toggle.dataset.widgetToggle + '"]');
       if (tile) {
         tile.classList.toggle('hidden', !toggle.checked);

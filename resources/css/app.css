@@ -485,18 +485,6 @@
   }
 
   /*
-   * "Lifecycle of a Dollar" sits outside the draggable grid as a fixed
-   * panel that stays in view while the main column scrolls past it.
-   * Sticky only kicks in at the lg breakpoint, where there's a real
-   * two-column layout to be sticky within — on narrower screens it's
-   * just a normal block, stacking above/below the main column.
-   */
-  .dashboard-sidebar-sticky {
-    @apply lg:sticky;
-    top: 1.5rem;
-  }
-
-  /*
    * Tiles start in normal document flow (plain stacked blocks, mb-4
    * spacing) so the dashboard is readable before dashboard.js runs — it
    * switches each tile to `position: absolute` itself once it computes
@@ -561,43 +549,240 @@
     height: 0.55rem;
   }
 
-  /* "Lifecycle of a Dollar" sticky sidebar panel */
-  .lifecycle-title {
-    @apply text-terracotta-700 dark:text-terracotta-300 font-bold uppercase tracking-wide;
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-    margin: 0 0 0.25rem;
+  /*
+   * Overview dashboard hero — a fixed "control tower" band, deliberately
+   * dark in both light and dark mode (hardcoded colors, not `dark:`-
+   * conditional like the rest of the app) rather than themed like a
+   * plain .card. Net Worth leads with its own trend chart; Runway,
+   * Savings Rate, and Cash Flow ride along as smaller companion stats.
+   * None of the four is draggable or hideable — see hero_stats.php and
+   * App\Support\DashboardWidgets's class doc.
+   */
+  .dash-hero {
+    @apply relative overflow-hidden rounded-2xl p-6 sm:p-8;
+    color: #f5f5f4;
+    background:
+      radial-gradient(760px 420px at 88% -10%, rgba(226, 105, 75, .30), transparent 60%),
+      linear-gradient(155deg, #1c1917 0%, #241b16 45%, #38130a 130%);
+    box-shadow: 0 24px 60px -28px rgba(0, 0, 0, .65);
   }
 
-  .lifecycle-item {
-    @apply flex items-center justify-between gap-3 rounded-lg bg-terracotta-600/5 dark:bg-terracotta-400/10;
-    padding: 0.65rem 0.85rem;
+  .dash-hero-top {
+    @apply flex items-start justify-between flex-wrap gap-3 mb-7;
   }
 
-  .lifecycle-arrow {
-    @apply text-center text-stone-300 dark:text-stone-700;
-    font-size: 0.7rem;
-    line-height: 1;
-    padding: 0.15rem 0;
+  .dash-hero-top h1 {
+    @apply text-2xl font-semibold tracking-tight;
+    color: #fff;
   }
 
-  .lifecycle-remaining {
-    @apply flex items-center justify-between gap-3 rounded-lg bg-emerald-600/10 dark:bg-emerald-400/10;
-    padding: 0.75rem 0.9rem;
-    margin-top: 1.1rem;
+  .dash-hero-top .sub {
+    @apply text-sm mt-1;
+    color: rgba(245, 245, 244, .55);
   }
 
-  .lifecycle-remaining-text {
+  .dash-hero-actions {
+    @apply flex items-center gap-3 flex-wrap;
+  }
+
+  .btn-ghost-dark {
+    @apply btn;
+    background: rgba(255, 255, 255, .07);
+    border: 1px solid rgba(255, 255, 255, .14);
+    color: #f5f5f4;
+  }
+  .btn-ghost-dark:hover {
+    background: rgba(255, 255, 255, .12);
+    border-color: rgba(255, 255, 255, .22);
+  }
+
+  .dash-hero-body {
+    @apply flex items-stretch gap-8 flex-wrap;
+  }
+
+  .dash-hero-nw {
+    @apply flex-1;
+    min-width: 280px;
+  }
+
+  .dash-hero-eyebrow {
+    @apply text-xs font-bold uppercase tracking-wide mb-1;
+    color: rgba(240, 164, 136, .9);
+  }
+
+  .dash-hero-nw-value {
+    @apply font-bold tracking-tight leading-none;
+    font-size: 2.75rem;
+    color: #fff;
+  }
+
+  .dash-hero-nw-foot {
+    @apply flex items-center gap-2 mt-3;
+  }
+
+  .dash-hero-pill {
+    @apply inline-flex items-center gap-1 rounded-full text-xs font-bold;
+    padding: .2rem .6rem;
+  }
+  .dash-hero-pill svg {
+    @apply w-2.5 h-2.5;
+  }
+  .dash-hero-pill.up {
+    background: rgba(52, 211, 153, .16);
+    color: #6ee7b7;
+  }
+  .dash-hero-pill.down {
+    background: rgba(248, 113, 113, .16);
+    color: #fca5a5;
+  }
+
+  .dash-hero-nw-caption {
+    @apply text-xs;
+    color: rgba(245, 245, 244, .5);
+  }
+
+  .dash-hero-chart {
+    @apply w-full mt-5 block;
+    max-width: 26rem;
+    height: 5.75rem;
+  }
+
+  .dash-hero-stats {
+    @apply flex flex-col gap-2.5 flex-shrink-0;
+    width: 14.75rem;
+  }
+  @media (max-width: 640px) {
+    .dash-hero-stats {
+      width: 100%;
+    }
+  }
+
+  .dash-hero-stat {
+    @apply flex items-center gap-3 rounded-xl;
+    background: rgba(255, 255, 255, .055);
+    border: 1px solid rgba(255, 255, 255, .1);
+    padding: .65rem .85rem;
+  }
+
+  .dash-hero-stat-icon {
+    @apply flex items-center justify-center rounded-lg flex-shrink-0;
+    width: 1.9rem;
+    height: 1.9rem;
+    background: rgba(255, 255, 255, .08);
+    color: #f0a488;
+  }
+  .dash-hero-stat-icon svg {
+    @apply w-[15px] h-[15px];
+  }
+
+  .dash-hero-stat-label {
+    @apply block text-xs font-semibold;
+    color: rgba(245, 245, 244, .5);
+  }
+
+  .dash-hero-stat-value {
+    @apply block text-base font-semibold;
+    color: #fff;
+  }
+
+  /*
+   * "The Lifecycle of a Dollar" — now a fixed waterfall read left to
+   * right, replacing both the old Capital Allocation donut and the old
+   * sticky sidebar list with one flow. See waterfall.php.
+   */
+  .waterfall {
+    @apply flex items-end gap-1 overflow-x-auto pb-1;
+  }
+
+  .wf-col {
+    @apply flex flex-col items-center flex-shrink-0;
+    width: 6.75rem;
+  }
+
+  .wf-amt {
+    @apply text-sm font-bold whitespace-nowrap mb-2;
+  }
+  .wf-amt.neg {
+    @apply font-semibold text-stone-500 dark:text-stone-400;
+  }
+
+  .wf-bar-wrap {
+    @apply relative;
+    width: 2.875rem;
+    height: 10.625rem;
+  }
+
+  .wf-bar {
+    @apply absolute left-0 right-0 rounded;
+  }
+
+  .wf-label {
+    @apply flex items-center justify-center gap-1.5 text-center mt-2 text-stone-500 dark:text-stone-400;
+    font-size: 0.74rem;
+  }
+
+  .wf-dot {
+    @apply rounded-full flex-shrink-0;
+    width: 0.4375rem;
+    height: 0.4375rem;
+  }
+
+  .wf-arrow {
+    @apply self-center text-stone-300 dark:text-stone-700;
+    padding: 0 .1rem 2.1rem;
+  }
+
+  .wf-col.final .wf-label,
+  .wf-col.final .wf-amt {
     @apply text-emerald-700 dark:text-emerald-400;
   }
-
-  /* Overspent month: remaining cash is negative — flag it, don't paint it green */
-  .lifecycle-remaining-negative {
-    @apply bg-red-50 dark:bg-red-950/40;
+  .wf-col.final.overspent .wf-label,
+  .wf-col.final.overspent .wf-amt {
+    @apply text-red-700 dark:text-red-400;
   }
 
-  .lifecycle-remaining-negative-text {
-    @apply text-red-700 dark:text-red-400;
+  /* Top Expense Categories — relative-spend bars, replacing the old flat name/amount rows */
+  .exp-list {
+    @apply flex flex-col gap-3;
+  }
+  .exp-row {
+    @apply flex flex-col gap-1;
+  }
+  .exp-top {
+    @apply flex items-center justify-between text-sm;
+  }
+  .exp-amt {
+    @apply font-semibold text-stone-900 dark:text-white;
+  }
+  .exp-bar-track {
+    @apply rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden;
+    height: 5px;
+  }
+  .exp-bar-fill {
+    @apply h-full rounded-full bg-terracotta-600;
+  }
+
+  /* Business section — one compact banner instead of a dashed empty panel plus three separate "Coming soon" tiles */
+  .biz-banner {
+    @apply card flex items-center gap-5 flex-wrap;
+  }
+  .biz-icon {
+    @apply flex items-center justify-center rounded-xl flex-shrink-0 bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500;
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .biz-icon svg {
+    @apply w-5 h-5;
+  }
+  .biz-copy {
+    @apply flex-1;
+    min-width: 220px;
+  }
+  .biz-copy .title {
+    @apply font-semibold text-stone-900 dark:text-white;
+  }
+  .biz-copy .desc {
+    @apply text-sm text-stone-500 dark:text-stone-400 mt-1;
   }
 
   .brand {

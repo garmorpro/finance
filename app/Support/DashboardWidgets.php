@@ -9,26 +9,23 @@ namespace App\Support;
  * unavailable ones render an honest "coming soon" placeholder rather
  * than fabricated numbers, until their feature phase is built.
  *
- * Widgets belong to one of two independently-orderable groups:
- * - `stats`: the four single-number cards, laid out in a fixed 4-up row
- *   (or fewer columns on narrower screens) — dragged and reordered only
- *   among themselves.
- * - `main`: the larger chart/list tiles, laid out in the existing
- *   draggable/resizable masonry grid — also reordered only among
- *   themselves, never mixed with `stats`.
+ * Net Worth, Runway, Savings Rate, and Cash Flow used to be four
+ * independent `stats`-group tiles; the redesigned Overview page merged
+ * them into one fixed hero band (see dashboard/widgets/hero_stats.php)
+ * that's never draggable or hideable, so they were removed from this
+ * registry entirely. Capital Allocation was similarly retired — it's
+ * now folded into the fixed waterfall (dashboard/widgets/waterfall.php)
+ * alongside what used to be "The Lifecycle of a Dollar" sidebar.
  *
- * "The Lifecycle of a Dollar" is deliberately not in this registry at
- * all — it's rendered as a fixed sticky sidebar panel next to the main
- * grid (see dashboard/index.php), not a draggable/hideable tile.
+ * What's left all belongs to the one remaining group, `main`: the
+ * chart/list tiles laid out in the existing draggable/resizable masonry
+ * grid. The `group` concept itself is kept (rather than dropped along
+ * with `stats`) so a future tile category doesn't require re-plumbing
+ * resolveOrder()/keysInGroup()'s group parameter back in.
  */
 final class DashboardWidgets
 {
     private const WIDGETS = [
-        'runway' => ['title' => 'Runway', 'group' => 'stats', 'available' => true],
-        'savings_rate' => ['title' => 'Savings Rate', 'group' => 'stats', 'available' => true],
-        'net_worth' => ['title' => 'Net Worth', 'group' => 'stats', 'available' => true],
-        'cash_flow' => ['title' => 'Cash Flow This Month', 'group' => 'stats', 'available' => true],
-        'capital_allocation' => ['title' => 'Capital Allocation', 'group' => 'main', 'available' => true],
         'income_by_source' => ['title' => 'Income by Source', 'group' => 'main', 'available' => true],
         'top_expense_categories' => ['title' => 'Top Expense Categories', 'group' => 'main', 'available' => true],
     ];
@@ -81,8 +78,7 @@ final class DashboardWidgets
     }
 
     /**
-     * All widget keys, in registry order — used by the Customize modal's
-     * hide-toggle list, which spans both groups.
+     * All widget keys, in registry order.
      *
      * @return list<string>
      */
