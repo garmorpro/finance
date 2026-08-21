@@ -14,13 +14,17 @@
   }
 
   /*
-   * Accounts page's physical-card-style tile. Background color comes from
-   * the account's own custom `color` (inline style, set per-account —
-   * can't be a static Tailwind class), with a dark gradient layered over
-   * it via background-image so white text stays legible regardless of
-   * how light the underlying color is, the same way a real card design
-   * darkens toward one corner rather than relying on the base color alone
-   * for contrast.
+   * Full-bleed colored tile — the account's own custom `color` (inline
+   * style, set per-account — can't be a static Tailwind class) as the
+   * whole background, with a dark gradient layered over it via
+   * background-image so white text stays legible regardless of how
+   * light the underlying color is. Shared by the Accounts list, the
+   * Debt overview's per-debt cards, and the account-picker preview on
+   * Transactions' create/edit/transfer forms — all four assume this
+   * exact white-text-on-color contract (text-white/NN, border-white/NN
+   * throughout their markup), so don't change this in place; give a
+   * new treatment its own class instead (see .account-tile below,
+   * used only by accounts/index.php).
    */
   .account-card {
     @apply relative overflow-hidden rounded-2xl p-5 flex flex-col justify-between text-white shadow-md transition-transform hover:-translate-y-0.5;
@@ -30,6 +34,31 @@
 
   .account-card-icon {
     @apply inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/15;
+  }
+
+  /*
+   * Accounts list page's tile — a neutral card with the account's own
+   * custom `color` as an accent (a solid top border, plus the icon
+   * badge's outline/glyph) instead of tinting the whole tile, the same
+   * treatment the account detail page's hero and Categories' .cat-card
+   * already use. The icon badge's background is the one place opacity
+   * is used — color-mix() blends the account's arbitrary hex color
+   * down to a soft tint without needing PHP to convert hex to rgba
+   * first; the border and the icon glyph itself (set via `color`,
+   * picked up by AccountTypeIcons::svg()'s `currentColor`) both stay
+   * at full strength. See accounts/index.php only — the Debt overview
+   * and Transactions' account-picker preview keep the full-bleed
+   * .account-card above.
+   */
+  .account-tile {
+    @apply relative overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 flex flex-col justify-between shadow-sm transition-transform hover:-translate-y-0.5;
+    min-height: 168px;
+    border-top-width: 4px;
+    border-top-style: solid;
+  }
+
+  .account-tile-icon {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-lg;
   }
 
   /*
