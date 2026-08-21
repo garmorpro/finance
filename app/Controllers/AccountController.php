@@ -26,7 +26,7 @@ final class AccountController
         $accounts = $accountRepo->listForHousehold($householdId);
 
         Response::html(View::render('accounts/index', [
-            'sections' => AccountGroups::group($accounts),
+            'assetsLiabilities' => AccountGroups::splitByAssetLiability($accounts),
             'netWorth' => $accountRepo->netWorthSummary($householdId),
             'hasAccounts' => $accounts !== [],
             'csrfToken' => Csrf::token(),
