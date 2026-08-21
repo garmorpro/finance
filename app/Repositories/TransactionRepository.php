@@ -425,7 +425,7 @@ final class TransactionRepository
     public function recentForHousehold(int $householdId, int $limit = 5): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT t.*, a.name AS account_name, c.name AS category_name
+            'SELECT t.*, a.name AS account_name, c.name AS category_name, c.color AS category_color
              FROM transactions t
              INNER JOIN accounts a ON a.id = t.account_id
              LEFT JOIN categories c ON c.id = t.category_id

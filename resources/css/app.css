@@ -683,6 +683,57 @@
     white-space: nowrap;
   }
 
+  /* Recent Transactions — pairs with Insights (dashboard/widgets/recent_transactions.php) */
+  .txn-list {
+    @apply flex flex-col;
+  }
+  .txn-row {
+    @apply flex items-center gap-3 border-b border-stone-100 dark:border-stone-800;
+    padding: 0.65rem 0;
+  }
+  .txn-row:last-child {
+    @apply border-b-0;
+    padding-bottom: 0.3rem;
+  }
+  .txn-icon {
+    @apply flex items-center justify-center rounded-xl flex-shrink-0 text-white;
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+  .txn-icon svg {
+    @apply w-[1.05rem] h-[1.05rem];
+  }
+  .txn-main {
+    @apply flex-1 min-w-0;
+  }
+  .txn-merchant {
+    @apply text-sm font-semibold text-stone-900 dark:text-white truncate;
+  }
+  .txn-meta {
+    @apply text-xs text-stone-500 dark:text-stone-400 truncate;
+    margin-top: 0.1rem;
+  }
+  .txn-right {
+    @apply text-right flex-shrink-0;
+  }
+  .txn-amt {
+    @apply text-sm font-semibold text-stone-900 dark:text-white;
+  }
+  .txn-amt-positive {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+  .txn-date {
+    @apply text-xs text-stone-400 dark:text-stone-500;
+    margin-top: 0.1rem;
+  }
+  .txn-more {
+    @apply text-right;
+    margin-top: 0.7rem;
+  }
+  .txn-more a {
+    @apply text-sm font-semibold text-terracotta-600 dark:text-terracotta-400 hover:underline;
+  }
+
   /* Top Expense Categories — relative-spend bars, replacing the old flat name/amount rows */
   .exp-list {
     @apply flex flex-col gap-3;

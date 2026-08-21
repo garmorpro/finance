@@ -8,6 +8,7 @@ use App\Http\Response;
 use App\Middleware\AuthMiddleware;
 use App\Repositories\AccountRepository;
 use App\Repositories\HouseholdRepository;
+use App\Repositories\TransactionRepository;
 use App\Repositories\UserRepository;
 use App\Services\InsightsService;
 use App\Services\ReportingService;
@@ -37,6 +38,7 @@ final class DashboardController
         $incomeByCategory = $householdId !== null ? $reportingService->incomeByCategory($householdId, gmdate('Y-m-01')) : [];
         $topExpenseCategories = $householdId !== null ? array_slice($reportingService->spendingByCategory($householdId, gmdate('Y-m-01')), 0, 5) : [];
         $insights = $householdId !== null ? (new InsightsService())->forHousehold($householdId) : [];
+        $recentTransactions = $householdId !== null ? (new TransactionRepository())->recentForHousehold($householdId, 5) : [];
 
         Response::html(View::render('dashboard/index', [
             'user' => $user,
@@ -50,6 +52,7 @@ final class DashboardController
             'incomeByCategory' => $incomeByCategory,
             'topExpenseCategories' => $topExpenseCategories,
             'insights' => $insights,
+            'recentTransactions' => $recentTransactions,
             'csrfToken' => Csrf::token(),
         ]));
     }
