@@ -58,8 +58,8 @@
    */
   .table-base .table-group-row td {
     @apply bg-stone-50 dark:bg-stone-800/50 text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400;
-    padding-top: 1.85rem;
-    padding-bottom: 1.35rem;
+    padding-top: 3.5rem;
+    padding-bottom: 2.5rem;
   }
   .table-group-row-total {
     @apply normal-case font-semibold text-stone-700 dark:text-stone-300;
