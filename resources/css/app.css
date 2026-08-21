@@ -24,7 +24,8 @@
    * on-color contract (text-white/NN, border-white/NN throughout
    * their markup), so don't change this in place; give a new
    * treatment its own class instead. The Accounts list page itself no
-   * longer uses this at all — see .accounts-split below.
+   * longer uses this at all — it's a plain .table-base grouped by
+   * account type, same table style as Transactions.
    */
   .account-card {
     @apply relative overflow-hidden rounded-2xl p-5 flex flex-col justify-between text-white shadow-md transition-transform hover:-translate-y-0.5;
@@ -37,82 +38,23 @@
   }
 
   /*
-   * Accounts list page — two columns, Assets and Liabilities, instead
-   * of the old per-type card grid (which itself replaced an even
-   * earlier full-bleed-colored-tile version — see App\Support\
-   * AccountGroups::splitByAssetLiability()). Deliberately neutral
-   * per-row icons rather than the account's own custom `color`: the
-   * column header's green/terracotta already carries the
-   * asset-vs-liability meaning, so repeating that signal (or a third,
-   * unrelated color) per row would just be noise. The account detail
-   * page's hero and Categories' .cat-card still use the account's own
-   * color as an accent — this page just doesn't need to.
+   * A label row spanning a .table-base table — used by the Accounts
+   * page to group rows by account type (Cash, Credit Cards, Loans, …)
+   * within one continuous table instead of separate boxed sections.
+   * Generic enough to reuse anywhere else a grouped table is useful.
    */
-  .accounts-split {
-    @apply grid grid-cols-1 lg:grid-cols-2 gap-4 items-start;
+  .table-group-row td {
+    @apply bg-stone-50 dark:bg-stone-800/50 text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
   }
-
-  .accounts-split-col {
-    @apply rounded-2xl overflow-hidden border border-stone-200 dark:border-stone-800;
+  .table-group-row-total {
+    @apply normal-case font-semibold text-stone-700 dark:text-stone-300;
+    margin-left: 0.5rem;
   }
-
-  .accounts-split-head {
-    @apply flex items-center justify-between px-5 py-3.5;
-  }
-  .accounts-split-head.assets {
-    @apply bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-100 dark:border-emerald-900/50;
-  }
-  .accounts-split-head.liabilities {
-    @apply bg-terracotta-50 dark:bg-terracotta-950/30 border-b border-terracotta-100 dark:border-terracotta-900/50;
-  }
-  .accounts-split-head h3 {
-    @apply text-xs font-bold uppercase tracking-wide;
-  }
-  .accounts-split-head.assets h3 {
-    @apply text-emerald-700 dark:text-emerald-400;
-  }
-  .accounts-split-head.liabilities h3 {
-    @apply text-terracotta-700 dark:text-terracotta-300;
-  }
-  .accounts-split-head .amt {
-    @apply text-base font-bold;
-  }
-  .accounts-split-head.assets .amt {
-    @apply text-emerald-700 dark:text-emerald-400;
-  }
-  .accounts-split-head.liabilities .amt {
-    @apply text-terracotta-700 dark:text-terracotta-300;
-  }
-
-  .accounts-split-row {
-    @apply flex items-center gap-3 px-5 py-3 border-b border-stone-100 dark:border-stone-800 bg-white dark:bg-stone-900 transition-colors hover:bg-stone-50 dark:hover:bg-stone-800/60;
-  }
-  .accounts-split-row:last-child {
-    @apply border-b-0;
-  }
-
-  .accounts-split-icon {
-    @apply flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400;
-  }
-  .accounts-split-icon svg {
-    @apply w-4 h-4;
-  }
-
-  .accounts-split-main {
-    @apply flex-1 min-w-0;
-  }
-  .accounts-split-name {
-    @apply font-semibold text-sm text-stone-900 dark:text-white truncate;
-  }
-  .accounts-split-inst {
-    @apply text-xs text-stone-500 dark:text-stone-400 truncate;
-  }
-  .accounts-split-bal {
-    @apply font-semibold text-sm text-stone-900 dark:text-white flex-shrink-0;
-  }
-
-  .accounts-split-empty {
-    @apply px-5 py-6 text-center text-sm text-stone-400 dark:text-stone-600 bg-white dark:bg-stone-900;
+  .table-group-row-total::before {
+    content: '\00b7';
+    margin-right: 0.5rem;
   }
 
   /*

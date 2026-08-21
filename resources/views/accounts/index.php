@@ -1,12 +1,12 @@
 <?php
 
-/** @var array{assets: array{label: string, accounts: list<array<string, mixed>>, total: string}, liabilities: array{label: string, accounts: list<array<string, mixed>>, total: string}} $assetsLiabilities */
+/** @var list<array{label: string, accounts: list<array<string, mixed>>, total: string}> $sections */
 /** @var array{assets: string, liabilities: string, net: string, count: int, assetCount: int, liabilityCount: int} $netWorth */
 /** @var bool $hasAccounts */
 /** @var string $csrfToken */
 /** @var string|null $notice */
 
-use App\Support\AccountTypeIcons;
+use App\Support\AccountTypeLabels;
 use App\Support\Money;
 use App\Support\View;
 
@@ -83,52 +83,42 @@ $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
                 </div>
             </div>
 
-            <div class="accounts-split">
-                <div class="accounts-split-col">
-                    <div class="accounts-split-head assets">
-                        <h3>Assets</h3>
-                        <span class="amt tabular-nums"><?= Money::format($assetsLiabilities['assets']['total']) ?></span>
-                    </div>
-                    <?php if ($assetsLiabilities['assets']['accounts'] === []): ?>
-                        <div class="accounts-split-empty">No asset accounts yet.</div>
-                    <?php else: ?>
-                        <?php foreach ($assetsLiabilities['assets']['accounts'] as $account): ?>
-                            <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="accounts-split-row">
-                                <span class="accounts-split-icon"><?= AccountTypeIcons::svg($account['account_type']) ?></span>
-                                <div class="accounts-split-main">
-                                    <div class="accounts-split-name"><?= View::e($account['name']) ?></div>
-                                    <?php if (!empty($account['institution_name'])): ?>
-                                        <div class="accounts-split-inst"><?= View::e($account['institution_name']) ?></div>
-                                    <?php endif; ?>
-                                </div>
-                                <span class="accounts-split-bal tabular-nums"><?= Money::format($account['current_balance']) ?></span>
-                            </a>
+            <div class="card">
+                <table class="table-base">
+                    <thead>
+                        <tr>
+                            <th>Account</th>
+                            <th>Type</th>
+                            <th class="text-right">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($sections as $section): ?>
+                            <tr class="table-group-row">
+                                <td colspan="3">
+                                    <?= View::e($section['label']) ?>
+                                    <span class="table-group-row-total tabular-nums"><?= Money::format($section['total']) ?></span>
+                                </td>
+                            </tr>
+                            <?php foreach ($section['accounts'] as $account): ?>
+                                <?php $accountColor = $account['color'] ?: '#a8a29e'; ?>
+                                <tr>
+                                    <td>
+                                        <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="inline-flex items-center gap-2 font-medium text-stone-900 dark:text-white hover:text-terracotta-600 dark:hover:text-terracotta-400">
+                                            <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: <?= View::e($accountColor) ?>;"></span>
+                                            <?= View::e($account['name']) ?>
+                                        </a>
+                                        <?php if (!empty($account['institution_name'])): ?>
+                                            <span class="text-stone-500 dark:text-stone-400">&middot; <?= View::e($account['institution_name']) ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-stone-500 dark:text-stone-400"><?= View::e(AccountTypeLabels::label($account['account_type'])) ?></td>
+                                    <td class="text-right font-medium text-stone-900 dark:text-white tabular-nums"><?= Money::format($account['current_balance']) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
                         <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-
-                <div class="accounts-split-col">
-                    <div class="accounts-split-head liabilities">
-                        <h3>Liabilities</h3>
-                        <span class="amt tabular-nums"><?= Money::format($assetsLiabilities['liabilities']['total']) ?></span>
-                    </div>
-                    <?php if ($assetsLiabilities['liabilities']['accounts'] === []): ?>
-                        <div class="accounts-split-empty">No liability accounts.</div>
-                    <?php else: ?>
-                        <?php foreach ($assetsLiabilities['liabilities']['accounts'] as $account): ?>
-                            <a href="/accounts/<?= (int) $account['id'] ?>/edit" class="accounts-split-row">
-                                <span class="accounts-split-icon"><?= AccountTypeIcons::svg($account['account_type']) ?></span>
-                                <div class="accounts-split-main">
-                                    <div class="accounts-split-name"><?= View::e($account['name']) ?></div>
-                                    <?php if (!empty($account['institution_name'])): ?>
-                                        <div class="accounts-split-inst"><?= View::e($account['institution_name']) ?></div>
-                                    <?php endif; ?>
-                                </div>
-                                <span class="accounts-split-bal tabular-nums"><?= Money::format($account['current_balance']) ?></span>
-                            </a>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
+                    </tbody>
+                </table>
             </div>
         <?php endif; ?>
         </main>

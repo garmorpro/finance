@@ -4,17 +4,12 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use App\Repositories\AccountRepository;
-
 /**
- * Groups accounts for display. group() buckets by account type — Cash,
+ * Groups accounts into display sections for the Accounts page — Cash,
  * Credit Cards, Loans, Investments, Property & Other — each with a
- * subtotal; splitByAssetLiability() (what the Accounts page actually
- * renders today) instead buckets by asset vs. liability, reusing
- * group()'s own ordering internally. Purely a presentation grouping
- * either way; it has no bearing on net worth or any other calculation,
- * which stay driven entirely by AccountRepository's own asset/
- * liability logic.
+ * subtotal. Purely a presentation grouping; it has no bearing on net
+ * worth or any other calculation, which stay driven entirely by
+ * AccountRepository's own asset/liability logic.
  */
 final class AccountGroups
 {
@@ -63,38 +58,6 @@ final class AccountGroups
         }
 
         return $sections;
-    }
-
-    /**
-     * Same accounts as group(), split into just two buckets — assets and
-     * liabilities — instead of by account type. Reuses group()'s own
-     * type-ordering (Cash before Investments before Property, etc.)
-     * rather than re-deriving an order, so an account lands in the same
-     * relative position here as it would within its old type section.
-     *
-     * @param list<array<string, mixed>> $accounts
-     * @return array{assets: array{label: string, accounts: list<array<string, mixed>>, total: string}, liabilities: array{label: string, accounts: list<array<string, mixed>>, total: string}}
-     */
-    public static function splitByAssetLiability(array $accounts): array
-    {
-        $ordered = [];
-        foreach (self::group($accounts) as $section) {
-            $ordered = [...$ordered, ...$section['accounts']];
-        }
-
-        $assets = array_values(array_filter(
-            $ordered,
-            fn (array $a): bool => !AccountRepository::isLiability($a['account_type'])
-        ));
-        $liabilities = array_values(array_filter(
-            $ordered,
-            fn (array $a): bool => AccountRepository::isLiability($a['account_type'])
-        ));
-
-        return [
-            'assets' => ['label' => 'Assets', 'accounts' => $assets, 'total' => self::sumBalances($assets)],
-            'liabilities' => ['label' => 'Liabilities', 'accounts' => $liabilities, 'total' => self::sumBalances($liabilities)],
-        ];
     }
 
     /**
