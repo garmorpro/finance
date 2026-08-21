@@ -58,8 +58,20 @@
    */
   .table-base .table-group-row td {
     @apply bg-stone-50 dark:bg-stone-800/50 text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400;
-    padding-top: 3.5rem;
-    padding-bottom: 2.5rem;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+    /*
+     * Left inset only — not right. .table-base td never sets any
+     * horizontal padding at all (data rows sit flush against the
+     * table's edges too, relying only on the .card wrapper's own
+     * p-4/p-6 for breathing room), so the label needed its own
+     * padding-left to stop sitting flush at the very edge. The total
+     * cell shares this rule (it's also a <td> under .table-group-row)
+     * but stays flush on the right, matching every data row's
+     * right-aligned Balance cell below it — adding padding-right here
+     * would shift it left of that alignment again.
+     */
+    padding-left: 1.25rem;
   }
   .table-group-row-total {
     @apply normal-case font-semibold text-stone-700 dark:text-stone-300;
