@@ -299,8 +299,11 @@
    * A neutral (non-semantic) variant of .stat-hero for pages like an
    * account's own detail page, where the hero isn't a "good/bad" figure
    * the way Budgets' left-to-budget or a cash-flow number is — just a
-   * calm card that carries the account's own color via its icon badge
-   * instead of tinting the whole background.
+   * calm card, background left plain rather than tinted. The account's
+   * own color still carries through, just via its icon badge and a
+   * border-top accent (set inline per-account in resources/views/
+   * accounts/edit.php, since it's dynamic per account and can't be a
+   * static Tailwind class) rather than tinting the whole background.
    */
   .stat-hero-neutral {
     @apply border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900;

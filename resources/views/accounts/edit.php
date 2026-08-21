@@ -39,7 +39,7 @@ $accountColor = $account['color'] ?: '#a8a29e';
         <?php endif; ?>
 
         <!-- Hero -->
-        <div class="stat-hero stat-hero-neutral flex items-start justify-between flex-wrap gap-6">
+        <div class="stat-hero stat-hero-neutral flex items-start justify-between flex-wrap gap-6" style="border-top-width: 4px; border-top-color: <?= View::e($accountColor) ?>;">
             <div class="flex items-start gap-4 min-w-0">
                 <span class="metric-icon" style="background: <?= View::e($accountColor) ?>1a; color: <?= View::e($accountColor) ?>;"><?= AccountTypeIcons::svg($account['account_type']) ?></span>
                 <div class="min-w-0">
