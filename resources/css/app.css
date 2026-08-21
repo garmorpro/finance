@@ -498,13 +498,16 @@
   }
 
   /*
-   * Overview dashboard hero — a fixed "control tower" band, deliberately
-   * dark in both light and dark mode (hardcoded colors, not `dark:`-
-   * conditional like the rest of the app) rather than themed like a
-   * plain .card. Net Worth leads with its own trend chart; Runway,
-   * Savings Rate, and Cash Flow ride along as smaller companion stats.
-   * None of the four is draggable or hideable — the Overview page has
-   * no customization left at all; see hero_stats.php.
+   * A fixed "control tower" hero band, deliberately dark in both light
+   * and dark mode (hardcoded colors, not `dark:`-conditional like the
+   * rest of the app) rather than themed like a plain .card. Introduced
+   * for the Overview dashboard — Net Worth leads with its own trend
+   * chart, Runway/Savings Rate/Cash Flow ride along as smaller
+   * companion stats, none of it draggable or hideable — and reused
+   * as-is by the Transactions page's Net/Income/Expenses header.
+   * "dash-" prefix is a holdover from the dashboard-only origin, not a
+   * scope restriction; see dashboard/widgets/hero_stats.php and
+   * transactions/index.php for the two current uses.
    */
   .dash-hero {
     @apply relative overflow-hidden rounded-2xl p-6 sm:p-8;
@@ -621,6 +624,15 @@
   }
   .dash-hero-stat-icon svg {
     @apply w-[15px] h-[15px];
+  }
+  /* Income/expense variants — used by the Transactions page's hero,
+     where the two companion stats have an inherent sign unlike the
+     dashboard's Runway/Savings Rate/Cash Flow trio. */
+  .dash-hero-stat-icon.income {
+    color: #6ee7b7;
+  }
+  .dash-hero-stat-icon.expense {
+    color: #f0a488;
   }
 
   .dash-hero-stat-label {

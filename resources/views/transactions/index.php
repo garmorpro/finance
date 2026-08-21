@@ -47,6 +47,17 @@ $netPositive = bccomp($sums['net'], '0.00', 2) >= 0;
 $arrowUpIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
 $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
 
+// Per-row payee icon on the table below — same three icons and the
+// same "category's own color, gray for a transfer" convention as the
+// dashboard's Recent Transactions widget (see dashboard/widgets/
+// recent_transactions.php), so a transaction reads the same way in
+// both places.
+$rowIcons = [
+    'transfer' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>',
+    'income' => $arrowUpIcon,
+    'expense' => $arrowDownIcon,
+];
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -62,19 +73,6 @@ $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div class="flex items-center justify-between flex-wrap gap-3">
-                    <div>
-                        <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Transactions</h1>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-1"><?= $total ?> total</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <a href="/transactions/export<?= '?' . http_build_query($filters) ?>" class="btn-secondary">Export</a>
-                        <a href="/transactions/import" class="btn-secondary">Import</a>
-                        <a href="/transactions/transfer" class="btn-secondary">Transfer</a>
-                        <a href="/transactions/create" class="btn-primary">Add transaction</a>
-                    </div>
-                </div>
-
                 <?php if (!empty($error)): ?>
                     <div class="alert-error"><?= View::e($error) ?></div>
                 <?php endif; ?>
@@ -82,37 +80,43 @@ $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
                     <div class="alert-success"><?= View::e($notice) ?></div>
                 <?php endif; ?>
 
-                <div class="stat-hero <?= $netPositive ? 'stat-hero-positive' : 'stat-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
-                    <span class="stat-hero-icon <?= $netPositive ? 'text-emerald-600' : 'text-red-600' ?>">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    </span>
-                    <div style="position: relative;">
-                        <div class="text-xs font-bold uppercase tracking-wide <?= $netPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' ?> mb-2">Net &middot; Filtered results</div>
-                        <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($sums['net']) ?></div>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Income minus expenses across the filters below, not just the current page. Transfers aren't counted as income or spending.</p>
+                <div class="dash-hero">
+                    <div class="dash-hero-top">
+                        <div>
+                            <h1>Transactions</h1>
+                            <p class="sub"><?= $total ?> total</p>
+                        </div>
+                        <div class="dash-hero-actions">
+                            <a href="/transactions/export<?= '?' . http_build_query($filters) ?>" class="btn-ghost-dark">Export</a>
+                            <a href="/transactions/import" class="btn-ghost-dark">Import</a>
+                            <a href="/transactions/transfer" class="btn-ghost-dark">Transfer</a>
+                            <a href="/transactions/create" class="btn-primary">Add transaction</a>
+                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="metric-icon" style="background: rgba(52, 211, 153, .14); color: #059669;"><?= $arrowUpIcon ?></span>
-                            <div>
-                                <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Income</div>
-                                <div class="text-xs text-stone-500 dark:text-stone-400"><?= $sums['incomeCount'] ?> transaction<?= $sums['incomeCount'] === 1 ? '' : 's' ?></div>
+                    <div class="dash-hero-body">
+                        <div class="dash-hero-nw">
+                            <p class="dash-hero-eyebrow">Net &middot; Filtered Results</p>
+                            <div class="dash-hero-nw-value tabular-nums" style="<?= $netPositive ? '' : 'color:#fca5a5;' ?>"><?= Money::format($sums['net']) ?></div>
+                            <p class="dash-hero-nw-caption" style="margin-top:0.85rem; max-width:40ch;">Income minus expenses across the filters below, not just the current page. Transfers aren't counted as income or spending.</p>
+                        </div>
+
+                        <div class="dash-hero-stats">
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon income"><?= $arrowUpIcon ?></span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Income &middot; <?= $sums['incomeCount'] ?> transaction<?= $sums['incomeCount'] === 1 ? '' : 's' ?></span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= Money::format($sums['income']) ?></span>
+                                </span>
+                            </div>
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon expense"><?= $arrowDownIcon ?></span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Expenses &middot; <?= $sums['expenseCount'] ?> transaction<?= $sums['expenseCount'] === 1 ? '' : 's' ?></span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= Money::format($sums['expenses']) ?></span>
+                                </span>
                             </div>
                         </div>
-                        <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($sums['income']) ?></div>
-                    </div>
-                    <div class="card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="metric-icon" style="background: rgba(226, 105, 75, .14); color: #c94f32;"><?= $arrowDownIcon ?></span>
-                            <div>
-                                <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Expenses</div>
-                                <div class="text-xs text-stone-500 dark:text-stone-400"><?= $sums['expenseCount'] ?> transaction<?= $sums['expenseCount'] === 1 ? '' : 's' ?></div>
-                            </div>
-                        </div>
-                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($sums['expenses']) ?></div>
                     </div>
                 </div>
 
@@ -207,22 +211,33 @@ $arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
                                 </thead>
                                 <tbody>
                                     <?php foreach ($transactions as $transaction): ?>
-                                        <?php $categoryColor = $transaction['category_color'] ?? null; ?>
+                                        <?php
+                                        $categoryColor = $transaction['category_color'] ?? null;
+                                        $isTransfer = $transaction['transaction_type'] === 'transfer';
+                                        $isIncome = $transaction['transaction_type'] === 'income';
+                                        $rowIconColor = $categoryColor ?? ($isTransfer ? '#78716c' : '#a8a29e');
+                                        $rowIcon = $isTransfer ? $rowIcons['transfer'] : ($isIncome ? $rowIcons['income'] : $rowIcons['expense']);
+                                        ?>
                                         <tr class="row-clickable cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors" data-href="/transactions/<?= (int) $transaction['id'] ?>/edit">
                                             <td>
                                                 <input type="checkbox" name="transaction_ids[]" value="<?= (int) $transaction['id'] ?>" class="row-checkbox rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
                                             </td>
                                             <td class="text-stone-500 dark:text-stone-400 whitespace-nowrap"><?= View::e($transaction['transaction_date']) ?></td>
                                             <td class="font-medium text-stone-900 dark:text-white">
-                                                <?= View::e($transaction['payee']) ?>
-                                                <?php foreach ($tagsByTransaction[(int) $transaction['id']] ?? [] as $tag): ?>
-                                                    <span class="badge ml-2"><?= View::e($tag['name']) ?></span>
-                                                <?php endforeach; ?>
-                                                <?php if (($attachmentsByTransaction[(int) $transaction['id']] ?? []) !== []): ?>
-                                                    <span class="inline-block align-middle ml-2 text-stone-500 dark:text-stone-400" title="Has attachments">
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Has attachments"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                                <div class="flex items-center gap-3">
+                                                    <span class="txn-icon" style="background:<?= View::e($rowIconColor) ?>;"><?= $rowIcon ?></span>
+                                                    <span>
+                                                        <?= View::e($transaction['payee']) ?>
+                                                        <?php foreach ($tagsByTransaction[(int) $transaction['id']] ?? [] as $tag): ?>
+                                                            <span class="badge ml-2"><?= View::e($tag['name']) ?></span>
+                                                        <?php endforeach; ?>
+                                                        <?php if (($attachmentsByTransaction[(int) $transaction['id']] ?? []) !== []): ?>
+                                                            <span class="inline-block align-middle ml-2 text-stone-500 dark:text-stone-400" title="Has attachments">
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Has attachments"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                                            </span>
+                                                        <?php endif; ?>
                                                     </span>
-                                                <?php endif; ?>
+                                                </div>
                                             </td>
                                             <td class="text-stone-500 dark:text-stone-400">
                                                 <?php if ($transaction['transaction_type'] === 'transfer'): ?>
