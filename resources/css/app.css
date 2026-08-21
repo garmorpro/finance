@@ -47,8 +47,16 @@
    * table lines up in one place instead of the subtotal sitting off
    * on its own near the left edge. Generic enough to reuse anywhere
    * else a grouped table is useful.
+   *
+   * Selector is `.table-base .table-group-row td`, not just
+   * `.table-group-row td` — .table-base td (py-3, i.e. padding-top/
+   * -bottom: .75rem) sits at the exact same specificity, (0,1,1), and
+   * is declared later in this file, so on an equal-specificity tie the
+   * cascade handed it the win regardless of what padding was set here.
+   * The two-class form is (0,2,1), which reliably beats it no matter
+   * what order the rules end up in.
    */
-  .table-group-row td {
+  .table-base .table-group-row td {
     @apply bg-stone-50 dark:bg-stone-800/50 text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400;
     padding-top: 1.85rem;
     padding-bottom: 1.35rem;
