@@ -51,7 +51,7 @@ $old = $old ?? [];
             </div>
             <div>
                 <label for="household_name" class="field-label">Household name</label>
-                <input type="text" id="household_name" name="household_name" required class="field-input" placeholder="The Morgan Household" value="<?= View::e($old['household_name'] ?? '') ?>">
+                <input type="text" id="household_name" name="household_name" required class="field-input" placeholder="e.g. Our Household" value="<?= View::e($old['household_name'] ?? '') ?>">
             </div>
             <div>
                 <label for="email" class="field-label">Email</label>
