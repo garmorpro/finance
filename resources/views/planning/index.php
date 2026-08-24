@@ -32,44 +32,41 @@ $targetIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div>
-                    <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Planning</h1>
-                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Recurring bills, subscriptions, and savings goals, together.</p>
-                </div>
-
-                <div class="stat-hero <?= $netPositive ? 'stat-hero-positive' : 'stat-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
-                    <span class="stat-hero-icon <?= $netPositive ? 'text-emerald-600' : 'text-red-600' ?>">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    </span>
-                    <div style="position: relative;">
-                        <div class="text-xs font-bold uppercase tracking-wide <?= $netPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' ?> mb-2">Net Monthly Recurring</div>
-                        <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($netMonthlyRecurring) ?></div>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Recurring income minus recurring bills and subscriptions, per month.</p>
+                <div class="dash-hero">
+                    <div class="dash-hero-top">
+                        <div>
+                            <h1>Planning</h1>
+                            <p class="sub">Recurring bills, subscriptions, and savings goals, together.</p>
+                        </div>
+                        <div class="dash-hero-actions">
+                            <a href="/recurring/create" class="btn-ghost-dark">Add recurring</a>
+                            <a href="/goals/create" class="btn-primary">Add goal</a>
+                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="metric-icon" style="background: rgba(226, 105, 75, .14); color: #c94f32;"><?= $arrowDownIcon ?></span>
-                            <div>
-                                <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Bills &amp; Subscriptions</div>
-                                <div class="text-xs <?= $recurringSummary['overdue'] > 0 ? 'text-red-600 dark:text-red-400 font-medium' : 'text-stone-500 dark:text-stone-400' ?>">
-                                    <?= $recurringSummary['overdue'] > 0 ? $recurringSummary['overdue'] . ' overdue' : 'None overdue' ?>
-                                </div>
+                    <div class="dash-hero-body">
+                        <div class="dash-hero-nw">
+                            <p class="dash-hero-eyebrow">Net Monthly Recurring</p>
+                            <div class="dash-hero-nw-value tabular-nums" style="<?= $netPositive ? '' : 'color:#fca5a5;' ?>"><?= Money::format($netMonthlyRecurring) ?></div>
+                            <p class="dash-hero-nw-caption" style="margin-top:0.85rem; max-width:42ch;">Recurring income minus recurring bills and subscriptions, per month.</p>
+                        </div>
+
+                        <div class="dash-hero-stats">
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon expense"><?= $arrowDownIcon ?></span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Bills &amp; Subscriptions <?= $recurringSummary['overdue'] > 0 ? '&middot; ' . $recurringSummary['overdue'] . ' overdue' : '' ?></span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= Money::format($recurringSummary['monthlyExpense']) ?></span>
+                                </span>
+                            </div>
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon"><?= $targetIcon ?></span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Goals</span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= $activeGoalCount ?> active</span>
+                                </span>
                             </div>
                         </div>
-                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($recurringSummary['monthlyExpense']) ?> <span class="text-sm font-normal text-stone-500 dark:text-stone-400">/ month</span></div>
-                    </div>
-                    <div class="card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="metric-icon" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $targetIcon ?></span>
-                            <div>
-                                <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Goals</div>
-                                <div class="text-xs text-stone-500 dark:text-stone-400">Actively saving toward</div>
-                            </div>
-                        </div>
-                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= $activeGoalCount ?> active</div>
                     </div>
                 </div>
 

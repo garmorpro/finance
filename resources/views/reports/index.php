@@ -277,32 +277,34 @@ $listIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
                     </div>
                 </form>
 
-                <div class="stat-hero <?= $netPositive ? 'stat-hero-positive' : 'stat-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
-                    <span class="stat-hero-icon <?= $netPositive ? 'text-emerald-600' : 'text-red-600' ?>">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    </span>
-                    <div style="position: relative;">
-                        <div class="text-xs font-bold uppercase tracking-wide <?= $netPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' ?> mb-2">Net &middot; Filtered results</div>
-                        <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($totals['net']) ?></div>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Income minus expenses across the filters above. Transfers aren't counted as income or spending.</p>
+                <div class="dash-hero no-print">
+                    <div class="dash-hero-body">
+                        <div class="dash-hero-nw">
+                            <p class="dash-hero-eyebrow">Net &middot; Filtered Results</p>
+                            <div class="dash-hero-nw-value tabular-nums" style="<?= $netPositive ? '' : 'color:#fca5a5;' ?>"><?= Money::format($totals['net']) ?></div>
+                            <p class="dash-hero-nw-caption" style="margin-top:0.85rem; max-width:40ch;">Income minus expenses across the filters above. Transfers aren't counted as income or spending.</p>
+                        </div>
+
+                        <div class="dash-hero-stats">
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon income"><?= $arrowUpIcon ?></span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Income</span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= Money::format($totals['income']) ?></span>
+                                </span>
+                            </div>
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon expense"><?= $arrowDownIcon ?></span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Expenses</span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= Money::format($totals['expense']) ?></span>
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div class="card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="metric-icon" style="background: rgba(52, 211, 153, .14); color: #059669;"><?= $arrowUpIcon ?></span>
-                            <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Income</div>
-                        </div>
-                        <div class="text-xl font-semibold text-emerald-700 dark:text-emerald-400"><?= Money::format($totals['income']) ?></div>
-                    </div>
-                    <div class="card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="metric-icon" style="background: rgba(226, 105, 75, .14); color: #c94f32;"><?= $arrowDownIcon ?></span>
-                            <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Expenses</div>
-                        </div>
-                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($totals['expense']) ?></div>
-                    </div>
+                <div class="grid grid-cols-2 gap-4">
                     <div class="card">
                         <div class="flex items-center gap-3 mb-3">
                             <span class="metric-icon" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $transferIcon ?></span>

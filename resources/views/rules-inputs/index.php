@@ -14,7 +14,6 @@
 
 use App\Support\View;
 
-$zapIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
 $gridIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>';
 $tagIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
 
@@ -33,37 +32,41 @@ $tagIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div>
-                    <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Rules &amp; Inputs</h1>
-                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Automation, categories, and tags — the building blocks that shape how your transactions get organized.</p>
-                </div>
+                <div class="dash-hero">
+                    <div class="dash-hero-top">
+                        <div>
+                            <h1>Rules &amp; Inputs</h1>
+                            <p class="sub">Automation, categories, and tags — the building blocks that shape how your transactions get organized.</p>
+                        </div>
+                        <div class="dash-hero-actions">
+                            <a href="/settings/rules/create" class="btn-ghost-dark">Add rule</a>
+                            <a href="/settings/categories" class="btn-primary">Manage categories</a>
+                        </div>
+                    </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="metric-icon" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $zapIcon ?></span>
-                            <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Rules</div>
+                    <div class="dash-hero-body">
+                        <div class="dash-hero-nw">
+                            <p class="dash-hero-eyebrow">Rules</p>
+                            <div class="dash-hero-nw-value tabular-nums"><?= $activeRuleCount ?> active</div>
+                            <p class="dash-hero-nw-caption" style="margin-top:0.85rem; max-width:42ch;"><?= $pausedRuleCount > 0 ? $pausedRuleCount . ' paused.' : 'None paused.' ?> Automatically categorize, rename, tag, or hide transactions as they come in.</p>
                         </div>
-                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= $activeRuleCount ?> active</div>
-                        <?php if ($pausedRuleCount > 0): ?>
-                            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1"><?= $pausedRuleCount ?> paused</p>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="metric-icon" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $gridIcon ?></span>
-                            <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Categories</div>
+
+                        <div class="dash-hero-stats">
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon"><?= $gridIcon ?></span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Categories &middot; <?= $incomeCategoryCount ?> income, <?= $expenseCategoryCount ?> expense</span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= $categoryCount ?> total</span>
+                                </span>
+                            </div>
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon"><?= $tagIcon ?></span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Tags &middot; Freeform labels</span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= $tagCount ?> total</span>
+                                </span>
+                            </div>
                         </div>
-                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= $categoryCount ?> total</div>
-                        <p class="text-xs text-stone-500 dark:text-stone-400 mt-1"><?= $incomeCategoryCount ?> income &middot; <?= $expenseCategoryCount ?> expense</p>
-                    </div>
-                    <div class="card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="metric-icon" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $tagIcon ?></span>
-                            <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Tags</div>
-                        </div>
-                        <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= $tagCount ?> total</div>
-                        <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">Freeform labels</p>
                     </div>
                 </div>
 

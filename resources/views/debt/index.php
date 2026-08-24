@@ -43,48 +43,47 @@ $typeLabel = [
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div>
-                    <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Debt</h1>
-                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Every liability account in one place. Edit balances and rates from Accounts.</p>
-                </div>
-
                 <?php if ($rows === []): ?>
+                    <div>
+                        <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Debt</h1>
+                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Every liability account in one place. Edit balances and rates from Accounts.</p>
+                    </div>
                     <div class="card text-center py-12">
                         <p class="text-stone-500 dark:text-stone-400 mb-2">No debt accounts yet.</p>
                         <a href="/accounts/create" class="text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Add a credit card or loan &rarr;</a>
                     </div>
                 <?php else: ?>
-                    <div class="stat-hero stat-hero-negative flex items-center justify-between flex-wrap gap-6">
-                        <span class="stat-hero-icon text-red-600">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        </span>
-                        <div style="position: relative;">
-                            <div class="text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-400 mb-2">Total Debt</div>
-                            <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($totalBalance) ?></div>
-                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Combined balance across <?= count($rows) ?> debt account<?= count($rows) === 1 ? '' : 's' ?>.</p>
+                    <div class="dash-hero">
+                        <div class="dash-hero-top">
+                            <div>
+                                <h1>Debt</h1>
+                                <p class="sub">Every liability account in one place. Edit balances and rates from Accounts.</p>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="card">
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="metric-icon" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $calendarIcon ?></span>
-                                <div>
-                                    <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Total Minimum Payments</div>
-                                    <div class="text-xs text-stone-500 dark:text-stone-400">Due across all debts</div>
+                        <div class="dash-hero-body">
+                            <div class="dash-hero-nw">
+                                <p class="dash-hero-eyebrow">Total Debt</p>
+                                <div class="dash-hero-nw-value tabular-nums" style="color:#fca5a5;"><?= Money::format($totalBalance) ?></div>
+                                <p class="dash-hero-nw-caption" style="margin-top:0.85rem; max-width:42ch;">Combined balance across <?= count($rows) ?> debt account<?= count($rows) === 1 ? '' : 's' ?>.</p>
+                            </div>
+
+                            <div class="dash-hero-stats">
+                                <div class="dash-hero-stat">
+                                    <span class="dash-hero-stat-icon expense"><?= $calendarIcon ?></span>
+                                    <span>
+                                        <span class="dash-hero-stat-label">Min. Payments &middot; Due across all debts</span>
+                                        <span class="dash-hero-stat-value tabular-nums"><?= Money::format($totalMinimumPayment) ?></span>
+                                    </span>
+                                </div>
+                                <div class="dash-hero-stat">
+                                    <span class="dash-hero-stat-icon"><?= $percentIcon ?></span>
+                                    <span>
+                                        <span class="dash-hero-stat-label">Weighted Avg. Rate</span>
+                                        <span class="dash-hero-stat-value tabular-nums"><?= $weightedAverageRate !== null ? $weightedAverageRate . '%' : '—' ?></span>
+                                    </span>
                                 </div>
                             </div>
-                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= Money::format($totalMinimumPayment) ?> <span class="text-sm font-normal text-stone-500 dark:text-stone-400">/ month</span></div>
-                        </div>
-                        <div class="card">
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="metric-icon" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $percentIcon ?></span>
-                                <div>
-                                    <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white">Weighted Avg. Rate</div>
-                                    <div class="text-xs text-stone-500 dark:text-stone-400">Weighted by balance</div>
-                                </div>
-                            </div>
-                            <div class="text-xl font-semibold text-stone-900 dark:text-white"><?= $weightedAverageRate !== null ? $weightedAverageRate . '%' : '—' ?></div>
                         </div>
                     </div>
 
