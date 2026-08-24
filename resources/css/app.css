@@ -494,18 +494,6 @@
     @apply border-b-0;
   }
 
-  /* Sub-headings inside the catch-all "Anything else?" step, where
-     several groups' skipped categories share one step. */
-  .review-group-heading {
-    @apply flex items-center gap-2 px-5 pt-4 pb-2 text-[11px] font-bold uppercase tracking-wide text-stone-400 dark:text-stone-500;
-  }
-  .review-group-heading svg {
-    @apply w-3.5 h-3.5;
-  }
-  .review-group-heading:first-child {
-    @apply pt-5;
-  }
-
   .review-cat-input-wrap {
     @apply flex items-center gap-1.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-1.5;
   }

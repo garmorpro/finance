@@ -4,7 +4,6 @@
 /** @var string $monthLabel */
 /** @var list<array{group: array|null, rows: list<array>}> $incomeSteps */
 /** @var list<array{group: array|null, rows: list<array>}> $expenseSteps */
-/** @var list<array{type: string, groupName: string, rows: list<array>}> $catchAllGroups */
 /** @var string $plannedGoalContributions */
 /** @var bool $hasPreviousBudget */
 /** @var string $csrfToken */
@@ -17,11 +16,11 @@ use App\Support\View;
 
 $monthQuery = substr($periodMonth, 0, 7);
 
-// One step per category group that has anything worth confirming, income
-// groups first then expense groups, plus a final synthetic "Anything
-// else?" step bundling every category that had no plan and no recent
-// spending (see BudgetController::showReview()), and a synthetic Summary
-// step after that.
+// One step per category group, income groups first then expense groups,
+// plus a synthetic Summary step after that. Every category shows up
+// somewhere — nothing gets skipped or bundled away, even ones with no
+// plan and no recent spending (see $renderReviewRow below for how those
+// stay unbudgeted instead of being saved as $0).
 $steps = [];
 foreach ($incomeSteps as $section) {
     $steps[] = ['type' => 'income', 'section' => $section];
@@ -29,14 +28,8 @@ foreach ($incomeSteps as $section) {
 foreach ($expenseSteps as $section) {
     $steps[] = ['type' => 'expense', 'section' => $section];
 }
-if ($catchAllGroups !== []) {
-    $steps[] = ['type' => 'catchall', 'groups' => $catchAllGroups];
-}
 
 $stepLabel = function (array $step): string {
-    if ($step['type'] === 'catchall') {
-        return 'Anything else?';
-    }
     $groupName = $step['section']['group']['name'] ?? null;
     if ($groupName !== null) {
         return $groupName;
@@ -45,9 +38,6 @@ $stepLabel = function (array $step): string {
 };
 
 $stepIcon = function (array $step): string {
-    if ($step['type'] === 'catchall') {
-        return CategoryGroupIcons::forName(null);
-    }
     $groupName = $step['section']['group']['name'] ?? ($step['type'] === 'income' ? 'Income' : null);
     return CategoryGroupIcons::forName($groupName);
 };
@@ -159,21 +149,13 @@ $renderReviewRow = function (array $row, string $type) use ($csrfToken, $monthQu
                         <span class="metric-icon flex-shrink-0" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $stepIcon($step) ?></span>
                         <div class="min-w-0">
                             <p class="text-[11px] font-bold uppercase tracking-wide text-terracotta-600 dark:text-terracotta-400">
-                                <?php if ($step['type'] === 'catchall'): ?>
-                                    Final step &middot; <?= $i + 1 ?> of <?= count($steps) ?>
-                                <?php else: ?>
-                                    <?= $step['type'] === 'income' ? 'Income' : 'Expense group' ?> &middot; <?= $i + 1 ?> of <?= count($steps) ?>
-                                <?php endif; ?>
+                                <?= $step['type'] === 'income' ? 'Income' : 'Expense group' ?> &middot; <?= $i + 1 ?> of <?= count($steps) ?>
                             </p>
                             <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white truncate"><?= View::e($stepLabel($step)) ?></h1>
                         </div>
                     </div>
                     <p class="text-sm text-stone-500 dark:text-stone-400 mb-5 mt-2">
-                        <?php if ($step['type'] === 'catchall'): ?>
-                            These categories had no plan and no recent spending, so they were skipped earlier — everything below is optional. Leave anything blank to keep it unbudgeted.
-                        <?php else: ?>
-                            Every field is pre-filled with a 3-month average so you're confirming numbers, not starting from scratch — adjust anything that's changed.
-                        <?php endif; ?>
+                        Every field is pre-filled with a 3-month average so you're confirming numbers, not starting from scratch — leave anything blank to keep it unbudgeted, or adjust what's changed.
                     </p>
 
                     <?php if ($i === 0 && $hasPreviousBudget): ?>
@@ -186,21 +168,9 @@ $renderReviewRow = function (array $row, string $type) use ($csrfToken, $monthQu
                     <?php endif; ?>
 
                     <div class="card p-0 overflow-hidden">
-                        <?php if ($step['type'] === 'catchall'): ?>
-                            <?php foreach ($step['groups'] as $group): ?>
-                                <div class="review-group-heading">
-                                    <?= CategoryGroupIcons::forName($group['groupName']) ?>
-                                    <?= View::e($group['groupName']) ?>
-                                </div>
-                                <?php foreach ($group['rows'] as $row): ?>
-                                    <?php $renderReviewRow($row, $group['type']); ?>
-                                <?php endforeach; ?>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <?php foreach ($step['section']['rows'] as $row): ?>
-                                <?php $renderReviewRow($row, $step['type']); ?>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                        <?php foreach ($step['section']['rows'] as $row): ?>
+                            <?php $renderReviewRow($row, $step['type']); ?>
+                        <?php endforeach; ?>
                     </div>
                 </section>
             <?php endforeach; ?>
