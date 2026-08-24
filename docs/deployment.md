@@ -71,7 +71,43 @@ and "Always Use HTTPS" is on — this is where HTTP→HTTPS enforcement
 happens for this deployment, not in application code (see
 `docs/security.md`).
 
-### 6. Verify
+### 6. Lock down phpMyAdmin
+
+CLAUDE.md's own requirement: **never expose phpMyAdmin publicly without
+strong access controls.** If it's reachable at a path under the app's
+own domain (e.g. `mycfoplus.com/phpmyadmin` — the default Debian/Ubuntu
+`phpmyadmin` package install pattern), that path serves every
+household's raw financial data in plaintext to anyone who reaches it
+and has a MySQL login — application-level household scoping
+(`docs/security.md`'s "Authorization" section) only protects access
+*through the app's own UI*, not direct database access.
+
+Recommended: **Cloudflare Access** (Zero Trust → Access → Applications →
+Add an application → Self-hosted), scoped to that exact path, with a
+policy requiring authentication (Email OTP to an explicit allowlist of
+addresses is the simplest) before Cloudflare forwards the request to
+the origin at all — an unauthenticated request never reaches Apache or
+phpMyAdmin. No application or Apache config needed for this layer.
+
+Optional second layer, defense in depth: HTTP Basic Auth at the Apache
+level too, in case Access is ever misconfigured or disabled by mistake.
+Find wherever phpMyAdmin's `Alias`/`<Directory>` block lives (commonly
+`/etc/apache2/conf-enabled/phpmyadmin.conf` on a package install), add:
+
+```apache
+<Directory /usr/share/phpmyadmin>
+    AuthType Basic
+    AuthName "Restricted"
+    AuthUserFile /etc/apache2/.htpasswd-phpmyadmin
+    Require valid-user
+</Directory>
+```
+
+then `sudo htpasswd -c /etc/apache2/.htpasswd-phpmyadmin <username>` to
+create the password file (drop `-c` for a second user afterward), and
+`sudo apachectl configtest && sudo systemctl reload apache2`.
+
+### 7. Verify
 
 ```
 curl https://your-domain/health

@@ -446,3 +446,25 @@ the drift that compounds across many transactions).
   during the accessibility pass, not fixed in it — a real fix needs
   keyboard-driven "move up"/"move down" controls per tile, not just an
   ARIA annotation on the existing drag handle.
+- **Financial data is not encrypted at rest in the database.** Every
+  isolation guarantee described above (household-scoped repositories,
+  `HouseholdIsolationTest`) protects access *through the app's own web
+  UI*. It does nothing for someone who reaches the database directly —
+  phpMyAdmin, a `mysql` shell, a raw backup file — where every
+  household's account names, balances, and transactions are plain
+  `SELECT`-able text regardless of which household they belong to. The
+  actual boundary for that access path today is *who can reach the
+  database at all* (see `docs/deployment.md`'s "Lock down phpMyAdmin"
+  step, and least-privilege DB credentials above) — not anything
+  cryptographic. Real protection against a compromised or overly-broad
+  database credential would mean encrypting sensitive columns at the
+  application layer (encrypt before `INSERT`, decrypt after `SELECT`),
+  which is a large, deliberate follow-up, not a small patch: it breaks
+  `WHERE`/`ORDER BY`/`LIKE` filtering directly in SQL on any encrypted
+  column (search, sort, and reporting queries would need to fetch and
+  filter in PHP instead, or maintain separate searchable-hash columns),
+  touches nearly every repository that reads or writes financial data,
+  needs a real key-management story (where the encryption key lives,
+  how it rotates, what happens to already-encrypted data when it does),
+  and affects CSV import/export and the Master HQ API. Worth doing
+  deliberately, with its own design pass, not bolted on.
