@@ -130,6 +130,60 @@ final class HouseholdController
         header('Location: /settings/household');
     }
 
+    /**
+     * The household-wide policy behind the budget planning reminder
+     * email (see bin/send-budget-reminders.php) — whether it's on, how
+     * many days before the month starts it goes out, and how the magic
+     * link it carries behaves. This is household-wide config, not a
+     * per-user preference like Settings > Notifications, so it lives
+     * here alongside membership management rather than there.
+     */
+    public function updateBudgetReminderSettings(Request $request): void
+    {
+        AuthMiddleware::requireRole(self::MANAGE_ROLES);
+
+        $householdId = AuthMiddleware::householdId();
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
+            header('Location: /settings/household');
+            return;
+        }
+
+        if ($householdId === null) {
+            $_SESSION['_flash_error'] = 'No household found for this account.';
+            header('Location: /settings/household');
+            return;
+        }
+
+        $enabled = $request->post('enabled') === '1';
+        $daysBefore = (int) $request->post('days_before');
+        $linkSingleUse = $request->post('link_single_use') !== '0';
+        $linkExpiryDays = (int) $request->post('link_expiry_days');
+
+        if ($daysBefore < 1 || $daysBefore > 28) {
+            $daysBefore = 5;
+        }
+        if ($linkExpiryDays < 1 || $linkExpiryDays > 30) {
+            $linkExpiryDays = 7;
+        }
+
+        (new HouseholdRepository())->updateBudgetReminderSettings($householdId, $enabled, $daysBefore, $linkSingleUse, $linkExpiryDays);
+
+        (new AuditLogRepository())->log(
+            AuthMiddleware::userId(),
+            $householdId,
+            'household.budget_reminder_settings_updated',
+            'household',
+            $householdId,
+            $request->ip(),
+            ['enabled' => $enabled, 'days_before' => $daysBefore, 'link_single_use' => $linkSingleUse, 'link_expiry_days' => $linkExpiryDays]
+        );
+
+        $_SESSION['_flash_notice'] = 'Budget planning reminder settings updated.';
+        header('Location: /settings/household');
+    }
+
     public function showAcceptForm(): void
     {
         $token = $_GET['token'] ?? '';

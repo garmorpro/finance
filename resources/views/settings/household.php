@@ -79,6 +79,56 @@ $initialsFor = function (string $name): string {
                         </div>
 
                         <?php if ($canManage): ?>
+                            <div class="card">
+                                <h3 class="font-medium text-stone-900 dark:text-white mb-1">Budget planning reminders</h3>
+                                <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">
+                                    Email every Owner and Administrator a link to review next month's budget before it starts.
+                                    Each link is scoped to that one review and that one recipient — it's the only outbound email MyCFO+ sends.
+                                </p>
+                                <form method="POST" action="/settings/household/budget-reminder" class="space-y-4">
+                                    <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+
+                                    <label class="flex items-start gap-3">
+                                        <input type="checkbox" name="enabled" value="1" <?= !empty($household['budget_reminder_enabled']) ? 'checked' : '' ?> class="mt-1 rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
+                                        <span>
+                                            <span class="block text-sm font-medium text-stone-900 dark:text-white">Email a review link before each month starts</span>
+                                            <span class="block text-sm text-stone-500 dark:text-stone-400">Off by default. Turning this off stops future emails; links already sent keep working until they expire.</span>
+                                        </span>
+                                    </label>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div>
+                                            <label for="days_before" class="field-label">Send reminder</label>
+                                            <?php $daysBefore = (int) ($household['budget_reminder_days_before'] ?? 5); ?>
+                                            <select id="days_before" name="days_before" class="field-input">
+                                                <?php foreach ([3, 5, 7, 10] as $option): ?>
+                                                    <option value="<?= $option ?>" <?= $daysBefore === $option ? 'selected' : '' ?>><?= $option ?> days before month starts</option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="link_single_use" class="field-label">Link can be used</label>
+                                            <?php $singleUse = !isset($household['budget_reminder_link_single_use']) || (bool) $household['budget_reminder_link_single_use']; ?>
+                                            <select id="link_single_use" name="link_single_use" class="field-input">
+                                                <option value="1" <?= $singleUse ? 'selected' : '' ?>>Once</option>
+                                                <option value="0" <?= !$singleUse ? 'selected' : '' ?>>Multiple times, until it expires</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="link_expiry_days" class="field-label">Link expires after</label>
+                                            <?php $expiryDays = (int) ($household['budget_reminder_link_expiry_days'] ?? 7); ?>
+                                            <select id="link_expiry_days" name="link_expiry_days" class="field-input">
+                                                <?php foreach ([3, 7, 14, 30] as $option): ?>
+                                                    <option value="<?= $option ?>" <?= $expiryDays === $option ? 'selected' : '' ?>><?= $option ?> days</option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn-primary">Save</button>
+                                </form>
+                            </div>
+
                             <?php if ($pendingInvitations !== []): ?>
                             <div class="card">
                                 <h3 class="font-medium text-stone-900 dark:text-white mb-4">Pending invitations</h3>

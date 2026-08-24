@@ -69,6 +69,47 @@ final class HouseholdRepository
         return $household === false ? null : $household;
     }
 
+    public function updateBudgetReminderSettings(
+        int $householdId,
+        bool $enabled,
+        int $daysBefore,
+        bool $linkSingleUse,
+        int $linkExpiryDays
+    ): void {
+        $stmt = Connection::get()->prepare(
+            'UPDATE households
+             SET budget_reminder_enabled = :enabled,
+                 budget_reminder_days_before = :days_before,
+                 budget_reminder_link_single_use = :link_single_use,
+                 budget_reminder_link_expiry_days = :link_expiry_days,
+                 updated_at = :updated_at
+             WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'enabled' => $enabled ? 1 : 0,
+            'days_before' => $daysBefore,
+            'link_single_use' => $linkSingleUse ? 1 : 0,
+            'link_expiry_days' => $linkExpiryDays,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $householdId,
+        ]);
+    }
+
+    /**
+     * Every household with the budget planning reminder turned on — used
+     * by bin/send-budget-reminders.php, which still checks each one's own
+     * days_before window before actually issuing anything.
+     */
+    public function listWithBudgetReminderEnabled(): array
+    {
+        $stmt = Connection::get()->query(
+            'SELECT * FROM households WHERE budget_reminder_enabled = 1 AND deleted_at IS NULL'
+        );
+
+        return $stmt->fetchAll();
+    }
+
     public function listMembers(int $householdId): array
     {
         $stmt = Connection::get()->prepare(

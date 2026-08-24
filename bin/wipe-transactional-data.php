@@ -62,6 +62,7 @@ $wipe = [
     'audit_logs',
     'budget_category_defaults',
     'budget_items',
+    'budget_review_links',
     'budgets',
     'financial_goals',
     'goal_contributions',

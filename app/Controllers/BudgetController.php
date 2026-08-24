@@ -12,6 +12,7 @@ use App\Repositories\BudgetRepository;
 use App\Repositories\CategoryGroupRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\GoalRepository;
+use App\Repositories\HouseholdRepository;
 use App\Support\Csrf;
 use App\Support\View;
 use App\Validation\MoneyInput;
@@ -90,10 +91,9 @@ final class BudgetController
      */
     public function showReview(Request $request): void
     {
-        AuthMiddleware::requireRole(self::MANAGE_ROLES);
-
-        $householdId = (int) AuthMiddleware::householdId();
-        $periodMonth = $this->resolveMonth($request->query('month'));
+        $access = $this->resolveReviewAccess($request);
+        $householdId = $access['householdId'];
+        $periodMonth = $access['lockedMonth'] ?? $this->resolveMonth($request->query('month'));
 
         $budgetRepo = new BudgetRepository();
         ['incomeSections' => $incomeSections, 'expenseSections' => $expenseSections] = $this->loadSections($budgetRepo, $householdId, $periodMonth);
@@ -150,6 +150,7 @@ final class BudgetController
             'expenseSteps' => $expenseSteps,
             'plannedGoalContributions' => $plannedGoalContributions,
             'hasPreviousBudget' => $budgetRepo->findForMonth($householdId, date('Y-m-d', strtotime($periodMonth . ' -1 month'))) !== null,
+            'isLinkSession' => $access['lockedMonth'] !== null,
             'csrfToken' => Csrf::token(),
             'notice' => $_SESSION['_flash_notice'] ?? null,
             'error' => $_SESSION['_flash_error'] ?? null,
@@ -160,25 +161,40 @@ final class BudgetController
 
     public function saveItem(Request $request): void
     {
-        AuthMiddleware::requireRole(self::MANAGE_ROLES);
-
-        $householdId = (int) AuthMiddleware::householdId();
+        $access = $this->resolveReviewAccess($request);
+        $householdId = $access['householdId'];
         $periodMonth = $this->resolveMonth($request->post('period_month'));
         $categoryId = (int) $request->post('category_id');
         $rawAmount = trim($request->post('planned_amount'));
         $isAjax = $request->isAjax();
 
+        // A budget-review-link session is hard-locked to the one month it
+        // was issued for — this isn't a UI nicety the client is trusted
+        // to respect, since the form's own period_month field is
+        // client-supplied and could be edited to name any month.
+        if ($access['lockedMonth'] !== null && $periodMonth !== $access['lockedMonth']) {
+            if ($isAjax) {
+                Response::json(['success' => false, 'message' => 'This link only covers its own month.'], 403);
+            } else {
+                http_response_code(403);
+            }
+            return;
+        }
+
         // The row inputs autosave via fetch() and expect JSON back; a
         // plain form post (no JS, or JS disabled) still gets the
-        // traditional flash-message redirect.
-        $respond = function (bool $success, string $message) use ($isAjax, $periodMonth): void {
+        // traditional flash-message redirect — back to the review step
+        // itself for a link session, since it has no access to the main
+        // Budgets page.
+        $redirectTarget = $access['lockedMonth'] !== null ? '/budgets/review' : '/budgets?month=' . substr($periodMonth, 0, 7);
+        $respond = function (bool $success, string $message) use ($isAjax, $redirectTarget): void {
             if ($isAjax) {
                 Response::json(['success' => $success, 'message' => $message], $success ? 200 : 422);
                 return;
             }
 
             $_SESSION[$success ? '_flash_notice' : '_flash_error'] = $message;
-            header('Location: /budgets?month=' . substr($periodMonth, 0, 7));
+            header('Location: ' . $redirectTarget);
         };
 
         if (!Csrf::verify($request->post('csrf_token'))) {
@@ -224,7 +240,7 @@ final class BudgetController
         }
 
         (new AuditLogRepository())->log(
-            (int) AuthMiddleware::userId(),
+            $access['userId'],
             $householdId,
             'budget.item_set',
             'budget',
@@ -278,21 +294,26 @@ final class BudgetController
 
     public function copyPrevious(Request $request): void
     {
-        AuthMiddleware::requireRole(self::MANAGE_ROLES);
-
-        $householdId = (int) AuthMiddleware::householdId();
+        $access = $this->resolveReviewAccess($request);
+        $householdId = $access['householdId'];
         $periodMonth = $this->resolveMonth($request->post('period_month'));
         $monthQuery = substr($periodMonth, 0, 7);
 
         // The review flow offers the same "copy last month" action; rather
         // than accept an arbitrary redirect target (an open-redirect risk),
         // this is a plain boolean flag choosing between the only two valid
-        // destinations.
-        $returnPath = $request->post('from_review') === '1' ? '/budgets/review' : '/budgets';
+        // destinations. A link session never has access to /budgets, so
+        // it always lands back on the review step regardless of the flag.
+        $returnPath = ($access['lockedMonth'] !== null || $request->post('from_review') === '1') ? '/budgets/review' : '/budgets';
 
         if (!Csrf::verify($request->post('csrf_token'))) {
             $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
             header('Location: ' . $returnPath . '?month=' . $monthQuery);
+            return;
+        }
+
+        if ($access['lockedMonth'] !== null && $periodMonth !== $access['lockedMonth']) {
+            http_response_code(403);
             return;
         }
 
@@ -310,7 +331,7 @@ final class BudgetController
         $copied = $budgetRepo->copyItemsFrom((int) $previousBudget['id'], (int) $currentBudget['id']);
 
         (new AuditLogRepository())->log(
-            (int) AuthMiddleware::userId(),
+            $access['userId'],
             $householdId,
             'budget.copied_previous',
             'budget',
@@ -498,6 +519,69 @@ final class BudgetController
         $trend[] = ['label' => date('M', strtotime($currentMonth)), 'value' => $currentLeftToBudget];
 
         return $trend;
+    }
+
+    /**
+     * Who's allowed into the review flow, and how far: a normally
+     * authenticated Owner/Administrator gets full access to any month,
+     * same as every other budget-managing action in this controller. A
+     * budget-review-link session (set by BudgetReviewLinkController when
+     * a reminder email's magic link is opened — see
+     * bin/send-budget-reminders.php) gets access hard-locked to exactly
+     * the household, user, and month the link was issued for; it never
+     * reaches this controller's other actions or any other page, because
+     * only $_SESSION['review_link_*'] is set, never
+     * $_SESSION['user_id']/'household_id'/'role' — AuthMiddleware::check()
+     * on every other page still correctly sees "not signed in".
+     *
+     * Re-verifies the link session's role on every single request rather
+     * than trusting what was true the moment the link was opened, so a
+     * role change (or removal) mid-review takes effect immediately.
+     *
+     * @return array{householdId: int, userId: int, lockedMonth: ?string}
+     */
+    private function resolveReviewAccess(Request $request): array
+    {
+        if (AuthMiddleware::check()) {
+            AuthMiddleware::requireRole(self::MANAGE_ROLES);
+
+            return [
+                'householdId' => (int) AuthMiddleware::householdId(),
+                'userId' => (int) AuthMiddleware::userId(),
+                'lockedMonth' => null,
+            ];
+        }
+
+        $householdId = $_SESSION['review_link_household_id'] ?? null;
+        $userId = $_SESSION['review_link_user_id'] ?? null;
+        $lockedMonth = $_SESSION['review_link_period_month'] ?? null;
+
+        if ($householdId === null || $userId === null || $lockedMonth === null) {
+            header('Location: /login');
+            exit;
+        }
+
+        $membership = (new HouseholdRepository())->findMembership((int) $userId);
+        $stillEligible = $membership !== null
+            && (int) $membership['household_id'] === (int) $householdId
+            && in_array($membership['role'], self::MANAGE_ROLES, true);
+
+        if (!$stillEligible) {
+            $_SESSION = [];
+            session_destroy();
+            header('Location: /login');
+            exit;
+        }
+
+        return [
+            'householdId' => (int) $householdId,
+            'userId' => (int) $userId,
+            // Routed through resolveMonth() so this is always the same
+            // normalized "YYYY-MM-01" full date every other periodMonth
+            // in this controller is, regardless of what shape the
+            // session value happens to be in.
+            'lockedMonth' => $this->resolveMonth((string) $lockedMonth),
+        ];
     }
 
     /**

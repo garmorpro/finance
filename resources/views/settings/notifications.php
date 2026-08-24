@@ -41,7 +41,7 @@ $descriptions = [
                                 <span class="text-stone-400 dark:text-stone-500"><?= SettingsIcons::svg('notifications') ?></span>
                                 <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Notifications</h2>
                             </div>
-                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Choose which conditions show up as an in-app alert (bell icon, top left). MyCFO+ doesn't send email or push notifications — everything here is in-app only.</p>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Choose which conditions show up as an in-app alert (bell icon, top left). MyCFO+ doesn't send push notifications — everything here is in-app only. The one exception is the household-wide budget planning reminder email, configured under <a href="/settings/household" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">Household</a>.</p>
                         </div>
 
                         <?php if (!empty($error)): ?>

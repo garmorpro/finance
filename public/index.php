@@ -6,6 +6,7 @@ use App\Controllers\AccountController;
 use App\Controllers\AttachmentController;
 use App\Controllers\AuthController;
 use App\Controllers\BudgetController;
+use App\Controllers\BudgetReviewLinkController;
 use App\Controllers\BusinessController;
 use App\Controllers\CashFlowController;
 use App\Controllers\CategoryController;
@@ -83,6 +84,7 @@ $router->post('/reset-password', fn (Request $r): mixed => $passwordResetControl
 $householdController = new HouseholdController();
 $router->get('/settings/household', fn (): mixed => $householdController->showMembers());
 $router->post('/settings/household/invite', fn (Request $r): mixed => $householdController->sendInvite($r));
+$router->post('/settings/household/budget-reminder', fn (Request $r): mixed => $householdController->updateBudgetReminderSettings($r));
 $router->get('/accept-invite', fn (): mixed => $householdController->showAcceptForm());
 $router->post('/accept-invite', fn (Request $r): mixed => $householdController->acceptInvite($r));
 
@@ -136,6 +138,9 @@ $router->get('/budgets/review', fn (Request $r): mixed => $budgetController->sho
 $router->get('/budgets/category-history', fn (Request $r): mixed => $budgetController->categoryHistory($r));
 $router->post('/budgets/items', fn (Request $r): mixed => $budgetController->saveItem($r));
 $router->post('/budgets/copy-previous', fn (Request $r): mixed => $budgetController->copyPrevious($r));
+
+$budgetReviewLinkController = new BudgetReviewLinkController();
+$router->get('/budgets/review/link/{token}', fn (Request $r): mixed => $budgetReviewLinkController->open($r));
 
 $recurringController = new RecurringController();
 $router->get('/recurring', fn (): mixed => $recurringController->index());

@@ -118,6 +118,17 @@ change that touches these:
   doesn't depend on `$_FILES`) is covered.
 - **Mobile/responsive layout, dark mode, accessibility** — visual, not
   something PHPUnit checks.
+- **Budget review magic links** (`BudgetReviewLinkController`,
+  `BudgetController::resolveReviewAccess()`) — same `exit()`-in-middleware
+  reason as the role-boundary case above. Exercise by hand: generate a
+  link (`php bin/send-budget-reminders.php` after turning the reminder on
+  and backdating a household's `budget_reminder_days_before` window, or
+  temporarily lowering it), confirm it signs a logged-out browser
+  straight into the right month and nothing else; confirm a second use
+  of a single-use link is rejected; confirm an expired link is rejected;
+  confirm opening someone else's link while already signed in as a
+  different member is refused rather than swapping sessions; confirm
+  demoting the link's recipient before it's used invalidates it.
 
 For anything in the "not covered" list, use a manual acceptance-test
 pass: log in as each role in a household, attempt the action, confirm

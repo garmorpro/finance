@@ -152,6 +152,25 @@ grows unbounded without rotation. Add a `logrotate` config, e.g.
 }
 ```
 
+## Scheduled jobs
+
+`bin/send-budget-reminders.php` issues each household's budget planning
+reminder (Settings → Household → "Budget planning reminders") once its
+own days-before window opens. Safe to run daily — already-issued links
+for a given household/user/month are never re-issued, so a missed day
+just catches up. Add it to cron alongside the backup job:
+
+```
+0 8 * * * php /var/www/finance/public_html/finance/bin/send-budget-reminders.php >> /var/log/finance-reminders.log 2>&1
+```
+
+Email sending is stubbed app-wide for now (same as password resets and
+household invitations — see `docs/security.md`) — the review link is
+written to `storage/logs/app-*.log` instead of actually delivered,
+until real SMTP is configured. Until then, this job is only useful for
+generating links you copy out of the log by hand, or for validating
+the trigger-window/idempotency logic itself.
+
 ## Backups
 
 See `docs/backup-and-recovery.md` — not automatic until `bin/backup.sh`

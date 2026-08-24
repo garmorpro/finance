@@ -2,6 +2,48 @@
 
 ## [Unreleased]
 
+- Budget planning reminder emails: an optional, per-household nudge (off by
+  default — Settings → Household → "Budget planning reminders") that emails
+  every Owner and Administrator a link to review next month's budget a
+  configurable number of days before it starts (`bin/send-budget-reminders.php`,
+  meant to run daily via cron — see `docs/deployment.md`). The link is a
+  single-use-by-default, expiring (default 7 days), household-configurable
+  magic link that signs a logged-out recipient straight into the Budget
+  Review wizard for exactly that month — never a general sign-in. New
+  `budget_review_links` table (only a SHA-256 hash of the token is stored,
+  matching the existing password-reset/invitation-token pattern) and four new
+  `households.budget_reminder_*` columns. `BudgetController` gained
+  `resolveReviewAccess()`, which the review/save/copy-previous actions now go
+  through instead of `AuthMiddleware::requireRole()` directly — it accepts
+  either a normal Owner/Administrator session (full access, any month) or a
+  magic-link session (`$_SESSION['review_link_*']`, set only by the new
+  `BudgetReviewLinkController`, never the real `user_id`/`household_id`/`role`
+  keys `AuthMiddleware::check()` looks for), hard-locked to the household,
+  user, and month the link was issued for and re-verified against the
+  recipient's *current* household role on every single request, not just
+  when the link was first opened. Consuming a link is one atomic
+  `UPDATE ... WHERE expires_at > NOW() AND (single_use = 0 OR used_count = 0)`
+  so two near-simultaneous opens of one single-use link can't both succeed;
+  opening someone else's link while already signed in as a different
+  household member is refused outright rather than silently swapping that
+  session's identity. Email sending is stubbed, same convention as password
+  resets and household invitations (see `docs/security.md`/README) — the
+  link is written to `storage/logs/app-*.log` instead of actually delivered
+  until real SMTP is configured; `settings/notifications.php`'s copy, which
+  previously (and as of this feature, incorrectly) claimed MyCFO+ sends no
+  email at all, is corrected. `bin/wipe-transactional-data.php`'s table
+  registry updated for the new table. Full design writeup in
+  `docs/security.md`'s new "Budget review magic links" section;
+  `docs/database.md`, `docs/testing.md` (this flow falls into the same
+  "not covered by PHPUnit, `exit()`-in-middleware" category as role-boundary
+  checks — manual test steps documented there), and the README also updated.
+  **Not covered by automated tests** — no local PHP/MySQL runtime was
+  available to write or run them against; verify manually per
+  `docs/testing.md` before relying on this, and consider adding
+  `tests/Integration` coverage for `resolveReviewAccess()`'s branches (own
+  link, someone else's link, expired, over-used, demoted-since-issued) on a
+  host that has PHPUnit and a real database.
+
 - Account detail page's hero card now shows the account's own color as a 4px top-border accent, in addition to the icon badge it already carried through — the color previously only showed up on the small icon, not the card itself. Set inline (`resources/views/accounts/edit.php`), same as the icon's own color, since it's per-account and can't be a static Tailwind class.
 
 - Fixed `tests/Support/DashboardWidgetsTest.php`, which had been failing (`composer test` confirmed 3 errors/3 failures) since an earlier refactor introduced `DashboardWidgets`' stats/main widget grouping without updating this test file to match — it was still calling `resolveOrder()` with its pre-grouping one-argument signature (`TypeError`), and asserting on widget keys (`'budget'`, `'goals'`, `'recurring'`, `'net_worth_trend'`, `'spending'`, `'income_vs_spending'`) that don't exist in the current registry at all. Rewritten against the actual current `WIDGETS` registry and `resolveOrder(string $group, array $savedOrder)` signature; added one new test (`resolveOrder()` never mixes a `main` widget into a `stats` order) directly covering that method's core documented behavior while already in the file. Confirmed via `composer test` output pasted back that this was pre-existing and entirely unrelated to the Master HQ API work above.

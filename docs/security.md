@@ -164,6 +164,53 @@ any of them out individually or all at once.
   use `AuthMiddleware::requireRole([...])`, checked against the role
   cached in session at login.
 
+## Budget review magic links
+
+The budget planning reminder email (`bin/send-budget-reminders.php`,
+Settings → Household) carries a link that signs someone in without a
+password — the one deliberate exception to this app's normal
+session-cookie authentication, so it gets its own write-up:
+
+- **Token**: `random_bytes(32)` (256 bits), only the SHA-256 hash is
+  stored (`budget_review_links.token_hash`) — same pattern as password
+  reset and invitation tokens. The plaintext token only ever exists in
+  the generated URL and the (currently stubbed, see "Authentication"
+  above) email.
+- **Scope, not a general sign-in**: opening a valid link
+  (`BudgetReviewLinkController::open()`) never sets
+  `$_SESSION['user_id']`/`'household_id'`/`'role'` — the fields
+  `AuthMiddleware::check()` looks for. It sets distinct
+  `$_SESSION['review_link_*']` keys instead, which only
+  `BudgetController::resolveReviewAccess()` understands, and only for
+  the review/save/copy-previous actions. Every other page in the app
+  still sees "not signed in" for that session. Access is hard-locked to
+  the exact household, user, and month the link was issued for — the
+  period month can't be swapped via `?month=` or a tampered form field.
+- **Consumption is atomic**: `BudgetReviewLinkRepository::consume()` is
+  a single `UPDATE ... WHERE expires_at > NOW() AND (single_use = 0 OR
+  used_count = 0)` — the same statement that re-validates also spends
+  the link, so two near-simultaneous requests for one single-use link
+  can't both succeed.
+- **Re-verified, not just trusted, on every request**: both when a link
+  is opened and on every subsequent request during a scoped session,
+  the recipient's household role is re-checked against
+  `household_members` live. A link issued while someone was an
+  Administrator stops working immediately if they're later demoted or
+  removed — it doesn't keep working until it expires.
+- **Wrong-user protection**: if a link is opened on a device already
+  signed in as a *different* household member, it's refused outright
+  (`review-link-invalid` view, HTTP 409) rather than silently swapping
+  that browser's session to the link's identity — and the link is left
+  unspent, since this wasn't a legitimate attempt to use it. Opened
+  while already signed in as its own intended recipient, the link is
+  spent and just deep-links into the right month using that person's
+  real session and real permissions.
+- **Household-configurable, not hardcoded**: whether the reminder is on,
+  how many days before the month starts it fires, whether a link is
+  single-use or reusable until expiry, and how long it lives (default 7
+  days) are all per-household settings
+  (`households.budget_reminder_*`), editable only by Owner/Administrator.
+
 ## CSRF
 
 `app/Support/Csrf.php` — a `random_bytes(32)` token stored in session,

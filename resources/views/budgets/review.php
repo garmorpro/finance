@@ -6,6 +6,7 @@
 /** @var list<array{group: array|null, rows: list<array>}> $expenseSteps */
 /** @var string $plannedGoalContributions */
 /** @var bool $hasPreviousBudget */
+/** @var bool $isLinkSession */
 /** @var string $csrfToken */
 /** @var string|null $notice */
 /** @var string|null $error */
@@ -101,10 +102,20 @@ $renderReviewRow = function (array $row, string $type) use ($csrfToken, $monthQu
     <div class="review-topbar">
         <div class="review-topbar-inner">
             <div class="flex items-center justify-between gap-4">
-                <a href="/budgets?month=<?= View::e($monthQuery) ?>" class="inline-flex items-center gap-1.5 text-sm font-medium" style="color: rgba(245, 245, 244, .6);">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    Exit review
-                </a>
+                <?php if ($isLinkSession): ?>
+                    <form method="POST" action="/logout" class="inline-flex">
+                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                        <button type="submit" class="inline-flex items-center gap-1.5 text-sm font-medium" style="color: rgba(245, 245, 244, .6);">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            Exit review
+                        </button>
+                    </form>
+                <?php else: ?>
+                    <a href="/budgets?month=<?= View::e($monthQuery) ?>" class="inline-flex items-center gap-1.5 text-sm font-medium" style="color: rgba(245, 245, 244, .6);">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        Exit review
+                    </a>
+                <?php endif; ?>
                 <p class="text-xs" style="color: rgba(245, 245, 244, .45);" id="reviewStepCaption">&nbsp;</p>
             </div>
 
@@ -202,7 +213,14 @@ $renderReviewRow = function (array $row, string $type) use ($csrfToken, $monthQu
                     </div>
                 </div>
 
-                <a href="/budgets?month=<?= View::e($monthQuery) ?>" class="btn-primary inline-block mt-6">Done &mdash; go to Budgets</a>
+                <?php if ($isLinkSession): ?>
+                    <form method="POST" action="/logout" class="mt-6">
+                        <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                        <button type="submit" class="btn-primary">Done</button>
+                    </form>
+                <?php else: ?>
+                    <a href="/budgets?month=<?= View::e($monthQuery) ?>" class="btn-primary inline-block mt-6">Done &mdash; go to Budgets</a>
+                <?php endif; ?>
             </section>
 
         <?php endif; ?>

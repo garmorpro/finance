@@ -110,6 +110,18 @@ time, never relying on MySQL's session timezone).
   existed. An explicit `budget_items` line always wins over a default for
   that specific month, and a default never applies to a month before it
   took effect.
+- **`budget_review_links`** — the magic-link tokens behind the budget
+  planning reminder email (`bin/send-budget-reminders.php`); only
+  `token_hash` is stored, never the plaintext token. `single_use` and
+  `expires_at` are captured at issue time from that household's
+  settings (below), not re-read live, so changing the settings never
+  retroactively changes an already-sent link's behavior. See
+  `docs/security.md`'s "Budget review magic links" for how this is kept
+  scoped to exactly one household/user/month.
+- **`households.budget_reminder_enabled` / `_days_before` /
+  `_link_single_use` / `_link_expiry_days`** — the per-household policy
+  those links are issued under (off by default). Editable only by
+  Owner/Administrator, from Settings → Household.
 
 ## Recurring items
 
