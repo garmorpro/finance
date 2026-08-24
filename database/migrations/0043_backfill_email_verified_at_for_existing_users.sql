@@ -1,0 +1,13 @@
+-- users.email_verified_at has existed since the initial schema but was
+-- never actually enforced anywhere. Now that public registration gates
+-- login on it (AuthController::login()), every account created before
+-- that gate existed needs to be backfilled as verified — otherwise every
+-- already-active household would be locked out of their own app the
+-- moment this ships. New accounts created via public registration start
+-- with this column NULL and only get it set once the emailed
+-- verification link is clicked; accounts created via bin/create-owner.php
+-- or an accepted household invitation are marked verified immediately at
+-- creation time going forward (see HouseholdController::acceptInvite()
+-- and bin/create-owner.php) since both of those already prove control of
+-- the email address some other way.
+UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL;

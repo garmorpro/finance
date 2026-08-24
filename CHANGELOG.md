@@ -2,6 +2,66 @@
 
 ## [Unreleased]
 
+- Public self-registration (`/register`) — anyone can now create their own
+  household without server access, the internet-facing counterpart to
+  `bin/create-owner.php`. Gated on confirming the registrant's email
+  before first login: `users.email_verified_at` (present in the schema
+  since the initial migration, unused until now) blocks
+  `AuthController::login()` when `NULL`; a new
+  `email_verification_tokens` table (same shape as `password_reset_tokens`)
+  backs the emailed confirmation link, and clicking it signs the person
+  straight in via the same `AuthController::completeLogin()` every other
+  login path uses. Migration `0043` backfills every pre-existing account
+  as already-verified — nobody already using the app got locked out —
+  and both `bin/create-owner.php` and accepted household invitations now
+  mark the account verified immediately at creation, since both already
+  prove control of the email address a different way. Registration is
+  rate-limited by IP (3/hour, its own `registration_attempts` table —
+  deliberately separate from `login_attempts`) and, when `TURNSTILE_SITE_KEY`/
+  `TURNSTILE_SECRET_KEY` are configured, protected by Cloudflare Turnstile
+  (new `App\Support\Turnstile`, server-side `siteverify` check, fails
+  closed on any error; unconfigured simply skips the check rather than
+  blocking every signup). New `RegistrationController` handles the whole
+  flow (form, creation — one transaction: user, household, owner
+  membership, default categories — verification email, resend, verify);
+  new views under `resources/views/auth/`. `App\Support\Mailer` gained
+  optional per-message From-address/name overrides
+  (`MAIL_NOREPLY_FROM_ADDRESS`/`_NAME`) so verification and invitation
+  email can come from a distinct "no-reply" identity rather than
+  whatever budget reminders use. **Household data isolation is
+  unaffected** — registration creates a household through the exact same
+  `household_id`-scoped repositories as every other path; a new test
+  (`HouseholdIsolationTest::test_registration_seeded_categories_are_isolated_between_households`)
+  locks in the one piece registration adds beyond what every other test
+  in that file already covers (default category seeding). Landing page
+  copy updated (registration CTAs added; the "no third-party scripts"
+  privacy claim narrowed to be accurate now that Turnstile is optionally
+  in play on the registration page specifically). Also fixed, caught
+  during review before this ever shipped: the app's existing CSP
+  (`app/Support/SecurityHeaders.php`) would have silently blocked
+  Turnstile's script, challenge iframe, and background requests
+  entirely — `script-src`/`connect-src` only allowed `'self'` and there
+  was no `frame-src` at all (falling back to `default-src 'self'`,
+  which still excludes Turnstile's origin). `SecurityHeaders::apply()`
+  gained an `$allowTurnstile` param, set from the request path in
+  `public/index.php` (before the router runs) only for `/register` —
+  every other page's CSP is untouched, including a small incidental
+  hardening: `frame-src` is now explicitly `'none'` everywhere else,
+  where before it had no explicit value at all.
+
+- Household invitations now actually email (previously logged only, like
+  password resets still do): reuses `App\Support\Mailer` with the same
+  `no-reply` From-address override as registration. Fixed a real bug
+  caught during review, present in this same batch's other new email
+  builders too (budget reminders, registration) — user-controlled
+  strings (an inviter's own display name, a household's own name)
+  interpolated into an HTML email body without escaping, which would
+  have let one household's own data reach another person's inbox as
+  literal markup. All three builders now run every user-controlled value
+  through `View::e()` before it lands in HTML (plain-text bodies and
+  server-generated values like URLs were never at risk, and are left
+  as-is).
+
 - Canonical domain is now `mycfoplus.com` (was `finance.morganserver.com`).
   `.env.example`'s `APP_URL` and `docs/api.md`'s Master HQ example request
   updated to match — this is a documentation/config-placeholder change only,

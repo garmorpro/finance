@@ -11,9 +11,12 @@ this doc, not just one of them.
 - Passwords are hashed with `password_hash(..., PASSWORD_DEFAULT)`
   (bcrypt) and checked with `password_verify()` — never compared or
   stored in plaintext.
-- No public registration route. The first Owner and household are
-  created via `bin/create-owner.php`; everyone after that joins by
-  invitation (`household_invitations`, 7-day expiring tokens).
+- Two ways to get an account: public self-registration (creates a brand
+  new household — see "Public registration" below) or accepting an
+  invitation into an existing one (`household_invitations`, 7-day
+  expiring tokens). `bin/create-owner.php` (CLI, direct server access)
+  remains how *this* deployment's very first household got created and
+  still works the same as before.
 - Login is rate-limited: 5 attempts per 15 minutes, keyed by email *or*
   IP (`app/Support/RateLimiter.php`, backed by the `login_attempts`
   table) — enforced before credentials are even checked, not just
@@ -23,11 +26,67 @@ this doc, not just one of them.
 - Session cookies are `HttpOnly` always, `Secure` when `APP_URL` starts
   with `https://`, and `SameSite=Lax`.
 - Password reset tokens are logged, not emailed. `App\Support\Mailer`
-  (SMTP via PHPMailer) exists as of the budget reminder feature below,
-  but password reset and household invitations haven't been switched
-  over to it yet — see the README. Anyone with server log access can
-  already reach the database directly, so this isn't a meaningfully
-  larger trust boundary for a self-hosted single-server deployment.
+  (SMTP via PHPMailer) sends real email for budget reminders, household
+  invitations, and registration email verification; password reset
+  hasn't been switched over to it yet — see the README. Anyone with
+  server log access can already reach the database directly, so this
+  isn't a meaningfully larger trust boundary for a self-hosted
+  single-server deployment.
+
+## Public registration
+
+`RegistrationController` (`/register`) lets anyone create a brand new
+household without server access — the internet-facing counterpart to
+`bin/create-owner.php`. This is a genuine trust-model change from
+invite-only account *creation*; it does not change the isolation
+boundary between households at all (see "Authorization" below and
+`tests/Integration/HouseholdIsolationTest.php`'s
+`test_registration_seeded_categories_are_isolated_between_households`).
+
+- **Email verification is required before first login.**
+  `users.email_verified_at` (present in the schema since the initial
+  migration, unused until now) gates `AuthController::login()` —
+  registering creates the account and household immediately but does
+  *not* establish a session; only clicking the emailed link
+  (`GET /verify-email?token=...`) does, via the same
+  `AuthController::completeLogin()` every other login path uses.
+  Migration `0043` backfilled every account that existed before this
+  gate as verified, so no existing household was locked out when this
+  shipped. Accounts created via `bin/create-owner.php` or an accepted
+  invitation are marked verified immediately at creation — both already
+  prove control of the email address a different way (direct server
+  access; clicking a link mailed to that address).
+- **Verification tokens**: `random_bytes(32)`, only the SHA-256 hash
+  stored (`email_verification_tokens.token_hash`), 24-hour expiry, same
+  pattern as password reset tokens. `/verify-email/resend` re-issues one
+  and always shows the same neutral message regardless of whether the
+  email exists or is already verified — same account-enumeration
+  reasoning as password reset.
+- **Registration is rate-limited by IP**: 3 attempts per hour
+  (`RateLimiter::tooManyRegistrationAttempts()`, backed by its own
+  `registration_attempts` table — deliberately separate from
+  `login_attempts`, since account creation is a heavier, harder-to-undo
+  action than a login attempt and shouldn't share that table's meaning
+  or its looser allowance).
+- **Cloudflare Turnstile** (`App\Support\Turnstile`) is optional bot
+  protection on top of the IP rate limit — verified server-side against
+  Cloudflare's `siteverify` API using a secret key that never leaves
+  `.env`. Fails closed on any error (unconfigured, network failure,
+  malformed response all count as "not verified"), but registration
+  itself only *enforces* the check when `TURNSTILE_*` is actually
+  configured — left blank, signups still work, just without this layer.
+  The one third-party script this app loads: `challenges.cloudflare.com`,
+  only on the registration page.
+- **Password policy, email format, and password-confirmation checks**
+  are identical to `bin/create-owner.php` and accepting an invitation —
+  same `App\Validation\PasswordPolicy` (12-character minimum), same
+  `hash_equals()` password-confirmation comparison.
+- **Account creation is one transaction**: user row, household row,
+  owner membership, and default category seeding either all succeed or
+  all roll back together (`Connection::get()->beginTransaction()`,
+  mirroring `bin/create-owner.php`'s own already-transactional
+  approach) — no path leaves a user row with no household, or a
+  household with no owner.
 
 ## Two-factor authentication
 
@@ -150,10 +209,18 @@ any of them out individually or all at once.
 
 ## Authorization
 
-- Every controller method (except the intentionally public `AuthController`
-  and `PasswordResetController` routes) calls `AuthMiddleware::requireAuth()`.
-  This is enforced by convention, per-method, not by a router-level
-  guard — see "Known limitations" below.
+- Every controller method (except the intentionally public `AuthController`,
+  `PasswordResetController`, and `RegistrationController` routes) calls
+  `AuthMiddleware::requireAuth()`. This is enforced by convention,
+  per-method, not by a router-level guard — see "Known limitations"
+  below.
+- **Public registration doesn't change this boundary.** Anyone can now
+  create a household without server access (see "Public registration"
+  below), but the household that creates still goes through the exact
+  same `household_id`-scoped repositories as one created any other
+  way — opening account *creation* to the public is a different thing
+  from opening *data access* between households, and only the former
+  changed.
 - **Every record-level lookup is household-scoped.** Repository methods
   that read or write app data take `$householdId` explicitly and filter
   by it (e.g. `GoalRepository::findById(int $goalId, int $householdId)`).
@@ -266,7 +333,17 @@ tag.
 - `Strict-Transport-Security` — only sent when the request is confirmed
   HTTPS (via `APP_URL`), never on plain HTTP
 - A `Content-Security-Policy` restricting everything to `'self'` by
-  default, with `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`
+  default, with `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+  and (new) an explicit `frame-src 'none'` — this app embeds nothing in
+  an iframe anywhere, so there's no reason to fall back to `default-src`
+  for that directive either.
+- `challenges.cloudflare.com` (Cloudflare Turnstile — see "Public
+  registration" above) is allowed in `script-src`/`connect-src`/`frame-src`,
+  but *only* when the request path is `/register`
+  (`SecurityHeaders::apply()`'s `$allowTurnstile` param, set in
+  `public/index.php` before the router even runs) — every other page's
+  CSP is unaffected, rather than widening every page's policy for a
+  script only one page ever loads.
 
 **Known trade-off:** the CSP's `script-src` and `style-src` both include
 `'unsafe-inline'`. This app uses `onsubmit="return confirm(...)"` inline

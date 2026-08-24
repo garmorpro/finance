@@ -26,8 +26,25 @@ final class Mailer
         return !empty($_ENV['MAIL_HOST']) && !empty($_ENV['MAIL_USERNAME']) && !empty($_ENV['MAIL_PASSWORD']) && !empty($_ENV['MAIL_FROM_ADDRESS']);
     }
 
-    public static function send(string $toEmail, string $toName, string $subject, string $htmlBody, string $textBody): bool
-    {
+    /**
+     * $fromAddress/$fromName override the default MAIL_FROM_ADDRESS/NAME
+     * for this one message — e.g. household invitations and email
+     * verification send from a distinct "no-reply" identity
+     * (MAIL_NOREPLY_FROM_ADDRESS) rather than whatever address budget
+     * reminders use, so a recipient can tell at a glance which kind of
+     * message they're looking at. isConfigured() still only checks the
+     * base MAIL_* vars — a from-address override doesn't need its own
+     * separate "is mail configured at all" check.
+     */
+    public static function send(
+        string $toEmail,
+        string $toName,
+        string $subject,
+        string $htmlBody,
+        string $textBody,
+        ?string $fromAddress = null,
+        ?string $fromName = null
+    ): bool {
         if (!self::isConfigured()) {
             Logger::info('Mailer::send skipped — MAIL_* not fully configured in .env', ['to' => $toEmail]);
             return false;
@@ -45,7 +62,10 @@ final class Mailer
             $mail->Port = (int) ($_ENV['MAIL_PORT'] ?? 587);
             $mail->CharSet = PHPMailer::CHARSET_UTF8;
 
-            $mail->setFrom((string) $_ENV['MAIL_FROM_ADDRESS'], (string) ($_ENV['MAIL_FROM_NAME'] ?? 'MyCFO+'));
+            $mail->setFrom(
+                $fromAddress ?? (string) $_ENV['MAIL_FROM_ADDRESS'],
+                $fromName ?? (string) ($_ENV['MAIL_FROM_NAME'] ?? 'MyCFO+')
+            );
             $mail->addAddress($toEmail, $toName);
 
             $mail->isHTML(true);

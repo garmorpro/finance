@@ -107,6 +107,20 @@ change that touches these:
   state and `exit()` calls in `AuthMiddleware` that don't unit-test
   cleanly without a larger refactor. Exercise these by hand against a
   running instance.
+- **Public registration and email verification**
+  (`RegistrationController`) — same session/header-dependent reasoning
+  as the authentication flows above.
+  `tests/Integration/HouseholdIsolationTest.php` does cover the
+  underlying repository sequence registration uses (create user, create
+  household, add as owner, seed categories — see that file's
+  `test_registration_seeded_categories_are_isolated_between_households`),
+  but the controller itself — CSRF, rate limiting, Turnstile, the
+  email-verification gate, the resend flow — needs manual exercise:
+  register, confirm login is blocked until the emailed link is clicked,
+  confirm the link's own expiry/reuse behavior, confirm an already-taken
+  email is rejected, confirm `bin/create-owner.php` and accepted
+  invitations still work as expected (email-verified immediately,
+  unaffected by the gate).
 - **Role-based permission boundaries at the HTTP layer** (a Member
   correctly getting a 403 on an Owner-only action) — the underlying
   household-scoping is covered (see above), but the HTTP-level gate

@@ -53,6 +53,25 @@ final class UserRepository
         return (int) Connection::get()->lastInsertId();
     }
 
+    /**
+     * Set once — at public-registration verification time
+     * (RegistrationController::verifyEmail()), or immediately at account
+     * creation for paths that already prove email ownership another way
+     * (accepting a household invitation email, bin/create-owner.php).
+     */
+    public function markEmailVerified(int $userId): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET email_verified_at = :verified_at, updated_at = :updated_at WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'verified_at' => gmdate('Y-m-d H:i:s'),
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+    }
+
     public function updateLastLogin(int $userId): void
     {
         $now = gmdate('Y-m-d H:i:s');

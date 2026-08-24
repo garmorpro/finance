@@ -24,12 +24,20 @@ namespace App\Support;
  */
 final class SecurityHeaders
 {
-    public static function apply(bool $isHttps): void
+    /**
+     * $allowTurnstile loosens CSP just enough for Cloudflare Turnstile
+     * (script, its challenge iframe, and its background requests) —
+     * public/index.php passes this only for the registration page,
+     * the one place Turnstile's widget can appear
+     * (resources/views/auth/register.php), rather than widening every
+     * page's CSP for a script only one page ever loads.
+     */
+    public static function apply(bool $isHttps, bool $allowTurnstile = false): void
     {
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: DENY');
         header('Referrer-Policy: strict-origin-when-cross-origin');
-        header("Content-Security-Policy: " . self::contentSecurityPolicy());
+        header("Content-Security-Policy: " . self::contentSecurityPolicy($allowTurnstile));
 
         // Only asserted when the request is actually confirmed HTTPS —
         // an HSTS header sent over a plain HTTP response is meaningless
@@ -40,15 +48,18 @@ final class SecurityHeaders
         }
     }
 
-    private static function contentSecurityPolicy(): string
+    private static function contentSecurityPolicy(bool $allowTurnstile): string
     {
+        $turnstileOrigin = 'https://challenges.cloudflare.com';
+
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline'" . ($allowTurnstile ? " {$turnstileOrigin}" : ''),
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data:",
             "font-src 'self'",
-            "connect-src 'self'",
+            "connect-src 'self'" . ($allowTurnstile ? " {$turnstileOrigin}" : ''),
+            "frame-src" . ($allowTurnstile ? " {$turnstileOrigin}" : " 'none'"),
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",

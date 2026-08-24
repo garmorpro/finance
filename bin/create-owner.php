@@ -69,6 +69,12 @@ $pdo->beginTransaction();
 try {
     $userId = $userRepo->create($name, $email, password_hash($password, PASSWORD_DEFAULT));
 
+    // Created here with direct server access, so there's no email
+    // address to actually confirm — AuthController::login() gates on
+    // this (see migration 0043 and RegistrationController) for accounts
+    // created through public self-registration.
+    $userRepo->markEmailVerified($userId);
+
     $householdRepo = new HouseholdRepository();
     $householdId = $householdRepo->create($householdName, $userId);
     $householdRepo->addMember($householdId, $userId, 'owner');

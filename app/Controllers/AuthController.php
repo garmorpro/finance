@@ -66,6 +66,19 @@ final class AuthController
 
         RateLimiter::recordAttempt($email, $ip, true);
 
+        // Password is correct, but the email address hasn't been
+        // confirmed yet (public registration only — see
+        // RegistrationController). Every account that existed before
+        // this gate did (migration 0043) and every account created via
+        // bin/create-owner.php or an accepted household invitation is
+        // already verified at creation time, so this only ever blocks a
+        // genuinely unconfirmed public signup, never an existing user.
+        if ($user['email_verified_at'] === null) {
+            $auditLog->log((int) $user['id'], null, 'login.blocked_unverified_email', 'user', (int) $user['id'], $ip);
+            $this->failLogin('Please verify your email before logging in — check your inbox, or request a new link.');
+            return;
+        }
+
         // Password is correct, but two-factor isn't satisfied yet — hold
         // off on establishing a real session. A pending, unauthenticated
         // marker only (regenerated session ID, no user_id) until the code

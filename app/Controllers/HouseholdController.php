@@ -13,6 +13,7 @@ use App\Repositories\InvitationRepository;
 use App\Repositories\UserRepository;
 use App\Support\Csrf;
 use App\Support\Logger;
+use App\Support\Mailer;
 use App\Support\View;
 use App\Validation\PasswordPolicy;
 
@@ -106,15 +107,32 @@ final class HouseholdController
         );
 
         $inviteUrl = rtrim($_ENV['APP_URL'] ?? '', '/') . '/accept-invite?token=' . $token;
+        $household = (new HouseholdRepository())->findById($householdId);
+        $householdName = $household !== null ? $household['name'] : 'your household';
+        $inviterName = AuthMiddleware::userName();
 
-        // Email sending is stubbed for now (see CLAUDE.md) — the invite
-        // link is logged instead of sent, until real SMTP is wired up.
-        Logger::info('Household invitation created (email stubbed)', [
-            'household_id' => $householdId,
-            'email' => $email,
-            'role' => $role,
-            'invite_url' => $inviteUrl,
-        ]);
+        $inviteEmail = self::buildInviteEmail($inviterName, $householdName, $inviteUrl);
+        $sent = Mailer::send(
+            $email,
+            $email,
+            $inviteEmail['subject'],
+            $inviteEmail['html'],
+            $inviteEmail['text'],
+            $_ENV['MAIL_NOREPLY_FROM_ADDRESS'] ?? null,
+            $_ENV['MAIL_NOREPLY_FROM_NAME'] ?? null
+        );
+
+        if (!$sent) {
+            // Same "logged instead of sent" fallback as everywhere else
+            // outbound email is used in this app — MAIL_* not configured,
+            // or the send attempt itself failed.
+            Logger::info('Household invitation created (email not sent — see Mailer log above)', [
+                'household_id' => $householdId,
+                'email' => $email,
+                'role' => $role,
+                'invite_url' => $inviteUrl,
+            ]);
+        }
 
         (new AuditLogRepository())->log(
             AuthMiddleware::userId(),
@@ -126,7 +144,9 @@ final class HouseholdController
             ['email' => $email, 'role' => $role]
         );
 
-        $_SESSION['_flash_notice'] = "Invitation created for {$email}.";
+        $_SESSION['_flash_notice'] = $sent
+            ? "Invitation emailed to {$email}."
+            : "Invitation created for {$email}, but the email couldn't be sent — check the mail configuration in .env, or find the invite link logged in storage/logs/.";
         header('Location: /settings/household');
     }
 
@@ -257,6 +277,14 @@ final class HouseholdController
 
         $userId = $userRepo->create($name, $invitation['email'], password_hash($password, PASSWORD_DEFAULT));
 
+        // Clicking a link mailed to this address already proves control
+        // of it — the same reasoning bin/create-owner.php uses, just via
+        // a different proof. Without this, this person would pass this
+        // one-time session setup below but then get blocked by
+        // AuthController::login()'s email-verified gate the next time
+        // they log in normally.
+        $userRepo->markEmailVerified($userId);
+
         $householdRepo = new HouseholdRepository();
         $householdRepo->addMember((int) $invitation['household_id'], $userId, $invitation['role']);
         $invitationRepo->markAccepted((int) $invitation['id']);
@@ -277,5 +305,59 @@ final class HouseholdController
         AuthMiddleware::setUserIdentity($name, $invitation['email']);
 
         header('Location: /');
+    }
+
+    /**
+     * @return array{subject: string, html: string, text: string}
+     */
+    private static function buildInviteEmail(string $inviterName, string $householdName, string $inviteUrl): array
+    {
+        $subject = $inviterName . ' invited you to ' . $householdName . ' on MyCFO+';
+
+        // Escaped for the HTML body specifically — inviterName and
+        // householdName are user-controlled (a household's own name, and
+        // whoever's logged in as the inviter), so interpolating them
+        // unescaped into HTML would let one household's data reach
+        // another person's inbox as literal markup/script. inviteUrl is
+        // server-generated (rtrim(APP_URL) + a random token) and never
+        // needs escaping, but running it through anyway costs nothing
+        // and removes the need to reason about which is which.
+        $htmlInviterName = View::e($inviterName);
+        $htmlHouseholdName = View::e($householdName);
+        $htmlInviteUrl = View::e($inviteUrl);
+
+        $html = <<<HTML
+            <div style="background:#f5f5f4;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+              <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e7e5e4;">
+                <div style="padding:32px 28px;">
+                  <div style="font-weight:700;font-size:16px;color:#1c1917;margin-bottom:28px;">MyCFO<span style="color:#e2694b;">+</span></div>
+                  <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#1c1917;">You're invited to {$htmlHouseholdName}.</h1>
+                  <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#57534e;">
+                    {$htmlInviterName} has invited you to join their household's finances on MyCFO+, a
+                    private, manual-entry finance tracker. This link is yours alone — accepting it
+                    creates your own login.
+                  </p>
+                  <div style="margin-bottom:24px;">
+                    <a href="{$htmlInviteUrl}" style="display:inline-block;background:#e2694b;color:#ffffff;font-weight:600;font-size:15px;padding:13px 26px;border-radius:10px;text-decoration:none;">Accept invitation &rarr;</a>
+                  </div>
+                  <p style="margin:0;font-size:13px;line-height:1.6;color:#a39c96;">
+                    Button not working? Paste this into your browser:<br>
+                    <span style="word-break:break-all;color:#78716c;">{$htmlInviteUrl}</span><br>
+                    This invitation expires in 7 days. If you weren't expecting this, you can safely
+                    ignore it.
+                  </p>
+                </div>
+              </div>
+            </div>
+            HTML;
+
+        $text = "You're invited to {$householdName}.\n\n"
+            . "{$inviterName} has invited you to join their household's finances on MyCFO+, a "
+            . "private, manual-entry finance tracker. This link is yours alone.\n\n"
+            . "Accept: {$inviteUrl}\n\n"
+            . "This invitation expires in 7 days. If you weren't expecting this, you can safely "
+            . "ignore it.";
+
+        return ['subject' => $subject, 'html' => $html, 'text' => $text];
     }
 }

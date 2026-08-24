@@ -16,16 +16,35 @@ time, never relying on MySQL's session timezone).
 
 - **`users`** — individual login accounts. `dashboard_layout` (JSON) holds
   each user's saved dashboard tile order/visibility/width (see
-  `App\Support\DashboardWidgets`).
+  `App\Support\DashboardWidgets`). `email_verified_at` has existed since
+  the initial schema but was unused until public registration
+  (`RegistrationController`) — `NULL` blocks login (`AuthController::login()`);
+  set immediately at creation for `bin/create-owner.php` and accepted
+  invitations, only via a clicked verification link for public
+  registration. Migration `0043` backfilled every pre-existing account
+  as verified.
 - **`households`** — the top-level tenant boundary. Every piece of
-  financial data belongs to exactly one household.
+  financial data belongs to exactly one household. Created either by
+  `bin/create-owner.php` (server access) or public self-registration
+  (`RegistrationController`) — both go through the identical
+  create-user/create-household/add-as-owner/seed-categories sequence.
+  `budget_reminder_*` columns are the per-household policy behind the
+  budget planning reminder email (see "Budgets" below).
 - **`household_members`** — join table between `users` and `households`,
   carrying `role` (`owner`/`administrator`/`member`/`viewer`).
 - **`household_invitations`** — 7-day expiring invite tokens; how anyone
-  after the first Owner joins a household.
-- **`login_attempts`** — backs rate limiting (`App\Support\RateLimiter`).
+  joins an *existing* household (as opposed to registering their own).
+- **`login_attempts`** — backs login rate limiting (`App\Support\RateLimiter`).
+- **`registration_attempts`** — backs public-registration rate limiting
+  (`RateLimiter::tooManyRegistrationAttempts()`) — a separate table from
+  `login_attempts` since a registration attempt isn't a login attempt
+  and the two shouldn't share meaning.
 - **`password_reset_tokens`** — reset flow tokens (links are logged, not
   emailed — see the README).
+- **`email_verification_tokens`** — public-registration email
+  confirmation tokens, same shape and reasoning as
+  `password_reset_tokens` (SHA-256 hash only, 24-hour expiry, `used_at`
+  marks it spent).
 - **`audit_logs`** — append-only record of security-relevant and
   financial actions across every module (`action` strings like
   `transaction.deleted`, `goal.contribution_added`, `budget.copied_previous`).

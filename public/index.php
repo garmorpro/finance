@@ -22,6 +22,7 @@ use App\Controllers\PasswordResetController;
 use App\Controllers\PlanningController;
 use App\Controllers\ProfileController;
 use App\Controllers\RecurringController;
+use App\Controllers\RegistrationController;
 use App\Controllers\ReportController;
 use App\Controllers\RuleController;
 use App\Controllers\RulesInputsController;
@@ -48,7 +49,16 @@ date_default_timezone_set($appConfig['timezone']);
 ErrorHandler::register($appConfig['debug']);
 
 $isHttps = str_starts_with($appConfig['url'], 'https://');
-SecurityHeaders::apply($isHttps);
+
+// Headers are sent before the router (and its Request object) exist, so
+// this reads the raw request path the same way Request::__construct()
+// does rather than waiting for dispatch — the registration page is the
+// only place Cloudflare Turnstile's widget can appear (see
+// resources/views/auth/register.php), and CSP has to already allow it
+// before that page's own script tag ever runs.
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+$requestPath = rtrim($requestPath === false || $requestPath === null ? '/' : $requestPath, '/') ?: '/';
+SecurityHeaders::apply($isHttps, $requestPath === '/register');
 
 session_set_cookie_params([
     'lifetime' => 0,
@@ -80,6 +90,14 @@ $router->get('/forgot-password', fn (): mixed => $passwordResetController->showF
 $router->post('/forgot-password', fn (Request $r): mixed => $passwordResetController->sendReset($r));
 $router->get('/reset-password', fn (Request $r): mixed => $passwordResetController->showResetForm($r));
 $router->post('/reset-password', fn (Request $r): mixed => $passwordResetController->resetPassword($r));
+
+$registrationController = new RegistrationController();
+$router->get('/register', fn (): mixed => $registrationController->showForm());
+$router->post('/register', fn (Request $r): mixed => $registrationController->register($r));
+$router->get('/register/check-email', fn (): mixed => $registrationController->showCheckEmail());
+$router->get('/verify-email', fn (Request $r): mixed => $registrationController->verifyEmail($r));
+$router->get('/verify-email/resend', fn (): mixed => $registrationController->showResendForm());
+$router->post('/verify-email/resend', fn (Request $r): mixed => $registrationController->resend($r));
 
 $householdController = new HouseholdController();
 $router->get('/settings/household', fn (): mixed => $householdController->showMembers());

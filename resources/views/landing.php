@@ -216,11 +216,6 @@
             flex-wrap: wrap;
         }
 
-        .hero-note {
-            font-size: 0.85rem;
-            color: var(--muted);
-        }
-
         /* ---------- Dashboard preview ---------- */
 
         .preview {
@@ -547,7 +542,10 @@
                 </span>
                 MyCFO+
             </div>
-            <a class="btn btn-ghost" href="/login">Log in</a>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                <a class="btn btn-ghost" href="/login">Log in</a>
+                <a class="btn btn-primary" href="/register">Create a household</a>
+            </div>
         </div>
     </header>
 
@@ -562,8 +560,8 @@
                     no data brokers, nothing syncing anywhere you can't see.
                 </p>
                 <div class="hero-actions">
-                    <a class="btn btn-primary" href="/login">Log in to your household</a>
-                    <span class="hero-note">Invite-only &mdash; ask whoever set up your household.</span>
+                    <a class="btn btn-primary" href="/register">Create your household</a>
+                    <a class="btn btn-ghost" href="/login">Log in</a>
                 </div>
             </div>
 
@@ -655,7 +653,7 @@
                 </li>
                 <li>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
-                    No analytics, trackers, or third-party scripts
+                    No analytics or trackers, anywhere in the app itself
                 </li>
                 <li>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
@@ -668,8 +666,11 @@
     <section class="closing">
         <div class="wrap">
             <h2>Ready to see where things stand?</h2>
-            <p>Log in to pick up right where your household left off.</p>
-            <a class="btn btn-primary" href="/login">Log in to your household</a>
+            <p>Create your household, or log in to pick up right where you left off.</p>
+            <div style="display:flex; align-items:center; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+                <a class="btn btn-primary" href="/register">Create a household</a>
+                <a class="btn btn-ghost" href="/login">Log in</a>
+            </div>
         </div>
     </section>
 

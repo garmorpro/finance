@@ -6,6 +6,7 @@ namespace Tests\Integration;
 
 use App\Repositories\AccountRepository;
 use App\Repositories\BudgetRepository;
+use App\Repositories\CategoryRepository;
 use App\Repositories\GoalRepository;
 use App\Repositories\RecurringItemRepository;
 use App\Repositories\TransactionRepository;
@@ -144,5 +145,33 @@ final class HouseholdIsolationTest extends DatabaseTestCase
 
         $this->assertNotNull((new RecurringItemRepository())->findById($recurringId, $householdA['household_id']));
         $this->assertNull((new RecurringItemRepository())->findById($recurringId, $householdB['household_id']));
+    }
+
+    /**
+     * Public registration (RegistrationController::register(), and
+     * bin/create-owner.php before it) creates a household through the
+     * exact same sequence Fixtures::makeHousehold() uses above — create
+     * user, create household, add as owner — plus one step that sequence
+     * doesn't: seeding default categories. Every other test in this file
+     * already proves the shared part of that sequence is isolated; this
+     * one specifically locks in the one piece registration adds, so a
+     * future change to how registration seeds a new household can't
+     * silently leak categories across households. The controller itself
+     * isn't exercised directly here — see docs/testing.md's "not covered
+     * by automated tests" list for why (session/header-dependent flows
+     * don't unit-test cleanly without a larger HTTP-test harness).
+     */
+    public function test_registration_seeded_categories_are_isolated_between_households(): void
+    {
+        $householdA = $this->makeHousehold('Household A');
+        $householdB = $this->makeHousehold('Household B');
+
+        (new CategoryRepository())->seedDefaults($householdA['household_id']);
+
+        $categoriesForA = (new CategoryRepository())->listForHousehold($householdA['household_id']);
+        $categoriesForB = (new CategoryRepository())->listForHousehold($householdB['household_id']);
+
+        $this->assertNotEmpty($categoriesForA);
+        $this->assertSame([], $categoriesForB);
     }
 }

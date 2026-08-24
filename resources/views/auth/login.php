@@ -92,6 +92,12 @@ use App\Support\View;
 
         <p class="mt-5 text-sm text-center">
             <a href="/forgot-password" class="text-terracotta-600 dark:text-terracotta-400 hover:underline font-medium">Forgot password?</a>
+            &middot;
+            <a href="/verify-email/resend" class="text-terracotta-600 dark:text-terracotta-400 hover:underline font-medium">Resend verification email</a>
+        </p>
+        <p class="mt-3 text-sm text-center text-stone-500 dark:text-stone-400">
+            New here?
+            <a href="/register" class="text-terracotta-600 dark:text-terracotta-400 hover:underline font-medium">Create a household</a>
         </p>
     </div>
 

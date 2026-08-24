@@ -8,6 +8,7 @@ use App\Repositories\HouseholdRepository;
 use App\Services\BudgetReviewLinkService;
 use App\Support\Logger;
 use App\Support\Mailer;
+use App\Support\View;
 use Dotenv\Dotenv;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
@@ -43,6 +44,14 @@ function buildReminderEmail(string $recipientName, string $monthLabel, string $r
     $expiryNote = 'This link is yours alone. It expires in ' . $expiryDays . ' day' . ($expiryDays === 1 ? '' : 's')
         . ($singleUse ? ', or as soon as you use it once' : '') . ' — whichever comes first.';
 
+    // $firstName is a real user's own profile name (user-controlled) —
+    // escaped before landing in the HTML body so it can't carry markup
+    // into their own inbox. $monthLabel/$reviewUrl are server-generated
+    // and never need it, but this keeps every interpolated value in the
+    // HTML block visually consistent (all htmlFoo) rather than mixing
+    // escaped and unescaped variables by name alone.
+    $htmlFirstName = View::e($firstName);
+
     $html = <<<HTML
         <div style="background:#f5f5f4;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
           <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e7e5e4;">
@@ -50,7 +59,7 @@ function buildReminderEmail(string $recipientName, string $monthLabel, string $r
               <div style="font-weight:700;font-size:16px;color:#1c1917;margin-bottom:28px;">MyCFO<span style="color:#e2694b;">+</span></div>
               <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#1c1917;">Let's get {$monthLabel} planned.</h1>
               <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#57534e;">
-                Hey {$firstName} — it's almost {$monthLabel}. Before it starts, take a couple of minutes
+                Hey {$htmlFirstName} — it's almost {$monthLabel}. Before it starts, take a couple of minutes
                 to confirm what you're planning to earn and spend. Every category is pre-filled from
                 recent months, so most of this is just a tap to confirm.
               </p>
