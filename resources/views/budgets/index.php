@@ -155,13 +155,18 @@ $renderSection = function (array $section, string $type) use ($renderRow, $expen
     $title = $group !== null ? $group['name'] : 'Ungrouped';
     $rows = $section['rows'];
 
+    // A category can have real actual spending/income with no planned
+    // amount at all (never budgeted) — actual has to be summed
+    // unconditionally, or a row like that silently vanishes from the
+    // group's total. planned stays conditional since null means "not
+    // budgeted," not zero.
     $planned = '0.00';
     $actual = '0.00';
     foreach ($rows as $row) {
         if ($row['planned'] !== null) {
             $planned = bcadd($planned, $row['planned'], 2);
-            $actual = bcadd($actual, $row['actual'], 2);
         }
+        $actual = bcadd($actual, $row['actual'], 2);
     }
     $remaining = bcsub($planned, $actual, 2);
     $hasActivity = bccomp($planned, '0.00', 2) > 0 || bccomp($actual, '0.00', 2) > 0;
