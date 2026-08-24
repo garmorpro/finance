@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+- Encryption at rest, phase 1: `accounts.name`/`institution_name`/`notes`,
+  `financial_goals.name`/`description`, and `recurring_items.name`/`notes`
+  are now encrypted (`App\Support\FieldCipher` — `sodium_crypto_secretbox`,
+  built into PHP core, no new dependency). These specific columns were
+  chosen because none of them are searched via SQL `LIKE` anywhere in the
+  app (verified by grep, not assumed) — `transactions.payee`/`notes` are
+  deliberately excluded from this phase since the Transactions page's
+  search depends on `LIKE` against them, a real redesign question for a
+  later, separate pass (see `docs/security.md`'s "Encryption at rest").
+  New nullable `*_encrypted` columns (migrations `0046`-`0048`) sit
+  alongside the original plaintext ones rather than replacing them in
+  place — every read prefers the encrypted column, falling back to
+  plaintext for any row not yet backfilled
+  (`bin/encrypt-existing-text-fields.php`, idempotent, dry-run by
+  default), so deploying and backfilling are safe in either order; every
+  write goes only to the encrypted column and clears the old plaintext
+  one. The old columns aren't dropped in this pass — a later, separate
+  migration once this has run in production without issue. Also fixed
+  along the way, all found by auditing every place these fields'
+  *values get copied* rather than just adding columns and calling it
+  done: every SQL `JOIN` that used to read `accounts.name` directly for
+  display (transaction lists, CSV export, imports history, goals'
+  linked-account name, recurring items, Reports' "group by account") now
+  decrypts it in PHP after the fetch; `account.created`/`goal.created`/
+  `recurring.created` no longer log the new record's name into
+  `audit_logs.metadata` in plaintext (encrypting the column, then
+  logging its own value elsewhere, would have defeated the point).
+  New `App\Support\FieldCipher` unit tests (round-trips including empty
+  string vs. null, multibyte/emoji, tampered/wrong-key/too-short
+  failure modes — all fail loudly rather than returning garbled data)
+  and a `HouseholdIsolationTest` case for the account-seeding path.
+  **Deployment order matters here** unlike this app's other optional
+  features — `ENCRYPTION_KEY` is not gracefully optional the way
+  `MAIL_*`/`TURNSTILE_*` are; creating or editing any account, goal, or
+  recurring item throws without it. See `docs/deployment.md`'s
+  "Deploying encryption at rest" section for the required order, and
+  `.env.testing.example` for the new key integration tests need too.
+  `docs/database.md`/`docs/security.md` updated throughout.
+
 - Public self-registration (`/register`) — anyone can now create their own
   household without server access, the internet-facing counterpart to
   `bin/create-owner.php`. Gated on confirming the registrant's email

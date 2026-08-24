@@ -32,6 +32,13 @@ real rows), so they must never run against your production database.
    cp .env.testing.example .env.testing
    ```
 
+   If you already have a `.env.testing` from before encryption at rest
+   (see docs/security.md) existed, add the `ENCRYPTION_KEY` line from
+   `.env.testing.example` to it — `AccountRepository`/`GoalRepository`/
+   `RecurringItemRepository` encrypt on every `create()`/`update()`, so
+   every integration test that creates an account, goal, or recurring
+   item throws without it.
+
 3. `DB_DATABASE` in `.env.testing` **must contain the literal substring
    "test"** — `tests/DatabaseTestCase.php` checks for this and refuses to
    run otherwise. This is a deliberate safety net: if `.env.testing`
@@ -98,6 +105,13 @@ Covered by `composer test`:
   month" not overwriting existing lines).
 - CSV parsing edge cases (empty file, header-only file, whitespace).
 - Financial rounding (decimal-safe bcmath vs. binary float drift).
+- `App\Support\FieldCipher` (`tests/Support/FieldCipherTest.php`) —
+  round-trips (including empty string vs. null, multibyte/emoji, long
+  text with binary-looking bytes), a fresh random nonce every call, and
+  every failure mode throwing rather than returning garbled bytes
+  (wrong key, tampered ciphertext, too-short input, missing/malformed
+  `ENCRYPTION_KEY`). A pure unit test — doesn't touch the database, so
+  it runs even without a test DB configured.
 
 Not covered by automated tests — verify manually before shipping a
 change that touches these:

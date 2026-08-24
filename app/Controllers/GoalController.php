@@ -101,6 +101,9 @@ final class GoalController
 
         $goalId = (new GoalRepository())->create($householdId, $userId, $input);
 
+        // No 'name' in metadata: financial_goals.name is encrypted at
+        // rest (App\Support\FieldCipher) — logging it here in plaintext
+        // JSON would defeat that.
         (new AuditLogRepository())->log(
             $userId,
             $householdId,
@@ -108,7 +111,7 @@ final class GoalController
             'goal',
             $goalId,
             $request->ip(),
-            ['name' => $input['name'], 'target_amount' => $input['target_amount']]
+            ['target_amount' => $input['target_amount']]
         );
 
         $_SESSION['_flash_notice'] = "\"{$input['name']}\" added.";

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Database\Connection;
+use App\Support\FieldCipher;
 
 final class GoalRepository
 {
@@ -17,13 +18,13 @@ final class GoalRepository
 
         $stmt = Connection::get()->prepare(
             'INSERT INTO financial_goals
-                (household_id, created_by_user_id, responsible_user_id, linked_account_id, name, description,
-                 goal_type, target_amount, current_amount, target_date, planned_monthly_contribution, status,
-                 created_at, updated_at)
+                (household_id, created_by_user_id, responsible_user_id, linked_account_id, name, name_encrypted,
+                 description, description_encrypted, goal_type, target_amount, current_amount, target_date,
+                 planned_monthly_contribution, status, created_at, updated_at)
              VALUES
-                (:household_id, :created_by_user_id, :responsible_user_id, :linked_account_id, :name, :description,
-                 :goal_type, :target_amount, 0.00, :target_date, :planned_monthly_contribution, :status,
-                 :created_at, :updated_at)'
+                (:household_id, :created_by_user_id, :responsible_user_id, :linked_account_id, NULL, :name_encrypted,
+                 NULL, :description_encrypted, :goal_type, :target_amount, 0.00, :target_date,
+                 :planned_monthly_contribution, :status, :created_at, :updated_at)'
         );
 
         $stmt->execute([
@@ -31,8 +32,8 @@ final class GoalRepository
             'created_by_user_id' => $userId,
             'responsible_user_id' => $data['responsible_user_id'],
             'linked_account_id' => $data['linked_account_id'],
-            'name' => $data['name'],
-            'description' => $data['description'],
+            'name_encrypted' => FieldCipher::encrypt($data['name']),
+            'description_encrypted' => FieldCipher::encrypt($data['description']),
             'goal_type' => $data['goal_type'],
             'target_amount' => $data['target_amount'],
             'target_date' => $data['target_date'],
@@ -55,7 +56,7 @@ final class GoalRepository
 
         $row = $stmt->fetch();
 
-        return $row === false ? null : $row;
+        return $row === false ? null : self::hydrate($row);
     }
 
     /**
@@ -67,8 +68,10 @@ final class GoalRepository
             'UPDATE financial_goals SET
                 responsible_user_id = :responsible_user_id,
                 linked_account_id = :linked_account_id,
-                name = :name,
-                description = :description,
+                name = NULL,
+                name_encrypted = :name_encrypted,
+                description = NULL,
+                description_encrypted = :description_encrypted,
                 goal_type = :goal_type,
                 target_amount = :target_amount,
                 target_date = :target_date,
@@ -80,8 +83,8 @@ final class GoalRepository
         $stmt->execute([
             'responsible_user_id' => $data['responsible_user_id'],
             'linked_account_id' => $data['linked_account_id'],
-            'name' => $data['name'],
-            'description' => $data['description'],
+            'name_encrypted' => FieldCipher::encrypt($data['name']),
+            'description_encrypted' => FieldCipher::encrypt($data['description']),
             'goal_type' => $data['goal_type'],
             'target_amount' => $data['target_amount'],
             'target_date' => $data['target_date'],
@@ -199,17 +202,52 @@ final class GoalRepository
     public function listForHousehold(int $householdId): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT g.*, a.name AS account_name, u.name AS responsible_name
+            'SELECT g.*, a.name AS account_name, a.name_encrypted AS account_name_encrypted, u.name AS responsible_name
              FROM financial_goals g
              LEFT JOIN accounts a ON a.id = g.linked_account_id
              LEFT JOIN users u ON u.id = g.responsible_user_id
-             WHERE g.household_id = :household_id
-             ORDER BY (g.status = "active") DESC, g.target_date IS NULL, g.target_date, g.name'
+             WHERE g.household_id = :household_id'
         );
 
         $stmt->execute(['household_id' => $householdId]);
 
-        return $stmt->fetchAll();
+        $rows = array_map(self::hydrate(...), $stmt->fetchAll());
+
+        // Replicates the original SQL ORDER BY (active first, non-null
+        // target_date before null, then target_date, then name) in PHP
+        // instead — name is now only decrypted after the fetch, so SQL
+        // can no longer sort by it directly.
+        usort($rows, function (array $a, array $b): int {
+            $rankA = [$a['status'] === 'active' ? 0 : 1, $a['target_date'] === null, $a['target_date'], $a['name']];
+            $rankB = [$b['status'] === 'active' ? 0 : 1, $b['target_date'] === null, $b['target_date'], $b['name']];
+
+            return $rankA <=> $rankB;
+        });
+
+        return $rows;
+    }
+
+    /**
+     * Decrypts name/description from their *_encrypted columns, falling
+     * back to the old plaintext column for any row not yet run through
+     * bin/encrypt-existing-text-fields.php, and (when the row came from
+     * listForHousehold()'s JOIN) the linked account's name the same way
+     * — see AccountRepository for why a JOIN can no longer read that
+     * column directly. Raw *_encrypted binary blobs are removed from the
+     * returned row entirely.
+     */
+    private static function hydrate(array $row): array
+    {
+        $row['name'] = FieldCipher::decryptOrFallback($row['name_encrypted'], $row['name']);
+        $row['description'] = FieldCipher::decryptOrFallback($row['description_encrypted'], $row['description']);
+        unset($row['name_encrypted'], $row['description_encrypted']);
+
+        if (array_key_exists('account_name_encrypted', $row)) {
+            $row['account_name'] = FieldCipher::decryptOrFallback($row['account_name_encrypted'], $row['account_name']);
+            unset($row['account_name_encrypted']);
+        }
+
+        return $row;
     }
 
     /**

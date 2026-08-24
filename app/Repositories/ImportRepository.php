@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Database\Connection;
+use App\Support\FieldCipher;
 
 final class ImportRepository
 {
@@ -56,7 +57,7 @@ final class ImportRepository
     public function listForHousehold(int $householdId): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT i.*, a.name AS account_name, u.name AS imported_by_name
+            'SELECT i.*, a.name AS account_name, a.name_encrypted AS account_name_encrypted, u.name AS imported_by_name
              FROM imports i
              INNER JOIN accounts a ON a.id = i.account_id
              INNER JOIN users u ON u.id = i.imported_by_user_id
@@ -67,6 +68,16 @@ final class ImportRepository
 
         $stmt->execute(['household_id' => $householdId]);
 
-        return $stmt->fetchAll();
+        // account_name comes from a SQL JOIN against accounts.name, which
+        // (see AccountRepository) is only ever NULL now — the real value
+        // lives encrypted in accounts.name_encrypted, selected above.
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$row) {
+            $row['account_name'] = FieldCipher::decryptOrFallback($row['account_name_encrypted'], $row['account_name']);
+            unset($row['account_name_encrypted']);
+        }
+        unset($row);
+
+        return $rows;
     }
 }

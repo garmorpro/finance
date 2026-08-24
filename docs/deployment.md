@@ -150,6 +150,42 @@ Tailwind classes to a view, the compiled CSS must be rebuilt *before*
 committing (see the README) — there's no build step on the server
 itself.
 
+### Deploying encryption at rest (accounts/goals/recurring items)
+
+This one deploy needs its steps done **in order**, not just
+`git pull` + `migrate.php` — unlike every other feature in this app,
+`ENCRYPTION_KEY` is not gracefully optional (see `.env.example`):
+`AccountRepository`/`GoalRepository`/`RecurringItemRepository` encrypt
+on every `create()`/`update()` unconditionally and throw without it, so
+skipping step 1 breaks adding/editing any account, goal, or recurring
+item outright, not just leaves data unencrypted.
+
+1. Generate a key and set `ENCRYPTION_KEY` in `.env`:
+   ```
+   php -r "echo base64_encode(sodium_crypto_secretbox_keygen()), PHP_EOL;"
+   ```
+   Back it up somewhere other than alongside your database backups —
+   losing it makes every encrypted value permanently unreadable, with
+   no reset like a password.
+2. `git pull` and `php bin/migrate.php` as usual (migrations `0046`-`0048`
+   add the new columns).
+3. Confirm the `sodium` PHP extension is enabled — it's bundled with PHP
+   8.1+ by default, but a minimal/custom PHP build could have it
+   disabled: `php -r "var_dump(extension_loaded('sodium'));"` should
+   print `bool(true)`.
+4. Backfill every existing row (dry run first, then `--apply` — see the
+   script's own docblock for what each does):
+   ```
+   php bin/encrypt-existing-text-fields.php
+   php bin/encrypt-existing-text-fields.php --apply
+   ```
+   Safe to re-run — already-encrypted rows are skipped, so this can run
+   again later to pick up anything a previous run missed.
+5. Spot-check in the app itself (not phpMyAdmin, which will now show
+   ciphertext for these columns by design) that account names,
+   institution names, notes, goal names/descriptions, and recurring
+   item names/notes all still display correctly.
+
 ## Rollback procedure
 
 There's no down-migration mechanism (see `docs/database.md`). To roll

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Database\Connection;
+use App\Support\FieldCipher;
 
 final class TransactionRepository
 {
@@ -300,7 +301,7 @@ final class TransactionRepository
         $sortColumn = self::SORTABLE_COLUMNS[$sort] ?? self::SORTABLE_COLUMNS['date'];
         $sortDir = strtolower($dir) === 'asc' ? 'ASC' : 'DESC';
 
-        $sql = "SELECT t.*, a.name AS account_name, c.name AS category_name, c.color AS category_color
+        $sql = "SELECT t.*, a.name AS account_name, a.name_encrypted AS account_name_encrypted, c.name AS category_name, c.color AS category_color
                 FROM transactions t
                 INNER JOIN accounts a ON a.id = t.account_id
                 LEFT JOIN categories c ON c.id = t.category_id
@@ -312,7 +313,7 @@ final class TransactionRepository
         $stmt->execute($params);
 
         return [
-            'rows' => $stmt->fetchAll(),
+            'rows' => self::hydrateAccountName($stmt->fetchAll()),
             'total' => $total,
             'page' => $page,
             'perPage' => self::PER_PAGE,
@@ -392,7 +393,7 @@ final class TransactionRepository
     {
         [$where, $params] = $this->buildWhere($householdId, $filters);
 
-        $sql = "SELECT t.*, a.name AS account_name, c.name AS category_name
+        $sql = "SELECT t.*, a.name AS account_name, a.name_encrypted AS account_name_encrypted, c.name AS category_name
                 FROM transactions t
                 INNER JOIN accounts a ON a.id = t.account_id
                 LEFT JOIN categories c ON c.id = t.category_id
@@ -403,13 +404,13 @@ final class TransactionRepository
         $stmt = Connection::get()->prepare($sql);
         $stmt->execute($params);
 
-        return $stmt->fetchAll();
+        return self::hydrateAccountName($stmt->fetchAll());
     }
 
     public function listForRecurringItem(int $recurringItemId, int $householdId, int $limit = 10): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT t.*, a.name AS account_name
+            'SELECT t.*, a.name AS account_name, a.name_encrypted AS account_name_encrypted
              FROM transactions t
              INNER JOIN accounts a ON a.id = t.account_id
              WHERE t.recurring_item_id = :recurring_item_id AND t.household_id = :household_id AND t.deleted_at IS NULL
@@ -419,13 +420,13 @@ final class TransactionRepository
 
         $stmt->execute(['recurring_item_id' => $recurringItemId, 'household_id' => $householdId]);
 
-        return $stmt->fetchAll();
+        return self::hydrateAccountName($stmt->fetchAll());
     }
 
     public function recentForHousehold(int $householdId, int $limit = 5): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT t.*, a.name AS account_name, c.name AS category_name, c.color AS category_color
+            'SELECT t.*, a.name AS account_name, a.name_encrypted AS account_name_encrypted, c.name AS category_name, c.color AS category_color
              FROM transactions t
              INNER JOIN accounts a ON a.id = t.account_id
              LEFT JOIN categories c ON c.id = t.category_id
@@ -436,7 +437,7 @@ final class TransactionRepository
 
         $stmt->execute(['household_id' => $householdId]);
 
-        return $stmt->fetchAll();
+        return self::hydrateAccountName($stmt->fetchAll());
     }
 
     /**
@@ -488,6 +489,30 @@ final class TransactionRepository
         $stmt->execute([$householdId, ...$transactionIds]);
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * account_name comes from a SQL JOIN against accounts.name, which
+     * (see AccountRepository) is only ever NULL now — the real value
+     * lives encrypted in accounts.name_encrypted, which every SELECT in
+     * this file that joins accounts also selects alongside it as
+     * account_name_encrypted. This decrypts it into the same
+     * account_name key every caller already expects, so nothing calling
+     * these methods needs to change, and removes the raw ciphertext
+     * column from the row entirely.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @return list<array<string, mixed>>
+     */
+    private static function hydrateAccountName(array $rows): array
+    {
+        foreach ($rows as &$row) {
+            $row['account_name'] = FieldCipher::decryptOrFallback($row['account_name_encrypted'] ?? null, $row['account_name']);
+            unset($row['account_name_encrypted']);
+        }
+        unset($row);
+
+        return $rows;
     }
 
     /**

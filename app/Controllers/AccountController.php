@@ -83,14 +83,17 @@ final class AccountController
             'current_balance' => MoneyInput::normalize($input['current_balance']),
         ]);
 
+        // No 'name' in metadata: accounts.name is encrypted at rest
+        // (App\Support\FieldCipher) — logging it here in plaintext JSON
+        // would defeat that. entity_id already identifies exactly which
+        // account this is; its current name is a lookup away in the app.
         (new AuditLogRepository())->log(
             $userId,
             $householdId,
             'account.created',
             'account',
             $accountId,
-            $request->ip(),
-            ['name' => $input['name']]
+            $request->ip()
         );
 
         $_SESSION['_flash_notice'] = "Account \"{$input['name']}\" created.";

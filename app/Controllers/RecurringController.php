@@ -89,6 +89,9 @@ final class RecurringController
 
         $recurringId = (new RecurringItemRepository())->create($householdId, $userId, $input);
 
+        // No 'name' in metadata: recurring_items.name is encrypted at
+        // rest (App\Support\FieldCipher) — logging it here in plaintext
+        // JSON would defeat that.
         (new AuditLogRepository())->log(
             $userId,
             $householdId,
@@ -96,7 +99,7 @@ final class RecurringController
             'recurring_item',
             $recurringId,
             $request->ip(),
-            ['name' => $input['name'], 'expected_amount' => $input['expected_amount']]
+            ['expected_amount' => $input['expected_amount']]
         );
 
         $_SESSION['_flash_notice'] = "\"{$input['name']}\" added.";

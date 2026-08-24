@@ -9,6 +9,7 @@ use App\Repositories\AccountBalanceHistoryRepository;
 use App\Repositories\AccountRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\GoalRepository;
+use App\Support\FieldCipher;
 
 /**
  * Chart/report data for the dashboard. Kept out of controllers per
@@ -565,7 +566,7 @@ final class ReportingService
 
         $stmt = Connection::get()->prepare(
             "SELECT t.transaction_type, t.amount, t.transaction_date, t.payee, t.category_id, t.account_id, t.created_by_user_id,
-                    c.name AS category_name, a.name AS account_name, u.name AS user_name
+                    c.name AS category_name, a.name AS account_name, a.name_encrypted AS account_name_encrypted, u.name AS user_name
              FROM transactions t
              LEFT JOIN categories c ON c.id = t.category_id
              INNER JOIN accounts a ON a.id = t.account_id
@@ -575,7 +576,18 @@ final class ReportingService
         );
         $stmt->execute($params);
 
-        return $this->groupTransactions($stmt->fetchAll(), $groupBy, $sort, $dir);
+        // account_name comes from a SQL JOIN against accounts.name, which
+        // (see AccountRepository) is only ever NULL now when groupBy is
+        // "account" — the real value lives encrypted in
+        // accounts.name_encrypted, selected above.
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$row) {
+            $row['account_name'] = FieldCipher::decryptOrFallback($row['account_name_encrypted'], $row['account_name']);
+            unset($row['account_name_encrypted']);
+        }
+        unset($row);
+
+        return $this->groupTransactions($rows, $groupBy, $sort, $dir);
     }
 
     /**

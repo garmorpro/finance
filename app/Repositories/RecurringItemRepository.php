@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Database\Connection;
+use App\Support\FieldCipher;
 
 final class RecurringItemRepository
 {
@@ -17,11 +18,13 @@ final class RecurringItemRepository
 
         $stmt = Connection::get()->prepare(
             'INSERT INTO recurring_items
-                (household_id, account_id, category_id, created_by_user_id, name, recurring_type,
-                 expected_amount, frequency, next_due_date, auto_pay, status, notes, created_at, updated_at)
+                (household_id, account_id, category_id, created_by_user_id, name, name_encrypted,
+                 recurring_type, expected_amount, frequency, next_due_date, auto_pay, status, notes,
+                 notes_encrypted, created_at, updated_at)
              VALUES
-                (:household_id, :account_id, :category_id, :created_by_user_id, :name, :recurring_type,
-                 :expected_amount, :frequency, :next_due_date, :auto_pay, :status, :notes, :created_at, :updated_at)'
+                (:household_id, :account_id, :category_id, :created_by_user_id, NULL, :name_encrypted,
+                 :recurring_type, :expected_amount, :frequency, :next_due_date, :auto_pay, :status, NULL,
+                 :notes_encrypted, :created_at, :updated_at)'
         );
 
         $stmt->execute([
@@ -29,14 +32,14 @@ final class RecurringItemRepository
             'account_id' => $data['account_id'],
             'category_id' => $data['category_id'],
             'created_by_user_id' => $userId,
-            'name' => $data['name'],
+            'name_encrypted' => FieldCipher::encrypt($data['name']),
             'recurring_type' => $data['recurring_type'],
             'expected_amount' => $data['expected_amount'],
             'frequency' => $data['frequency'],
             'next_due_date' => $data['next_due_date'],
             'auto_pay' => $data['auto_pay'] ? 1 : 0,
             'status' => 'active',
-            'notes' => $data['notes'],
+            'notes_encrypted' => FieldCipher::encrypt($data['notes']),
             'created_at' => $now,
             'updated_at' => $now,
         ]);
@@ -54,7 +57,7 @@ final class RecurringItemRepository
 
         $row = $stmt->fetch();
 
-        return $row === false ? null : $row;
+        return $row === false ? null : self::hydrate($row);
     }
 
     /**
@@ -66,13 +69,15 @@ final class RecurringItemRepository
             'UPDATE recurring_items SET
                 account_id = :account_id,
                 category_id = :category_id,
-                name = :name,
+                name = NULL,
+                name_encrypted = :name_encrypted,
                 recurring_type = :recurring_type,
                 expected_amount = :expected_amount,
                 frequency = :frequency,
                 next_due_date = :next_due_date,
                 auto_pay = :auto_pay,
-                notes = :notes,
+                notes = NULL,
+                notes_encrypted = :notes_encrypted,
                 updated_at = :updated_at
              WHERE id = :id AND household_id = :household_id'
         );
@@ -80,13 +85,13 @@ final class RecurringItemRepository
         $stmt->execute([
             'account_id' => $data['account_id'],
             'category_id' => $data['category_id'],
-            'name' => $data['name'],
+            'name_encrypted' => FieldCipher::encrypt($data['name']),
             'recurring_type' => $data['recurring_type'],
             'expected_amount' => $data['expected_amount'],
             'frequency' => $data['frequency'],
             'next_due_date' => $data['next_due_date'],
             'auto_pay' => $data['auto_pay'] ? 1 : 0,
-            'notes' => $data['notes'],
+            'notes_encrypted' => FieldCipher::encrypt($data['notes']),
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $recurringItemId,
             'household_id' => $householdId,
@@ -140,17 +145,28 @@ final class RecurringItemRepository
     public function listForHousehold(int $householdId): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT r.*, a.name AS account_name, c.name AS category_name
+            'SELECT r.*, a.name AS account_name, a.name_encrypted AS account_name_encrypted, c.name AS category_name
              FROM recurring_items r
              INNER JOIN accounts a ON a.id = r.account_id
              LEFT JOIN categories c ON c.id = r.category_id
-             WHERE r.household_id = :household_id
-             ORDER BY (r.status = "active") DESC, r.next_due_date, r.name'
+             WHERE r.household_id = :household_id'
         );
 
         $stmt->execute(['household_id' => $householdId]);
 
-        return $stmt->fetchAll();
+        $rows = array_map(self::hydrate(...), $stmt->fetchAll());
+
+        // Replicates the original SQL ORDER BY (active first, then
+        // next_due_date, then name) in PHP — name is now only decrypted
+        // after the fetch, so SQL can no longer sort by it directly.
+        usort($rows, function (array $a, array $b): int {
+            $rankA = [$a['status'] === 'active' ? 0 : 1, $a['next_due_date'], $a['name']];
+            $rankB = [$b['status'] === 'active' ? 0 : 1, $b['next_due_date'], $b['name']];
+
+            return $rankA <=> $rankB;
+        });
+
+        return $rows;
     }
 
     /**
@@ -161,7 +177,7 @@ final class RecurringItemRepository
     public function upcomingForHousehold(int $householdId, int $limit = 5): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT r.*, a.name AS account_name, c.name AS category_name
+            'SELECT r.*, a.name AS account_name, a.name_encrypted AS account_name_encrypted, c.name AS category_name
              FROM recurring_items r
              INNER JOIN accounts a ON a.id = r.account_id
              LEFT JOIN categories c ON c.id = r.category_id
@@ -172,7 +188,30 @@ final class RecurringItemRepository
 
         $stmt->execute(['household_id' => $householdId]);
 
-        return $stmt->fetchAll();
+        return array_map(self::hydrate(...), $stmt->fetchAll());
+    }
+
+    /**
+     * Decrypts name/notes from their *_encrypted columns, falling back
+     * to the old plaintext column for any row not yet run through
+     * bin/encrypt-existing-text-fields.php, and (when the row came from
+     * a JOIN against accounts) the linked account's name the same way —
+     * see AccountRepository for why a JOIN can no longer read that
+     * column directly. Raw *_encrypted binary blobs are removed from the
+     * returned row entirely.
+     */
+    private static function hydrate(array $row): array
+    {
+        $row['name'] = FieldCipher::decryptOrFallback($row['name_encrypted'], $row['name']);
+        $row['notes'] = FieldCipher::decryptOrFallback($row['notes_encrypted'], $row['notes']);
+        unset($row['name_encrypted'], $row['notes_encrypted']);
+
+        if (array_key_exists('account_name_encrypted', $row)) {
+            $row['account_name'] = FieldCipher::decryptOrFallback($row['account_name_encrypted'], $row['account_name']);
+            unset($row['account_name_encrypted']);
+        }
+
+        return $row;
     }
 
     /**

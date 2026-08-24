@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Database\Connection;
+use App\Support\FieldCipher;
 
 final class AccountRepository
 {
@@ -46,22 +47,24 @@ final class AccountRepository
 
         $stmt = Connection::get()->prepare(
             'INSERT INTO accounts
-                (household_id, created_by_user_id, name, institution_name, account_type,
-                 current_balance, available_balance, credit_limit, interest_rate,
-                 minimum_payment, payment_due_day, original_balance, color,
-                 include_in_net_worth, include_in_budget, status, notes, created_at, updated_at)
+                (household_id, created_by_user_id, name, name_encrypted, institution_name,
+                 institution_name_encrypted, account_type, current_balance, available_balance,
+                 credit_limit, interest_rate, minimum_payment, payment_due_day, original_balance,
+                 color, include_in_net_worth, include_in_budget, status, notes, notes_encrypted,
+                 created_at, updated_at)
              VALUES
-                (:household_id, :created_by_user_id, :name, :institution_name, :account_type,
-                 :current_balance, :available_balance, :credit_limit, :interest_rate,
-                 :minimum_payment, :payment_due_day, :original_balance, :color,
-                 :include_in_net_worth, :include_in_budget, :status, :notes, :created_at, :updated_at)'
+                (:household_id, :created_by_user_id, NULL, :name_encrypted, NULL,
+                 :institution_name_encrypted, :account_type, :current_balance, :available_balance,
+                 :credit_limit, :interest_rate, :minimum_payment, :payment_due_day, :original_balance,
+                 :color, :include_in_net_worth, :include_in_budget, :status, NULL, :notes_encrypted,
+                 :created_at, :updated_at)'
         );
 
         $stmt->execute([
             'household_id' => $householdId,
             'created_by_user_id' => $userId,
-            'name' => $data['name'],
-            'institution_name' => $data['institution_name'],
+            'name_encrypted' => FieldCipher::encrypt($data['name']),
+            'institution_name_encrypted' => FieldCipher::encrypt($data['institution_name']),
             'account_type' => $data['account_type'],
             'current_balance' => $data['current_balance'],
             'available_balance' => $data['available_balance'],
@@ -74,7 +77,7 @@ final class AccountRepository
             'include_in_net_worth' => $data['include_in_net_worth'] ? 1 : 0,
             'include_in_budget' => $data['include_in_budget'] ? 1 : 0,
             'status' => 'active',
-            'notes' => $data['notes'],
+            'notes_encrypted' => FieldCipher::encrypt($data['notes']),
             'created_at' => $now,
             'updated_at' => $now,
         ]);
@@ -94,7 +97,7 @@ final class AccountRepository
 
         $row = $stmt->fetch();
 
-        return $row === false ? null : $row;
+        return $row === false ? null : self::hydrate($row);
     }
 
     public function listForHousehold(int $householdId, bool $includeArchived = false): array
@@ -105,12 +108,42 @@ final class AccountRepository
             $sql .= " AND status != 'archived'";
         }
 
+        // ORDER BY name here sorts encrypted households' accounts by
+        // their now-always-NULL plaintext name column — meaningless, but
+        // harmless (a stable no-op ordering key) rather than broken;
+        // status/account_type still group things sensibly first. Sorting
+        // by real name happens in PHP below, on the decrypted value.
         $sql .= ' ORDER BY status, account_type, name';
 
         $stmt = Connection::get()->prepare($sql);
         $stmt->execute(['household_id' => $householdId]);
 
-        return $stmt->fetchAll();
+        $rows = array_map(self::hydrate(...), $stmt->fetchAll());
+
+        usort($rows, fn (array $a, array $b): int => [$a['status'], $a['account_type'], $a['name']] <=> [$b['status'], $b['account_type'], $b['name']]);
+
+        return $rows;
+    }
+
+    /**
+     * Decrypts name/institution_name/notes from their *_encrypted
+     * columns, falling back to the old plaintext column for any row not
+     * yet run through bin/encrypt-existing-text-fields.php — this makes
+     * deploying this code and running that backfill script safe in
+     * either order, nothing breaks in between. The raw *_encrypted
+     * binary blobs are removed from the returned row entirely so no
+     * caller ever accidentally tries to treat/display/json_encode raw
+     * ciphertext bytes as text.
+     */
+    private static function hydrate(array $row): array
+    {
+        $row['name'] = FieldCipher::decryptOrFallback($row['name_encrypted'], $row['name']);
+        $row['institution_name'] = FieldCipher::decryptOrFallback($row['institution_name_encrypted'], $row['institution_name']);
+        $row['notes'] = FieldCipher::decryptOrFallback($row['notes_encrypted'], $row['notes']);
+
+        unset($row['name_encrypted'], $row['institution_name_encrypted'], $row['notes_encrypted']);
+
+        return $row;
     }
 
     /**
@@ -157,8 +190,10 @@ final class AccountRepository
     {
         $stmt = Connection::get()->prepare(
             'UPDATE accounts SET
-                name = :name,
-                institution_name = :institution_name,
+                name = NULL,
+                name_encrypted = :name_encrypted,
+                institution_name = NULL,
+                institution_name_encrypted = :institution_name_encrypted,
                 account_type = :account_type,
                 available_balance = :available_balance,
                 credit_limit = :credit_limit,
@@ -169,14 +204,19 @@ final class AccountRepository
                 color = :color,
                 include_in_net_worth = :include_in_net_worth,
                 include_in_budget = :include_in_budget,
-                notes = :notes,
+                notes = NULL,
+                notes_encrypted = :notes_encrypted,
                 updated_at = :updated_at
              WHERE id = :id AND household_id = :household_id'
         );
 
+        // Every update also clears the old plaintext columns, not just
+        // the encrypted ones — editing an account is what naturally
+        // migrates it off plaintext for households that never run
+        // bin/encrypt-existing-text-fields.php at all.
         $stmt->execute([
-            'name' => $data['name'],
-            'institution_name' => $data['institution_name'],
+            'name_encrypted' => FieldCipher::encrypt($data['name']),
+            'institution_name_encrypted' => FieldCipher::encrypt($data['institution_name']),
             'account_type' => $data['account_type'],
             'available_balance' => $data['available_balance'],
             'credit_limit' => $data['credit_limit'],
@@ -187,7 +227,7 @@ final class AccountRepository
             'color' => $data['color'],
             'include_in_net_worth' => $data['include_in_net_worth'] ? 1 : 0,
             'include_in_budget' => $data['include_in_budget'] ? 1 : 0,
-            'notes' => $data['notes'],
+            'notes_encrypted' => FieldCipher::encrypt($data['notes']),
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $accountId,
             'household_id' => $householdId,

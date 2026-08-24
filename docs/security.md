@@ -233,6 +233,71 @@ any of them out individually or all at once.
   use `AuthMiddleware::requireRole([...])`, checked against the role
   cached in session at login.
 
+## Encryption at rest
+
+Household-scoping is the boundary against *another household's* data
+(above). This is a different, narrower protection: against someone who
+legitimately reaches the database itself — phpMyAdmin, a `mysql`
+shell, a stolen DB-only backup — seeing what's *in* it. See "Known
+limitations" below for exactly what this does and doesn't cover; this
+section is about how the covered part works.
+
+- **What's encrypted**: `accounts.name`/`institution_name`/`notes`,
+  `financial_goals.name`/`description`, `recurring_items.name`/`notes`.
+  Chosen because none of them are searched via SQL `LIKE` anywhere in
+  the app (confirmed by grep before this shipped, not assumed) — small
+  per-household lists that were already loaded in full and filtered in
+  PHP where needed. `transactions.payee`/`notes` are deliberately *not*
+  encrypted yet — see "Known limitations".
+- **`App\Support\FieldCipher`**: `sodium_crypto_secretbox`
+  (XSalsa20-Poly1305, authenticated) — built into PHP's core libsodium
+  extension, no Composer dependency. A fresh random nonce every call
+  (stored immediately before the ciphertext in one binary blob, so two
+  encryptions of the identical value never produce the same stored
+  bytes), and `ENCRYPTION_KEY` (`.env`, base64-encoded, generated once)
+  is the only thing that can decrypt it. A wrong key, corrupted bytes,
+  or a missing key all make `decrypt()`/`encrypt()` throw — this never
+  silently falls back to storing plaintext, or returns garbled bytes
+  that could be mistaken for a real value.
+- **Staged rollout, not an in-place column swap**: each affected table
+  got new nullable `*_encrypted` columns (migrations `0046`-`0048`)
+  alongside the original plaintext ones, which stay in the schema as a
+  read-only fallback — every read prefers the encrypted column but
+  falls back to the plaintext one for any row not yet backfilled
+  (`bin/encrypt-existing-text-fields.php`, idempotent, dry-run by
+  default), so deploying the code and running the backfill are safe in
+  either order. Every write (`create()`/`update()`) goes only to the
+  encrypted column and explicitly clears the old plaintext one to
+  `NULL` — plaintext stops accumulating immediately, without waiting
+  for the backfill. The old columns aren't dropped in this pass; that's
+  a deliberate later, separate migration once the new columns have run
+  in production without issue.
+- **Every SQL `JOIN` that used to read `accounts.name` directly for
+  display** (transaction lists, CSV export, imports history, goals'
+  linked-account name, recurring items, the Reports page's "group by
+  account") now also selects `name_encrypted` alongside it and decrypts
+  in PHP after the fetch — found by grepping for every such JOIN before
+  writing any encryption code, not discovered by something breaking
+  afterward.
+- **Audit log metadata never carries these fields.** `account.created`/
+  `goal.created`/`recurring.created` used to log the new record's name
+  into `audit_logs.metadata` as plain JSON — encrypting the column and
+  then logging its own plaintext value elsewhere would have defeated
+  the point. Those log calls now omit `name` entirely; `entity_id`
+  already identifies exactly which record it was.
+- **Deployment order matters here in a way it doesn't for this app's
+  other optional features.** `ENCRYPTION_KEY` is not gracefully
+  optional the way `MAIL_*`/`TURNSTILE_*` are — the three repositories
+  above encrypt unconditionally and throw without it, so creating or
+  editing any account, goal, or recurring item fails outright, not just
+  "isn't encrypted yet," if this ships before the key is set. See
+  `docs/deployment.md`'s "Deploying encryption at rest" section for the
+  exact required order.
+- **Losing `ENCRYPTION_KEY` is unrecoverable** — every encrypted value
+  becomes permanently unreadable, with no reset path like a forgotten
+  password. Back it up somewhere other than alongside database backups,
+  same reasoning as `BACKUP_ENCRYPTION_PASSPHRASE`, but higher stakes.
+
 ## Budget review magic links
 
 The budget planning reminder email (`bin/send-budget-reminders.php`,
@@ -446,25 +511,22 @@ the drift that compounds across many transactions).
   during the accessibility pass, not fixed in it — a real fix needs
   keyboard-driven "move up"/"move down" controls per tile, not just an
   ARIA annotation on the existing drag handle.
-- **Financial data is not encrypted at rest in the database.** Every
-  isolation guarantee described above (household-scoped repositories,
-  `HouseholdIsolationTest`) protects access *through the app's own web
-  UI*. It does nothing for someone who reaches the database directly —
-  phpMyAdmin, a `mysql` shell, a raw backup file — where every
-  household's account names, balances, and transactions are plain
-  `SELECT`-able text regardless of which household they belong to. The
-  actual boundary for that access path today is *who can reach the
-  database at all* (see `docs/deployment.md`'s "Lock down phpMyAdmin"
-  step, and least-privilege DB credentials above) — not anything
-  cryptographic. Real protection against a compromised or overly-broad
-  database credential would mean encrypting sensitive columns at the
-  application layer (encrypt before `INSERT`, decrypt after `SELECT`),
-  which is a large, deliberate follow-up, not a small patch: it breaks
-  `WHERE`/`ORDER BY`/`LIKE` filtering directly in SQL on any encrypted
-  column (search, sort, and reporting queries would need to fetch and
-  filter in PHP instead, or maintain separate searchable-hash columns),
-  touches nearly every repository that reads or writes financial data,
-  needs a real key-management story (where the encryption key lives,
-  how it rotates, what happens to already-encrypted data when it does),
-  and affects CSV import/export and the Master HQ API. Worth doing
-  deliberately, with its own design pass, not bolted on.
+- **Balances and amounts are not encrypted at rest.** `accounts.name`/
+  `institution_name`/`notes`, `financial_goals.name`/`description`, and
+  `recurring_items.name`/`notes` now are (see "Encryption at rest"
+  below) — but every number (`current_balance`, `transactions.amount`,
+  everything budget/net-worth math touches) is still a plain `DECIMAL`
+  column, deliberately: that math runs as real SQL aggregation
+  (`SUM()`, `GROUP BY`) throughout the app, which encryption would
+  break outright, not just slow down. `transactions.payee`/`notes` are
+  also still plaintext — the Transactions page's SQL `LIKE` search
+  depends on them, and encrypting them means redesigning that search
+  first (fetch-and-filter-in-PHP after every other SQL filter narrows
+  the set), a deliberate separate follow-up, not done here. Someone
+  with database-only access (phpMyAdmin, a `mysql` shell, a raw
+  backup) can still see every balance, every transaction amount and
+  payee, and which household each belongs to — encryption narrows what
+  they see, it doesn't close the boundary. *Who* can reach the database
+  at all (`docs/deployment.md`'s "Lock down phpMyAdmin" step,
+  least-privilege DB credentials above) is still the load-bearing
+  control for everything not yet encrypted.

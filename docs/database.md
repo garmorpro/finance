@@ -57,7 +57,14 @@ time, never relying on MySQL's session timezone).
   debt-specific fields (`credit_limit`, `interest_rate`, `minimum_payment`,
   `payment_due_day`, `original_balance`) used by the Debt overview
   without needing a separate table. `include_in_net_worth` and
-  `include_in_budget` are independent flags.
+  `include_in_budget` are independent flags. `name`/`institution_name`/
+  `notes` are legacy plaintext columns, NULLable and no longer written
+  to — the real values live encrypted in `name_encrypted`/
+  `institution_name_encrypted`/`notes_encrypted`
+  (`App\Support\FieldCipher`; see `docs/security.md`'s "Encryption at
+  rest"). The plaintext columns are a read-only fallback for any row
+  not yet run through `bin/encrypt-existing-text-fields.php`, kept
+  around as a rollback safety net rather than dropped immediately.
 - **Liability account balances are a positive "amount owed"**, not a
   negative number — `AccountRepository::LIABILITY_TYPES` (credit card,
   mortgage, auto/student/personal loan, other liability). Net worth
@@ -148,6 +155,8 @@ time, never relying on MySQL's session timezone).
   `next_due_date` advances from the date that *was* due when marked
   paid, not from "today" — see `RecurringItemRepository::advanceDueDate()` —
   so a late confirmation doesn't compound drift into future due dates.
+  `name`/`notes` are legacy plaintext, no longer written — see
+  `accounts` above for the `*_encrypted` pattern, identical here.
 
 ## Goals
 
@@ -156,6 +165,8 @@ time, never relying on MySQL's session timezone).
   are always logged manually) and optional `responsible_user_id`.
   `current_amount` is a denormalized running total, the same
   pattern as `accounts.current_balance` + `account_balance_history`.
+  `name`/`description` are legacy plaintext, no longer written — see
+  `accounts` above for the `*_encrypted` pattern, identical here.
 - **`goal_contributions`** — the history backing that running total.
   Adding or deleting a contribution atomically adjusts
   `financial_goals.current_amount` in the same operation
