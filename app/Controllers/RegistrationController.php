@@ -233,7 +233,7 @@ final class RegistrationController
         // Same "always show the same neutral outcome" reasoning as
         // password reset — doesn't reveal whether that email exists or
         // is already verified.
-        $_SESSION['_flash_notice'] = 'If that email has a pending, unverified account, a new verification link has been sent.';
+        $_SESSION['_flash_notice'] = 'If that email has a pending, unverified account, a new verification link has been sent. Check your spam or junk folder if you don\'t see it.';
         header('Location: /verify-email/resend');
     }
 

@@ -25,7 +25,8 @@ use App\Support\View;
             click it to verify your address and sign in.
         </p>
         <p class="text-sm text-stone-500 dark:text-stone-400 mt-3">
-            Didn't get it? <a href="/verify-email/resend" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">Resend the link</a>.
+            Don't see it? Check your spam or junk folder, or
+            <a href="/verify-email/resend" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">resend the link</a>.
         </p>
     </div>
 </body>
