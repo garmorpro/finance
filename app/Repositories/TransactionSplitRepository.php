@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Database\Connection;
+use App\Support\FieldCipher;
 
 final class TransactionSplitRepository
 {
@@ -29,15 +30,15 @@ final class TransactionSplitRepository
 
         $now = gmdate('Y-m-d H:i:s');
         $insert = $pdo->prepare(
-            'INSERT INTO transaction_splits (transaction_id, category_id, amount, created_at)
-             VALUES (:transaction_id, :category_id, :amount, :created_at)'
+            'INSERT INTO transaction_splits (transaction_id, category_id, amount, amount_encrypted, created_at)
+             VALUES (:transaction_id, :category_id, NULL, :amount_encrypted, :created_at)'
         );
 
         foreach ($splits as $split) {
             $insert->execute([
                 'transaction_id' => $transactionId,
                 'category_id' => $split['category_id'],
-                'amount' => $split['amount'],
+                'amount_encrypted' => FieldCipher::encrypt($split['amount']),
                 'created_at' => $now,
             ]);
         }
@@ -55,7 +56,7 @@ final class TransactionSplitRepository
 
         $stmt->execute(['transaction_id' => $transactionId]);
 
-        return $stmt->fetchAll();
+        return array_map(self::hydrate(...), $stmt->fetchAll());
     }
 
     /**
@@ -80,9 +81,26 @@ final class TransactionSplitRepository
 
         $byTransaction = [];
         foreach ($stmt->fetchAll() as $row) {
-            $byTransaction[(int) $row['transaction_id']][] = $row;
+            $byTransaction[(int) $row['transaction_id']][] = self::hydrate($row);
         }
 
         return $byTransaction;
+    }
+
+    /**
+     * amount is encrypted (see App\Support\FieldCipher) — every SELECT in
+     * this file fetches full rows (ts.*), so this decrypts into the same
+     * amount key every caller already expects, falling back to the legacy
+     * plaintext column for any row not yet backfilled.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private static function hydrate(array $row): array
+    {
+        $row['amount'] = FieldCipher::decryptOrFallback($row['amount_encrypted'] ?? null, $row['amount']);
+        unset($row['amount_encrypted']);
+
+        return $row;
     }
 }

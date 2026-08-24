@@ -150,16 +150,18 @@ Tailwind classes to a view, the compiled CSS must be rebuilt *before*
 committing (see the README) — there's no build step on the server
 itself.
 
-### Deploying encryption at rest (accounts/goals/recurring items)
+### Deploying encryption at rest (accounts/goals/recurring items/transactions)
 
 This one deploy needs its steps done **in order**, not just
 `git pull` + `migrate.php` — unlike every other feature in this app,
 `ENCRYPTION_KEY` is not gracefully optional (see `.env.example`):
 `AccountRepository`/`AccountBalanceHistoryRepository`/`GoalRepository`/
-`RecurringItemRepository` encrypt on every write unconditionally and
-throw without it, so skipping step 1 breaks adding/editing any account
-(including a balance adjustment), goal, or recurring item outright, not
-just leaves data unencrypted.
+`RecurringItemRepository`/`TransactionRepository`/
+`TransactionSplitRepository`/`ImportRowRepository` encrypt on every
+write unconditionally and throw without it, so skipping step 1 breaks
+adding/editing any account (including a balance adjustment), goal,
+recurring item, or transaction, or importing a CSV, outright, not just
+leaves data unencrypted.
 
 1. Generate a key and set `ENCRYPTION_KEY` in `.env`:
    ```
@@ -167,33 +169,48 @@ just leaves data unencrypted.
    ```
    Back it up somewhere other than alongside your database backups —
    losing it makes every encrypted value permanently unreadable, with
-   no reset like a password.
+   no reset like a password. Already have a key set from an earlier
+   phase? Reuse it — one key for the whole app, not a separate one per
+   table or phase.
 2. `git pull` and `php bin/migrate.php` as usual (migrations `0046`-`0048`
    add the name/notes/description columns, `0049`-`0050` add the
-   balance/limit/payment columns).
+   balance/limit/payment columns, `0051`-`0054` add the transaction/
+   split/import-row/balance-history-note columns).
 3. Confirm the `sodium` PHP extension is enabled — it's bundled with PHP
    8.1+ by default, but a minimal/custom PHP build could have it
    disabled: `php -r "var_dump(extension_loaded('sodium'));"` should
    print `bool(true)`.
-4. Backfill every existing row — two separate scripts, each dry run
+4. Backfill every existing row — three separate scripts, each dry run
    first then `--apply` (see each script's own docblock for exactly
-   what it does), deliberately separate so the higher-stakes balance
-   pass can be run and reviewed on its own:
+   what it does), deliberately separate so each pass can be run and
+   reviewed on its own:
    ```
    php bin/encrypt-existing-text-fields.php
    php bin/encrypt-existing-text-fields.php --apply
 
    php bin/encrypt-existing-balance-fields.php
    php bin/encrypt-existing-balance-fields.php --apply
+
+   php bin/encrypt-existing-transaction-fields.php
+   php bin/encrypt-existing-transaction-fields.php --apply
    ```
-   Both are safe to re-run — already-encrypted rows are skipped, so
-   either can run again later to pick up anything a previous run missed.
+   All three are safe to re-run — already-encrypted rows are skipped, so
+   any of them can run again later to pick up anything a previous run
+   missed. The transaction pass is typically the slowest of the three —
+   it touches every transaction ever entered, plus every split line,
+   import row, and balance-history note — budget more time for it on a
+   household with years of history.
 5. Spot-check in the app itself (not phpMyAdmin, which will now show
    ciphertext for these columns by design) that account names,
-   institution names, notes, balances, goal names/descriptions, and
-   recurring item names/notes all still display correctly — including
-   an account's balance history (its edit page) and the Debt overview
-   (reads `credit_limit`/`interest_rate`/`minimum_payment`).
+   institution names, notes, balances, goal names/descriptions,
+   recurring item names/notes, and transaction amounts/payees/notes all
+   still display correctly — including an account's balance history
+   (its edit page), the Debt overview (reads `credit_limit`/
+   `interest_rate`/`minimum_payment`), a split transaction's line items,
+   a rejected CSV import row, and — specifically, since this is the one
+   behavior that changed shape, not just storage — the Transactions
+   page's amount range filter, search box, and "sort by amount"/"sort
+   by payee" column headers.
 
 ## Rollback procedure
 

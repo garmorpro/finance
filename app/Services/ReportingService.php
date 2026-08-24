@@ -148,7 +148,7 @@ final class ReportingService
         $startMonth = date('Y-m-01', strtotime('-' . ($months - 1) . ' months'));
 
         $stmt = Connection::get()->prepare(
-            'SELECT transaction_date, transaction_type, amount FROM transactions
+            'SELECT transaction_date, transaction_type, amount, amount_encrypted FROM transactions
              WHERE household_id = :household_id AND deleted_at IS NULL AND exclude_from_reports = 0
                AND transaction_type IN ("income", "expense")
                AND transaction_date >= :start_month'
@@ -157,14 +157,15 @@ final class ReportingService
 
         $byMonth = [];
         foreach ($stmt->fetchAll() as $row) {
+            $amount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
             $month = substr($row['transaction_date'], 0, 7);
             $byMonth[$month]['income'] ??= '0.00';
             $byMonth[$month]['expenses'] ??= '0.00';
 
             if ($row['transaction_type'] === 'income') {
-                $byMonth[$month]['income'] = bcadd($byMonth[$month]['income'], $row['amount'], 2);
+                $byMonth[$month]['income'] = bcadd($byMonth[$month]['income'], $amount, 2);
             } else {
-                $byMonth[$month]['expenses'] = bcadd($byMonth[$month]['expenses'], bcmul($row['amount'], '-1', 2), 2);
+                $byMonth[$month]['expenses'] = bcadd($byMonth[$month]['expenses'], bcmul($amount, '-1', 2), 2);
             }
         }
 
@@ -196,7 +197,7 @@ final class ReportingService
     public function dailyIncomeExpense(int $householdId, string $startDate, string $endDateExclusive): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT transaction_date, transaction_type, amount FROM transactions
+            'SELECT transaction_date, transaction_type, amount, amount_encrypted FROM transactions
              WHERE household_id = :household_id AND deleted_at IS NULL AND exclude_from_reports = 0
                AND transaction_type IN ("income", "expense")
                AND transaction_date >= :start_date AND transaction_date < :end_date'
@@ -205,14 +206,15 @@ final class ReportingService
 
         $byDate = [];
         foreach ($stmt->fetchAll() as $row) {
+            $amount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
             $date = $row['transaction_date'];
             $byDate[$date]['income'] ??= '0.00';
             $byDate[$date]['expenses'] ??= '0.00';
 
             if ($row['transaction_type'] === 'income') {
-                $byDate[$date]['income'] = bcadd($byDate[$date]['income'], $row['amount'], 2);
+                $byDate[$date]['income'] = bcadd($byDate[$date]['income'], $amount, 2);
             } else {
-                $byDate[$date]['expenses'] = bcadd($byDate[$date]['expenses'], bcmul($row['amount'], '-1', 2), 2);
+                $byDate[$date]['expenses'] = bcadd($byDate[$date]['expenses'], bcmul($amount, '-1', 2), 2);
             }
         }
 
@@ -246,14 +248,14 @@ final class ReportingService
         $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
 
         $stmt = Connection::get()->prepare(
-            'SELECT category_id, amount FROM (
-                SELECT t.category_id AS category_id, t.amount AS amount
+            'SELECT category_id, amount, amount_encrypted FROM (
+                SELECT t.category_id AS category_id, t.amount AS amount, t.amount_encrypted AS amount_encrypted
                 FROM transactions t
                 WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.exclude_from_reports = 0
                   AND t.transaction_type = "expense" AND t.is_split = 0
                   AND t.transaction_date >= :month_start AND t.transaction_date < :month_end
                 UNION ALL
-                SELECT ts.category_id AS category_id, ts.amount AS amount
+                SELECT ts.category_id AS category_id, ts.amount AS amount, ts.amount_encrypted AS amount_encrypted
                 FROM transactions t
                 INNER JOIN transaction_splits ts ON ts.transaction_id = t.id
                 WHERE t.household_id = :household_id2 AND t.deleted_at IS NULL AND t.exclude_from_reports = 0
@@ -291,7 +293,8 @@ final class ReportingService
             if (!isset($totals[$categoryId])) {
                 $totals[$categoryId] = ['name' => $categoryById[$categoryId]['name'], 'color' => $categoryById[$categoryId]['color'], 'amount' => '0.00'];
             }
-            $totals[$categoryId]['amount'] = bcadd($totals[$categoryId]['amount'], bcmul($row['amount'], '-1', 2), 2);
+            $amount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
+            $totals[$categoryId]['amount'] = bcadd($totals[$categoryId]['amount'], bcmul($amount, '-1', 2), 2);
         }
 
         $totals = array_values($totals);
@@ -312,14 +315,14 @@ final class ReportingService
         $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
 
         $stmt = Connection::get()->prepare(
-            'SELECT category_id, amount FROM (
-                SELECT t.category_id AS category_id, t.amount AS amount
+            'SELECT category_id, amount, amount_encrypted FROM (
+                SELECT t.category_id AS category_id, t.amount AS amount, t.amount_encrypted AS amount_encrypted
                 FROM transactions t
                 WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.exclude_from_reports = 0
                   AND t.transaction_type = "income" AND t.is_split = 0
                   AND t.transaction_date >= :month_start AND t.transaction_date < :month_end
                 UNION ALL
-                SELECT ts.category_id AS category_id, ts.amount AS amount
+                SELECT ts.category_id AS category_id, ts.amount AS amount, ts.amount_encrypted AS amount_encrypted
                 FROM transactions t
                 INNER JOIN transaction_splits ts ON ts.transaction_id = t.id
                 WHERE t.household_id = :household_id2 AND t.deleted_at IS NULL AND t.exclude_from_reports = 0
@@ -357,7 +360,8 @@ final class ReportingService
             if (!isset($totals[$categoryId])) {
                 $totals[$categoryId] = ['id' => $categoryId, 'name' => $categoryById[$categoryId]['name'], 'color' => $categoryById[$categoryId]['color'], 'amount' => '0.00'];
             }
-            $totals[$categoryId]['amount'] = bcadd($totals[$categoryId]['amount'], $row['amount'], 2);
+            $amount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
+            $totals[$categoryId]['amount'] = bcadd($totals[$categoryId]['amount'], $amount, 2);
         }
 
         $totals = array_values($totals);
@@ -384,7 +388,7 @@ final class ReportingService
         $monthEnd = date('Y-m-d', strtotime($periodMonth . ' +1 month'));
 
         $stmt = Connection::get()->prepare(
-            'SELECT transaction_type, amount FROM transactions
+            'SELECT transaction_type, amount, amount_encrypted FROM transactions
              WHERE household_id = :household_id AND deleted_at IS NULL AND exclude_from_reports = 0
                AND transaction_type IN ("income", "expense")
                AND transaction_date >= :month_start AND transaction_date < :month_end'
@@ -394,10 +398,11 @@ final class ReportingService
         $income = '0.00';
         $totalExpenses = '0.00';
         foreach ($stmt->fetchAll() as $row) {
+            $amount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
             if ($row['transaction_type'] === 'income') {
-                $income = bcadd($income, $row['amount'], 2);
+                $income = bcadd($income, $amount, 2);
             } else {
-                $totalExpenses = bcadd($totalExpenses, bcmul($row['amount'], '-1', 2), 2);
+                $totalExpenses = bcadd($totalExpenses, bcmul($amount, '-1', 2), 2);
             }
         }
 
@@ -457,20 +462,27 @@ final class ReportingService
      */
     private function debtPaymentsForMonth(int $householdId, string $monthStart, string $monthEndExclusive): string
     {
+        // amount is encrypted (see App\Support\FieldCipher), so the
+        // "t.amount > 0" filter can no longer run in SQL — every transfer
+        // in the month is fetched instead, and the positive-amount check
+        // (the destination side of a transfer pair) happens in PHP after
+        // decrypting, alongside the existing isLiability() check.
         $stmt = Connection::get()->prepare(
-            'SELECT t.amount AS amount, a.account_type AS account_type
+            'SELECT t.amount AS amount, t.amount_encrypted AS amount_encrypted, a.account_type AS account_type
              FROM transactions t
              INNER JOIN accounts a ON a.id = t.account_id
              WHERE t.household_id = :household_id AND t.deleted_at IS NULL
-               AND t.transaction_type = "transfer" AND t.amount > 0
+               AND t.transaction_type = "transfer"
                AND t.transaction_date >= :month_start AND t.transaction_date < :month_end'
         );
         $stmt->execute(['household_id' => $householdId, 'month_start' => $monthStart, 'month_end' => $monthEndExclusive]);
 
         $total = '0.00';
         foreach ($stmt->fetchAll() as $row) {
-            if (AccountRepository::isLiability($row['account_type'])) {
-                $total = bcadd($total, $row['amount'], 2);
+            $amount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
+
+            if (bccomp($amount, '0.00', 2) > 0 && AccountRepository::isLiability($row['account_type'])) {
+                $total = bcadd($total, $amount, 2);
             }
         }
 
@@ -565,7 +577,8 @@ final class ReportingService
         $where = 'WHERE ' . implode(' AND ', $clauses);
 
         $stmt = Connection::get()->prepare(
-            "SELECT t.transaction_type, t.amount, t.transaction_date, t.payee, t.category_id, t.account_id, t.created_by_user_id,
+            "SELECT t.transaction_type, t.amount, t.amount_encrypted, t.transaction_date, t.payee, t.payee_encrypted,
+                    t.category_id, t.account_id, t.created_by_user_id,
                     c.name AS category_name, a.name AS account_name, a.name_encrypted AS account_name_encrypted, u.name AS user_name
              FROM transactions t
              LEFT JOIN categories c ON c.id = t.category_id
@@ -579,11 +592,17 @@ final class ReportingService
         // account_name comes from a SQL JOIN against accounts.name, which
         // (see AccountRepository) is only ever NULL now when groupBy is
         // "account" — the real value lives encrypted in
-        // accounts.name_encrypted, selected above.
+        // accounts.name_encrypted, selected above. amount/payee are
+        // likewise encrypted on the transactions table itself (see
+        // App\Support\FieldCipher) — groupTransactions() below already
+        // operates on plain PHP values (bcadd, string grouping keys), so
+        // decrypting here is the only change it needs.
         $rows = $stmt->fetchAll();
         foreach ($rows as &$row) {
             $row['account_name'] = FieldCipher::decryptOrFallback($row['account_name_encrypted'], $row['account_name']);
-            unset($row['account_name_encrypted']);
+            $row['amount'] = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
+            $row['payee'] = FieldCipher::decryptOrFallback($row['payee_encrypted'], $row['payee']);
+            unset($row['account_name_encrypted'], $row['amount_encrypted'], $row['payee_encrypted']);
         }
         unset($row);
 

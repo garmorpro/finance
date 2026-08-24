@@ -35,9 +35,11 @@ real rows), so they must never run against your production database.
    If you already have a `.env.testing` from before encryption at rest
    (see docs/security.md) existed, add the `ENCRYPTION_KEY` line from
    `.env.testing.example` to it — `AccountRepository`/`GoalRepository`/
-   `RecurringItemRepository` encrypt on every `create()`/`update()`, so
-   every integration test that creates an account, goal, or recurring
-   item throws without it.
+   `RecurringItemRepository`/`TransactionRepository`/
+   `TransactionSplitRepository`/`ImportRowRepository` encrypt on every
+   `create()`/`update()`, so every integration test that creates an
+   account, goal, recurring item, transaction, or split throws without
+   it.
 
 3. `DB_DATABASE` in `.env.testing` **must contain the literal substring
    "test"** — `tests/DatabaseTestCase.php` checks for this and refuses to

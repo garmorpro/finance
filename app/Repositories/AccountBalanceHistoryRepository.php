@@ -14,10 +14,10 @@ final class AccountBalanceHistoryRepository
         $stmt = Connection::get()->prepare(
             'INSERT INTO account_balance_history
                 (account_id, changed_by_user_id, previous_balance, previous_balance_encrypted,
-                 new_balance, new_balance_encrypted, note, created_at)
+                 new_balance, new_balance_encrypted, note, note_encrypted, created_at)
              VALUES
                 (:account_id, :changed_by_user_id, NULL, :previous_balance_encrypted,
-                 NULL, :new_balance_encrypted, :note, :created_at)'
+                 NULL, :new_balance_encrypted, NULL, :note_encrypted, :created_at)'
         );
 
         $stmt->execute([
@@ -25,7 +25,7 @@ final class AccountBalanceHistoryRepository
             'changed_by_user_id' => $userId,
             'previous_balance_encrypted' => FieldCipher::encrypt($previousBalance),
             'new_balance_encrypted' => FieldCipher::encrypt($newBalance),
-            'note' => $note,
+            'note_encrypted' => FieldCipher::encrypt($note),
             'created_at' => gmdate('Y-m-d H:i:s'),
         ]);
     }
@@ -38,7 +38,7 @@ final class AccountBalanceHistoryRepository
     {
         $stmt = Connection::get()->prepare(
             'SELECT h.previous_balance, h.previous_balance_encrypted, h.new_balance, h.new_balance_encrypted,
-                    h.note, h.created_at, u.name AS changed_by_name
+                    h.note, h.note_encrypted, h.created_at, u.name AS changed_by_name
              FROM account_balance_history h
              INNER JOIN accounts a ON a.id = h.account_id
              INNER JOIN users u ON u.id = h.changed_by_user_id
@@ -83,11 +83,12 @@ final class AccountBalanceHistoryRepository
     }
 
     /**
-     * Decrypts previous_balance/new_balance from their *_encrypted
+     * Decrypts previous_balance/new_balance/note from their *_encrypted
      * columns, falling back to the old plaintext column for any row not
-     * yet run through bin/encrypt-existing-balance-fields.php. Raw
-     * *_encrypted binary blobs are removed from the returned row
-     * entirely.
+     * yet run through the backfill scripts. Raw *_encrypted binary blobs
+     * are removed from the returned row entirely. note isn't selected by
+     * every query in this file (listForAccounts() doesn't need it), so
+     * this only touches it when the key is present in $row.
      */
     private static function hydrate(array $row): array
     {
@@ -95,6 +96,11 @@ final class AccountBalanceHistoryRepository
         $row['new_balance'] = FieldCipher::decryptOrFallback($row['new_balance_encrypted'], $row['new_balance']);
 
         unset($row['previous_balance_encrypted'], $row['new_balance_encrypted']);
+
+        if (array_key_exists('note_encrypted', $row)) {
+            $row['note'] = FieldCipher::decryptOrFallback($row['note_encrypted'], $row['note']);
+            unset($row['note_encrypted']);
+        }
 
         return $row;
     }

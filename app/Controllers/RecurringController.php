@@ -292,6 +292,10 @@ final class RecurringController
             $nextDueDate = RecurringItemRepository::advanceDueDate($item['next_due_date'], $item['frequency']);
             $recurringRepo->markPaid($recurringId, $householdId, $nextDueDate, $amount);
 
+            // amount is encrypted on the transaction it just created (see
+            // App\Support\FieldCipher); the audit log itself isn't, so
+            // metadata carries the transaction/date identifiers rather
+            // than the real dollar figure.
             $auditRepo = new AuditLogRepository();
             $auditRepo->log(
                 $userId,
@@ -300,7 +304,7 @@ final class RecurringController
                 'recurring_item',
                 $recurringId,
                 $request->ip(),
-                ['amount' => $amount, 'transaction_id' => $transactionId, 'next_due_date' => $nextDueDate]
+                ['transaction_id' => $transactionId, 'next_due_date' => $nextDueDate]
             );
 
             if (bccomp($amount, $item['expected_amount'], 2) !== 0) {
@@ -311,7 +315,7 @@ final class RecurringController
                     'recurring_item',
                     $recurringId,
                     $request->ip(),
-                    ['previous_amount' => $item['expected_amount'], 'new_amount' => $amount]
+                    ['transaction_id' => $transactionId]
                 );
             }
 

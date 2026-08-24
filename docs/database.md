@@ -89,11 +89,14 @@ time, never relying on MySQL's session timezone).
   `previous_balance`/`new_balance`/`note`. Balances are never silently
   overwritten; this is also what `ReportingService::netWorthTrend()`
   reconstructs historical net worth from, rather than deriving it from
-  transactions. `previous_balance`/`new_balance` are legacy plaintext,
-  NULLable and no longer written — encrypted the same way as
-  `accounts`' own balance columns above, for the same reason: left
-  alone, this table would keep every historical balance readable even
-  after the current one was encrypted.
+  transactions. `previous_balance`/`new_balance`/`note` are all legacy
+  plaintext, NULLable and no longer written — encrypted the same way as
+  `accounts`' own balance columns above. `previous_balance`/`new_balance`
+  for the same "hidden duplicate copy" reason as `accounts.current_balance`
+  itself; `note` separately, once phase 3 found it carries the
+  transaction payee/recurring item name/transfer account name in plain
+  text whenever the balance change came from one of those (see
+  `docs/security.md`'s "Encryption at rest" → "Phase 3: transactions").
 
 ## Categories
 
@@ -120,9 +123,29 @@ time, never relying on MySQL's session timezone).
   "mark paid"). `exclude_from_budget` and `exclude_from_reports` are
   independent flags — a transfer sets both; a manually-excluded
   transaction might set only one. Soft-deleted via `deleted_at`.
+  `amount`/`payee`/`notes` are legacy plaintext, NULLable and no longer
+  written — encrypted the same way as `accounts`' columns, but the
+  harder case: `amount` was genuinely `SUM()`'d, `payee`/`notes`
+  `LIKE`-searched, and both range-filtered/sorted in real SQL before
+  phase 3 rewrote those call sites to decrypt-then-compute in PHP
+  instead — see `docs/security.md`'s "Encryption at rest" → "Phase 3:
+  transactions" for exactly which methods changed and the pagination
+  tradeoff that came with it.
+- **`transaction_splits`** — a split transaction's per-category line
+  items; `transactions.category_id` on a split row is only a "primary
+  display" category (the largest split line), never the source of truth
+  for per-category totals — those always read `transaction_splits`
+  directly (see `BudgetRepository::actualByCategory()`,
+  `ReportingService::spendingByCategory()`). `amount` is legacy
+  plaintext, no longer written — encrypted for the same reason as
+  `transactions.amount` itself.
 - **`imports`** / **`import_rows`** — one row per CSV import attempt and
   one row per source CSV line respectively, recording accepted/skipped/rejected
-  outcomes for audit purposes.
+  outcomes for audit purposes. `import_rows.raw_data` (the original CSV
+  line text) is legacy plaintext, no longer written — encrypted once
+  phase 3's audit found it was a second, full copy of the same imported
+  row's payee/amount/date, independent of `transactions.payee`/`amount`
+  itself.
 
 ## Budgets
 

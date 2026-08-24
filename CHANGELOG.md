@@ -2,6 +2,61 @@
 
 ## [Unreleased]
 
+- Encryption at rest, phase 3: `transactions.amount`/`payee`/`notes`,
+  `transaction_splits.amount`, and `import_rows.raw_data` are now
+  encrypted too — the case phases 1-2 deliberately deferred, since
+  `amount` genuinely was `SUM()`'d in real SQL and `payee`/`notes` backed
+  the Transactions page's SQL `LIKE` search, range filter, and sort.
+  Rewrote every affected query to decrypt-then-compute in PHP instead of
+  just adding columns: `TransactionRepository::sumsForHousehold()` and
+  `BudgetRepository::actualsByCategoryTrailingMonths()` sum with bcadd
+  after a raw fetch rather than SQL `SUM()`/`GROUP BY`;
+  `ReportingService::debtPaymentsForMonth()`'s `WHERE amount > 0` moved
+  to a `bccomp()` check after decrypting; `existsSimilar()` (CSV import's
+  duplicate check) narrows to household/account/date candidates in SQL
+  then compares decrypted amount/payee in PHP, since an exact SQL
+  equality match against ciphertext is structurally impossible now (a
+  fresh random nonce means the same plaintext never produces the same
+  stored bytes twice); the Transactions page's amount-range filter,
+  payee/notes search, and amount/payee sort route through a new
+  `listForHouseholdViaPhp()` path (decrypt up to 20000 SQL-filterable
+  rows, then filter/sort/paginate in PHP) instead of the original
+  SQL-only path, which every other filter (date, account, category,
+  type, tag) and the default date sort still use unchanged. Auditing
+  this phase also found two more "hidden duplicate copy" columns beyond
+  what the plan originally scoped: `import_rows.raw_data` (the original
+  CSV line text — a second full copy of the same payee/amount/date) and
+  `account_balance_history.note`, which turned out to carry the
+  transaction payee, recurring item name, or transfer account name in
+  plaintext independently of its own already-encrypted
+  `previous_balance`/`new_balance` — both now encrypted the same way
+  (migrations `0053`/`0054`). Also fixed three more audit-log plaintext
+  leaks in the same class of bug phase 2 fixed for
+  `account.balance_adjusted`: `transaction.created` logged `payee`/
+  `amount`, `transaction.transfer_created` logged both account names and
+  the amount, and `recurring.marked_paid`/`recurring.price_changed`
+  logged the transaction amount — all now log only identifiers.
+  New nullable `*_encrypted` columns (migrations `0051`-`0054`), same
+  staged approach as phases 1-2 — old plaintext columns kept as a
+  read-only fallback, nothing dropped. New, separate backfill script
+  (`bin/encrypt-existing-transaction-fields.php`, dry-run by default)
+  covering `transactions`/`transaction_splits`/`import_rows`/
+  `account_balance_history.note` together, since they were all found and
+  fixed as one pass. Verified locally the same way as phases 1-2: ran
+  the actual `existsSimilar()` candidate-then-compare logic, the
+  amount-range/search/sort algorithms, the PHP-side sum/trailing-months
+  aggregation, and the backfill script's multi-column logic against real
+  executed PHP and an in-memory SQLite database — including a same-month
+  multi-split-line case (to catch an overwrite-instead-of-sum bug) and a
+  pre-backfill/post-backfill mix in one table — no MySQL available in
+  this environment, so this is real executed verification, not just code
+  review. New test coverage in `tests/Integration/TransactionRepositoryTest.php`
+  for the amount-range filter, search, amount sort, and `sumsForHousehold()`
+  paths specifically, since none of that behavior had test coverage
+  before this phase. `docs/database.md`/`docs/deployment.md`/
+  `docs/security.md` updated throughout, including a new "Known
+  limitations" entry for the PHP-fallback pagination tradeoff.
+
 - Encryption at rest, phase 2: `accounts.current_balance`/`available_balance`/
   `credit_limit`/`minimum_payment`/`original_balance`, and
   `account_balance_history.previous_balance`/`new_balance`, are now

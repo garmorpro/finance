@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Database\Connection;
+use App\Support\FieldCipher;
 
 final class BudgetRepository
 {
@@ -211,15 +212,20 @@ final class BudgetRepository
      */
     public function actualByCategory(int $householdId, string $transactionType, string $monthStart, string $monthEndExclusive): array
     {
+        // amount/transaction_splits.amount are encrypted (see
+        // App\Support\FieldCipher) — this was always a PHP-side sum (no
+        // SQL SUM/GROUP BY here, just a UNION ALL of raw rows), so the
+        // only change is selecting *_encrypted alongside each amount and
+        // decrypting before the existing loop.
         $stmt = Connection::get()->prepare(
-            'SELECT category_id, amount FROM (
-                SELECT t.category_id AS category_id, t.amount AS amount
+            'SELECT category_id, amount, amount_encrypted FROM (
+                SELECT t.category_id AS category_id, t.amount AS amount, t.amount_encrypted AS amount_encrypted
                 FROM transactions t
                 WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.exclude_from_budget = 0
                   AND t.transaction_type = :transaction_type AND t.is_split = 0
                   AND t.transaction_date >= :month_start AND t.transaction_date < :month_end
                 UNION ALL
-                SELECT ts.category_id AS category_id, ts.amount AS amount
+                SELECT ts.category_id AS category_id, ts.amount AS amount, ts.amount_encrypted AS amount_encrypted
                 FROM transactions t
                 INNER JOIN transaction_splits ts ON ts.transaction_id = t.id
                 WHERE t.household_id = :household_id2 AND t.deleted_at IS NULL AND t.exclude_from_budget = 0
@@ -243,7 +249,8 @@ final class BudgetRepository
         $totals = [];
         foreach ($stmt->fetchAll() as $row) {
             $categoryId = (int) $row['category_id'];
-            $amount = $transactionType === 'expense' ? bcmul($row['amount'], '-1', 2) : $row['amount'];
+            $rawAmount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
+            $amount = $transactionType === 'expense' ? bcmul($rawAmount, '-1', 2) : $rawAmount;
             $totals[$categoryId] = bcadd($totals[$categoryId] ?? '0.00', $amount, 2);
         }
 
@@ -264,22 +271,27 @@ final class BudgetRepository
     {
         $rangeStart = date('Y-m-d', strtotime($beforeMonth . " -{$monthsBack} months"));
 
+        // amount/transaction_splits.amount are encrypted (see
+        // App\Support\FieldCipher), so this can no longer SUM()/GROUP BY
+        // in SQL — every raw row in the window is fetched and decrypted,
+        // then summed per "Y-m" bucket in PHP with bcadd, replicating the
+        // original GROUP BY ym exactly (including the zero-fill below for
+        // months with no activity, which was already PHP-side).
         $stmt = Connection::get()->prepare(
-            'SELECT ym, SUM(amount) AS amount FROM (
-                SELECT DATE_FORMAT(t.transaction_date, "%Y-%m") AS ym, t.amount AS amount
+            'SELECT ym, amount, amount_encrypted FROM (
+                SELECT DATE_FORMAT(t.transaction_date, "%Y-%m") AS ym, t.amount AS amount, t.amount_encrypted AS amount_encrypted
                 FROM transactions t
                 WHERE t.household_id = :household_id AND t.deleted_at IS NULL AND t.exclude_from_budget = 0
                   AND t.category_id = :category_id AND t.is_split = 0
                   AND t.transaction_date >= :range_start AND t.transaction_date < :range_end
                 UNION ALL
-                SELECT DATE_FORMAT(t.transaction_date, "%Y-%m") AS ym, ts.amount AS amount
+                SELECT DATE_FORMAT(t.transaction_date, "%Y-%m") AS ym, ts.amount AS amount, ts.amount_encrypted AS amount_encrypted
                 FROM transactions t
                 INNER JOIN transaction_splits ts ON ts.transaction_id = t.id
                 WHERE t.household_id = :household_id2 AND t.deleted_at IS NULL AND t.exclude_from_budget = 0
                   AND ts.category_id = :category_id2 AND t.is_split = 1
                   AND t.transaction_date >= :range_start2 AND t.transaction_date < :range_end2
-            ) combined
-            GROUP BY ym'
+            ) combined'
         );
 
         $stmt->execute([
@@ -295,8 +307,9 @@ final class BudgetRepository
 
         $byMonth = [];
         foreach ($stmt->fetchAll() as $row) {
-            $amount = $categoryType === 'expense' ? bcmul($row['amount'], '-1', 2) : $row['amount'];
-            $byMonth[$row['ym']] = $amount;
+            $rawAmount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
+            $amount = $categoryType === 'expense' ? bcmul($rawAmount, '-1', 2) : $rawAmount;
+            $byMonth[$row['ym']] = bcadd($byMonth[$row['ym']] ?? '0.00', $amount, 2);
         }
 
         $result = [];

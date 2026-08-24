@@ -12,14 +12,16 @@ final class TransactionRepository
     private const PER_PAGE = 50;
 
     /**
-     * Whitelist of columns the transactions list may be sorted by — never
-     * built from user input directly, since this string is interpolated
-     * into the ORDER BY clause (PDO can't parameterize a column name).
+     * Whitelist of columns the SQL fast path may sort by — never built from
+     * user input directly, since this string is interpolated into the
+     * ORDER BY clause (PDO can't parameterize a column name). 'payee' and
+     * 'amount' are no longer reachable here: now that both columns are
+     * encrypted (see App\Support\FieldCipher), sorting by either one is
+     * handled entirely in PHP by listForHouseholdViaPhp() instead — see
+     * listForHousehold()'s routing.
      */
     private const SORTABLE_COLUMNS = [
         'date' => 't.transaction_date',
-        'payee' => 't.payee',
-        'amount' => 't.amount',
     ];
 
     /**
@@ -32,12 +34,12 @@ final class TransactionRepository
         $stmt = Connection::get()->prepare(
             'INSERT INTO transactions
                 (household_id, account_id, category_id, is_split, created_by_user_id, last_edited_by_user_id,
-                 transaction_type, transaction_date, amount, payee, notes,
-                 exclude_from_budget, exclude_from_reports, created_at, updated_at)
+                 transaction_type, transaction_date, amount, amount_encrypted, payee, payee_encrypted,
+                 notes, notes_encrypted, exclude_from_budget, exclude_from_reports, created_at, updated_at)
              VALUES
                 (:household_id, :account_id, :category_id, :is_split, :created_by_user_id, :last_edited_by_user_id,
-                 :transaction_type, :transaction_date, :amount, :payee, :notes,
-                 :exclude_from_budget, :exclude_from_reports, :created_at, :updated_at)'
+                 :transaction_type, :transaction_date, NULL, :amount_encrypted, NULL, :payee_encrypted,
+                 NULL, :notes_encrypted, :exclude_from_budget, :exclude_from_reports, :created_at, :updated_at)'
         );
 
         $stmt->execute([
@@ -49,9 +51,9 @@ final class TransactionRepository
             'last_edited_by_user_id' => $userId,
             'transaction_type' => $data['transaction_type'],
             'transaction_date' => $data['transaction_date'],
-            'amount' => $data['signed_amount'],
-            'payee' => $data['payee'],
-            'notes' => $data['notes'],
+            'amount_encrypted' => FieldCipher::encrypt($data['signed_amount']),
+            'payee_encrypted' => FieldCipher::encrypt($data['payee']),
+            'notes_encrypted' => FieldCipher::encrypt($data['notes']),
             'exclude_from_budget' => $data['exclude_from_budget'] ? 1 : 0,
             'exclude_from_reports' => $data['exclude_from_reports'] ? 1 : 0,
             'created_at' => $now,
@@ -112,7 +114,7 @@ final class TransactionRepository
 
         $row = $stmt->fetch();
 
-        return $row === false ? null : $row;
+        return $row === false ? null : self::hydrate($row);
     }
 
     /**
@@ -135,7 +137,7 @@ final class TransactionRepository
 
         $stmt->execute(['household_id' => $householdId]);
 
-        return $stmt->fetchAll();
+        return array_map(self::hydrate(...), $stmt->fetchAll());
     }
 
     /**
@@ -161,8 +163,9 @@ final class TransactionRepository
         }
 
         if ($payee !== null) {
-            $sets[] = 'payee = :payee';
-            $params['payee'] = $payee;
+            $sets[] = 'payee = NULL';
+            $sets[] = 'payee_encrypted = :payee_encrypted';
+            $params['payee_encrypted'] = FieldCipher::encrypt($payee);
         }
 
         if ($excludeFromReports) {
@@ -183,26 +186,39 @@ final class TransactionRepository
      * legitimately buy coffee at the same place twice in one day for the
      * same price), but catches the overwhelmingly common case of
      * re-importing an overlapping date range from a bank export.
+     *
+     * amount/payee are encrypted (see App\Support\FieldCipher), so an exact
+     * SQL equality match against them is no longer possible — the same
+     * plaintext never produces the same ciphertext bytes twice, since each
+     * encryption uses a fresh random nonce. Narrowed to candidates by
+     * household/account/date first (all unencrypted, still a real SQL
+     * filter — typically a handful of rows for one account on one day),
+     * then compared in PHP after decrypting each candidate.
      */
     public function existsSimilar(int $householdId, int $accountId, string $date, string $signedAmount, string $payee): bool
     {
         $stmt = Connection::get()->prepare(
-            'SELECT 1 FROM transactions
+            'SELECT amount, amount_encrypted, payee, payee_encrypted FROM transactions
              WHERE household_id = :household_id AND account_id = :account_id
-               AND transaction_date = :date AND amount = :amount AND payee = :payee
-               AND deleted_at IS NULL
-             LIMIT 1'
+               AND transaction_date = :date AND deleted_at IS NULL'
         );
 
         $stmt->execute([
             'household_id' => $householdId,
             'account_id' => $accountId,
             'date' => $date,
-            'amount' => $signedAmount,
-            'payee' => $payee,
         ]);
 
-        return $stmt->fetchColumn() !== false;
+        foreach ($stmt->fetchAll() as $row) {
+            $rowAmount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
+            $rowPayee = FieldCipher::decryptOrFallback($row['payee_encrypted'], $row['payee']);
+
+            if ($rowAmount !== null && bccomp($rowAmount, $signedAmount, 2) === 0 && $rowPayee === $payee) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -218,9 +234,12 @@ final class TransactionRepository
                 last_edited_by_user_id = :last_edited_by_user_id,
                 transaction_type = :transaction_type,
                 transaction_date = :transaction_date,
-                amount = :amount,
-                payee = :payee,
-                notes = :notes,
+                amount = NULL,
+                amount_encrypted = :amount_encrypted,
+                payee = NULL,
+                payee_encrypted = :payee_encrypted,
+                notes = NULL,
+                notes_encrypted = :notes_encrypted,
                 exclude_from_budget = :exclude_from_budget,
                 exclude_from_reports = :exclude_from_reports,
                 updated_at = :updated_at
@@ -234,9 +253,9 @@ final class TransactionRepository
             'last_edited_by_user_id' => $userId,
             'transaction_type' => $data['transaction_type'],
             'transaction_date' => $data['transaction_date'],
-            'amount' => $data['signed_amount'],
-            'payee' => $data['payee'],
-            'notes' => $data['notes'],
+            'amount_encrypted' => FieldCipher::encrypt($data['signed_amount']),
+            'payee_encrypted' => FieldCipher::encrypt($data['payee']),
+            'notes_encrypted' => FieldCipher::encrypt($data['notes']),
             'exclude_from_budget' => $data['exclude_from_budget'] ? 1 : 0,
             'exclude_from_reports' => $data['exclude_from_reports'] ? 1 : 0,
             'updated_at' => gmdate('Y-m-d H:i:s'),
@@ -254,14 +273,15 @@ final class TransactionRepository
     {
         $stmt = Connection::get()->prepare(
             'UPDATE transactions SET
-                notes = :notes,
+                notes = NULL,
+                notes_encrypted = :notes_encrypted,
                 last_edited_by_user_id = :last_edited_by_user_id,
                 updated_at = :updated_at
              WHERE id = :id AND household_id = :household_id'
         );
 
         $stmt->execute([
-            'notes' => $notes,
+            'notes_encrypted' => FieldCipher::encrypt($notes),
             'last_edited_by_user_id' => $userId,
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $transactionId,
@@ -290,8 +310,30 @@ final class TransactionRepository
      */
     public function listForHousehold(int $householdId, array $filters, int $page = 1, string $sort = 'date', string $dir = 'desc'): array
     {
-        [$where, $params] = $this->buildWhere($householdId, $filters);
         $page = max(1, $page);
+
+        // amount/payee are encrypted (see App\Support\FieldCipher), so an
+        // amount-range filter, a payee/notes search, or a sort by amount/
+        // payee can't be expressed as SQL against them — all three have to
+        // decrypt every SQL-filterable candidate row in PHP first. Every
+        // other filter (date, account, category, type, tag) stays a plain
+        // indexed SQL query with SQL-level LIMIT/OFFSET, same as before.
+        if (!empty($filters['search']) || !empty($filters['amount_min']) || !empty($filters['amount_max'])
+            || in_array($sort, ['amount', 'payee'], true)
+        ) {
+            return $this->listForHouseholdViaPhp($householdId, $filters, $page, $sort, $dir);
+        }
+
+        return $this->listForHouseholdViaSql($householdId, $filters, $page, $sort, $dir);
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array{rows: array, total: int, page: int, perPage: int}
+     */
+    private function listForHouseholdViaSql(int $householdId, array $filters, int $page, string $sort, string $dir): array
+    {
+        [$where, $params] = $this->buildWhere($householdId, $filters);
         $offset = ($page - 1) * self::PER_PAGE;
 
         $countStmt = Connection::get()->prepare("SELECT COUNT(*) FROM transactions t {$where}");
@@ -313,7 +355,79 @@ final class TransactionRepository
         $stmt->execute($params);
 
         return [
-            'rows' => self::hydrateAccountName($stmt->fetchAll()),
+            'rows' => self::hydrateAccountName(array_map(self::hydrate(...), $stmt->fetchAll())),
+            'total' => $total,
+            'page' => $page,
+            'perPage' => self::PER_PAGE,
+        ];
+    }
+
+    /**
+     * Slow path for an amount-range filter, a payee/notes search, or an
+     * amount/payee sort — every row matching the SQL-safe filters
+     * (date/account/category/type/tag) is fetched and decrypted in PHP,
+     * capped at the same 20000-row ceiling exportForHousehold() uses so
+     * this can't be made to pull an unbounded result set. Fine for a
+     * self-hosted household's own transaction history; not a query shape
+     * that would scale to a multi-tenant SaaS volume.
+     *
+     * @param array<string, mixed> $filters
+     * @return array{rows: array, total: int, page: int, perPage: int}
+     */
+    private function listForHouseholdViaPhp(int $householdId, array $filters, int $page, string $sort, string $dir): array
+    {
+        [$where, $params] = $this->buildWhere($householdId, $filters);
+
+        $sql = "SELECT t.*, a.name AS account_name, a.name_encrypted AS account_name_encrypted, c.name AS category_name, c.color AS category_color
+                FROM transactions t
+                INNER JOIN accounts a ON a.id = t.account_id
+                LEFT JOIN categories c ON c.id = t.category_id
+                {$where}
+                LIMIT 20000";
+
+        $stmt = Connection::get()->prepare($sql);
+        $stmt->execute($params);
+
+        $rows = self::hydrateAccountName(array_map(self::hydrate(...), $stmt->fetchAll()));
+
+        if (!empty($filters['amount_min']) || !empty($filters['amount_max'])) {
+            $rows = array_values(array_filter(
+                $rows,
+                static fn (array $row): bool => self::matchesAmountRange($row['amount'], $filters)
+            ));
+        }
+
+        if (!empty($filters['search'])) {
+            $rows = array_values(array_filter(
+                $rows,
+                static fn (array $row): bool => self::matchesSearch($row, (string) $filters['search'])
+            ));
+        }
+
+        $sortColumn = in_array($sort, ['amount', 'payee'], true) ? $sort : 'transaction_date';
+        $sortDir = strtolower($dir) === 'asc' ? 1 : -1;
+
+        usort($rows, static function (array $a, array $b) use ($sortColumn, $sortDir): int {
+            if ($sortColumn === 'amount') {
+                return $sortDir * bccomp($a['amount'], $b['amount'], 2);
+            }
+
+            if ($sortColumn === 'payee') {
+                return $sortDir * strcmp((string) $a['payee'], (string) $b['payee']);
+            }
+
+            // Same "date, then id" tiebreak as the SQL path's
+            // "ORDER BY ... , t.id DESC" so pagination stays stable.
+            $cmp = $a['transaction_date'] <=> $b['transaction_date'];
+
+            return $cmp !== 0 ? $sortDir * $cmp : $b['id'] <=> $a['id'];
+        });
+
+        $total = count($rows);
+        $offset = ($page - 1) * self::PER_PAGE;
+
+        return [
+            'rows' => array_slice($rows, $offset, self::PER_PAGE),
             'total' => $total,
             'page' => $page,
             'perPage' => self::PER_PAGE,
@@ -327,6 +441,11 @@ final class TransactionRepository
      * spending (CLAUDE.md's manual-only accounting rule), so they're
      * excluded from both sums even if the "All types" filter is active.
      *
+     * amount is encrypted (see App\Support\FieldCipher), so this can no
+     * longer SUM() in SQL — every matching row is fetched and decrypted,
+     * then summed with bcadd, replicating the original SUM(CASE ...)
+     * split exactly.
+     *
      * @param array<string, mixed> $filters
      * @return array{income: string, expenses: string, net: string, incomeCount: int, expenseCount: int}
      */
@@ -335,26 +454,46 @@ final class TransactionRepository
         [$where, $params] = $this->buildWhere($householdId, $filters);
 
         $stmt = Connection::get()->prepare(
-            "SELECT
-                COALESCE(SUM(CASE WHEN t.transaction_type = 'income' THEN t.amount ELSE 0 END), 0) AS income,
-                COALESCE(SUM(CASE WHEN t.transaction_type = 'expense' THEN t.amount ELSE 0 END), 0) AS expenses,
-                COALESCE(SUM(CASE WHEN t.transaction_type = 'income' THEN 1 ELSE 0 END), 0) AS income_count,
-                COALESCE(SUM(CASE WHEN t.transaction_type = 'expense' THEN 1 ELSE 0 END), 0) AS expense_count
-             FROM transactions t
-             {$where}"
+            "SELECT t.transaction_type, t.amount, t.amount_encrypted, t.payee, t.payee_encrypted, t.notes, t.notes_encrypted
+             FROM transactions t {$where}"
         );
         $stmt->execute($params);
-        $row = $stmt->fetch();
 
-        $income = (string) $row['income'];
-        $expenses = (string) $row['expenses'];
+        $income = '0.00';
+        $expenses = '0.00';
+        $incomeCount = 0;
+        $expenseCount = 0;
+        $search = (string) ($filters['search'] ?? '');
+
+        foreach ($stmt->fetchAll() as $row) {
+            $amount = FieldCipher::decryptOrFallback($row['amount_encrypted'], $row['amount']);
+
+            if (!self::matchesAmountRange($amount, $filters)) {
+                continue;
+            }
+
+            if ($search !== '' && !self::matchesSearch([
+                'payee' => FieldCipher::decryptOrFallback($row['payee_encrypted'], $row['payee']),
+                'notes' => FieldCipher::decryptOrFallback($row['notes_encrypted'], $row['notes']),
+            ], $search)) {
+                continue;
+            }
+
+            if ($row['transaction_type'] === 'income') {
+                $income = bcadd($income, $amount, 2);
+                $incomeCount++;
+            } elseif ($row['transaction_type'] === 'expense') {
+                $expenses = bcadd($expenses, $amount, 2);
+                $expenseCount++;
+            }
+        }
 
         return [
             'income' => $income,
             'expenses' => $expenses,
             'net' => bcadd($income, $expenses, 2),
-            'incomeCount' => (int) $row['income_count'],
-            'expenseCount' => (int) $row['expense_count'],
+            'incomeCount' => $incomeCount,
+            'expenseCount' => $expenseCount,
         ];
     }
 
@@ -385,7 +524,10 @@ final class TransactionRepository
     /**
      * Unpaginated variant for CSV export — same filters as the list view,
      * but every matching row, capped at a hard ceiling so an export can't
-     * be used to pull an unbounded result set.
+     * be used to pull an unbounded result set. amount_min/amount_max and
+     * search are applied in PHP after decrypting, same reasoning as
+     * listForHouseholdViaPhp() — buildWhere() no longer emits SQL for
+     * either of them.
      *
      * @param array<string, mixed> $filters
      */
@@ -404,7 +546,23 @@ final class TransactionRepository
         $stmt = Connection::get()->prepare($sql);
         $stmt->execute($params);
 
-        return self::hydrateAccountName($stmt->fetchAll());
+        $rows = self::hydrateAccountName(array_map(self::hydrate(...), $stmt->fetchAll()));
+
+        if (!empty($filters['amount_min']) || !empty($filters['amount_max'])) {
+            $rows = array_values(array_filter(
+                $rows,
+                static fn (array $row): bool => self::matchesAmountRange($row['amount'], $filters)
+            ));
+        }
+
+        if (!empty($filters['search'])) {
+            $rows = array_values(array_filter(
+                $rows,
+                static fn (array $row): bool => self::matchesSearch($row, (string) $filters['search'])
+            ));
+        }
+
+        return $rows;
     }
 
     public function listForRecurringItem(int $recurringItemId, int $householdId, int $limit = 10): array
@@ -420,7 +578,7 @@ final class TransactionRepository
 
         $stmt->execute(['recurring_item_id' => $recurringItemId, 'household_id' => $householdId]);
 
-        return self::hydrateAccountName($stmt->fetchAll());
+        return self::hydrateAccountName(array_map(self::hydrate(...), $stmt->fetchAll()));
     }
 
     public function recentForHousehold(int $householdId, int $limit = 5): array
@@ -437,7 +595,7 @@ final class TransactionRepository
 
         $stmt->execute(['household_id' => $householdId]);
 
-        return self::hydrateAccountName($stmt->fetchAll());
+        return self::hydrateAccountName(array_map(self::hydrate(...), $stmt->fetchAll()));
     }
 
     /**
@@ -488,7 +646,75 @@ final class TransactionRepository
         );
         $stmt->execute([$householdId, ...$transactionIds]);
 
-        return $stmt->fetchAll();
+        return array_map(self::hydrate(...), $stmt->fetchAll());
+    }
+
+    /**
+     * amount/payee/notes are encrypted (see App\Support\FieldCipher) —
+     * every SELECT in this file that fetches full transaction rows (t.*)
+     * runs them through this to decrypt into the same amount/payee/notes
+     * keys every caller already expects, falling back to the legacy
+     * plaintext column for any row not yet backfilled. Not used for the
+     * narrower, hand-picked column lists in sumsForHousehold() and
+     * existsSimilar(), which decrypt inline instead since they don't
+     * select every column this expects.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private static function hydrate(array $row): array
+    {
+        $row['amount'] = FieldCipher::decryptOrFallback($row['amount_encrypted'] ?? null, $row['amount']);
+        $row['payee'] = FieldCipher::decryptOrFallback($row['payee_encrypted'] ?? null, $row['payee']);
+        $row['notes'] = FieldCipher::decryptOrFallback($row['notes_encrypted'] ?? null, $row['notes']);
+
+        unset($row['amount_encrypted'], $row['payee_encrypted'], $row['notes_encrypted']);
+
+        return $row;
+    }
+
+    /**
+     * Amount filters compare against the unsigned magnitude — a user
+     * filtering "at least $100" means any transaction of $100 or more
+     * regardless of whether it's income or an expense, not a raw
+     * comparison against the signed stored value. Applied in PHP because
+     * amount is encrypted — see listForHouseholdViaPhp()'s doc comment.
+     *
+     * @param array<string, mixed> $filters
+     */
+    private static function matchesAmountRange(?string $amount, array $filters): bool
+    {
+        if ($amount === null) {
+            return false;
+        }
+
+        $absAmount = bccomp($amount, '0.00', 2) < 0 ? bcmul($amount, '-1', 2) : $amount;
+
+        if (!empty($filters['amount_min']) && bccomp($absAmount, (string) $filters['amount_min'], 2) < 0) {
+            return false;
+        }
+
+        if (!empty($filters['amount_max']) && bccomp($absAmount, (string) $filters['amount_max'], 2) > 0) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Case-insensitive substring match against payee or notes — the PHP
+     * replacement for the old "payee LIKE :search OR notes LIKE :search"
+     * SQL clause, no longer possible once both columns are encrypted.
+     *
+     * @param array<string, mixed> $row
+     */
+    private static function matchesSearch(array $row, string $search): bool
+    {
+        $needle = mb_strtolower($search);
+        $payee = mb_strtolower((string) ($row['payee'] ?? ''));
+        $notes = mb_strtolower((string) ($row['notes'] ?? ''));
+
+        return str_contains($payee, $needle) || str_contains($notes, $needle);
     }
 
     /**
@@ -549,30 +775,17 @@ final class TransactionRepository
             $params['date_to'] = $filters['date_to'];
         }
 
-        if (!empty($filters['search'])) {
-            $clauses[] = '(t.payee LIKE :search_payee OR t.notes LIKE :search_notes)';
-            $params['search_payee'] = '%' . $filters['search'] . '%';
-            $params['search_notes'] = '%' . $filters['search'] . '%';
-        }
-
         if (!empty($filters['tag_id'])) {
             $clauses[] = 'EXISTS (SELECT 1 FROM transaction_tags tt WHERE tt.transaction_id = t.id AND tt.tag_id = :tag_id)';
             $params['tag_id'] = (int) $filters['tag_id'];
         }
 
-        // Amount filters compare against the unsigned magnitude — a user
-        // filtering "at least $100" means any transaction of $100 or more
-        // regardless of whether it's income or an expense, not a raw
-        // comparison against the signed stored value.
-        if (!empty($filters['amount_min'])) {
-            $clauses[] = 'ABS(t.amount) >= :amount_min';
-            $params['amount_min'] = $filters['amount_min'];
-        }
-
-        if (!empty($filters['amount_max'])) {
-            $clauses[] = 'ABS(t.amount) <= :amount_max';
-            $params['amount_max'] = $filters['amount_max'];
-        }
+        // search/amount_min/amount_max deliberately have no SQL clause
+        // here — payee/notes/amount are encrypted (see
+        // App\Support\FieldCipher), so neither a LIKE search nor a numeric
+        // range comparison can run against the stored ciphertext. Every
+        // caller of buildWhere() applies those two filters itself in PHP
+        // after decrypting, via matchesSearch()/matchesAmountRange().
 
         return ['WHERE ' . implode(' AND ', $clauses), $params];
     }

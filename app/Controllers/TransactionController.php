@@ -231,14 +231,16 @@ final class TransactionController
             );
             $accountRepo->updateBalance((int) $input['account_id'], $householdId, $newBalance);
 
+            // payee/amount are encrypted (see App\Support\FieldCipher) — the
+            // audit log itself isn't, so metadata never carries their real
+            // value, only the identifying transaction ID above.
             (new AuditLogRepository())->log(
                 $userId,
                 $householdId,
                 'transaction.created',
                 'transaction',
                 $transactionId,
-                $request->ip(),
-                ['payee' => $input['payee'], 'amount' => $signedAmount]
+                $request->ip()
             );
 
             $pdo->commit();
@@ -810,10 +812,14 @@ final class TransactionController
             $historyRepo->record($toAccount['id'], $userId, $toAccount['current_balance'], $newToBalance, 'Transfer from ' . $fromAccount['name']);
             $accountRepo->updateBalance($toAccount['id'], $householdId, $newToBalance);
 
+            // account names/amount are encrypted (see App\Support\FieldCipher)
+            // — the audit log itself isn't, so metadata carries the account
+            // IDs (not user-identifying on their own) rather than the real
+            // names/amount. $toId is the paired transaction's own ID.
             $auditRepo->log($userId, $householdId, 'transaction.transfer_created', 'transaction', $fromId, $request->ip(), [
-                'from_account' => $fromAccount['name'],
-                'to_account' => $toAccount['name'],
-                'amount' => $input['amount'],
+                'from_account_id' => $fromAccount['id'],
+                'to_account_id' => $toAccount['id'],
+                'paired_transaction_id' => $toId,
             ]);
 
             $pdo->commit();

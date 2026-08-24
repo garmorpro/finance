@@ -257,12 +257,13 @@ section is about how the covered part works.
   `DebtService`'s totals already summed with bcmath in PHP after a full
   row fetch, never `SUM()` in SQL). `interest_rate` and
   `payment_due_day` are deliberately excluded — a percentage and a
-  scheduling detail, not currency amounts.
-  `transactions.amount`/`payee`/`notes` are deliberately *not*
-  encrypted — `amount` genuinely is `SUM()`'d in real SQL throughout
-  this app (`TransactionRepository::sumsForHousehold()`,
-  `ReportingService`), and `payee`/`notes` back the Transactions page's
-  SQL `LIKE` search — see "Known limitations".
+  scheduling detail, not currency amounts. Phase 3:
+  `transactions.amount`/`payee`/`notes`, `transaction_splits.amount`,
+  `import_rows.raw_data`, and `account_balance_history.note` — the hard
+  case deferred out of phases 1-2, because unlike everything above,
+  these genuinely *were* `SUM()`'d, `LIKE`-searched, range-filtered, and
+  sorted in real SQL. See "Phase 3: transactions" below for how that was
+  handled instead of just skipped.
 - **`App\Support\FieldCipher`**: `sodium_crypto_secretbox`
   (XSalsa20-Poly1305, authenticated) — built into PHP's core libsodium
   extension, no Composer dependency. A fresh random nonce every call
@@ -275,22 +276,25 @@ section is about how the covered part works.
   that could be mistaken for a real value.
 - **Staged rollout, not an in-place column swap**: each affected table
   got new nullable `*_encrypted` columns (migrations `0046`-`0048` for
-  phase 1, `0049`-`0050` for phase 2) alongside the original plaintext
-  ones, which stay in the schema as a read-only fallback — every read
-  prefers the encrypted column but falls back to the plaintext one for
-  any row not yet backfilled (`bin/encrypt-existing-text-fields.php`
-  for phase 1, `bin/encrypt-existing-balance-fields.php` for phase 2 —
-  two separate scripts so the higher-stakes balance pass can be run,
-  reviewed, and rolled back independently of the text one — both
-  idempotent, dry-run by default), so deploying the code and running
-  the backfill are safe in either order. Every write
-  (`create()`/`update()`/`updateBalance()`/
-  `AccountBalanceHistoryRepository::record()`) goes only to the
-  encrypted column and explicitly clears the old plaintext one to
-  `NULL` — plaintext stops accumulating immediately, without waiting
-  for the backfill. The old columns aren't dropped in this pass; that's
-  a deliberate later, separate migration once the new columns have run
-  in production without issue.
+  phase 1, `0049`-`0050` for phase 2, `0051`-`0054` for phase 3)
+  alongside the original plaintext ones, which stay in the schema as a
+  read-only fallback — every read prefers the encrypted column but
+  falls back to the plaintext one for any row not yet backfilled
+  (`bin/encrypt-existing-text-fields.php` for phase 1,
+  `bin/encrypt-existing-balance-fields.php` for phase 2,
+  `bin/encrypt-existing-transaction-fields.php` for phase 3 — three
+  separate scripts so each pass can be run, reviewed, and rolled back
+  independently of the others — all idempotent, dry-run by default), so
+  deploying the code and running the backfill are safe in either order.
+  Every write (`create()`/`update()`/`updateBalance()`/
+  `AccountBalanceHistoryRepository::record()`/`TransactionRepository::create()`/
+  `update()`/`applyRuleActions()`/`TransactionSplitRepository::replaceForTransaction()`/
+  `ImportRowRepository::record()`) goes only to the encrypted column and
+  explicitly clears the old plaintext one to `NULL` — plaintext stops
+  accumulating immediately, without waiting for the backfill. The old
+  columns aren't dropped in this pass; that's a deliberate later,
+  separate migration once the new columns have run in production
+  without issue.
 - **Every SQL `JOIN` that used to read `accounts.name` directly for
   display** (transaction lists, CSV export, imports history, goals'
   linked-account name, recurring items, the Reports page's "group by
@@ -317,20 +321,91 @@ section is about how the covered part works.
   the point. Those log calls now omit the value entirely; `entity_id`
   already identifies exactly which record it was, and
   `account_balance_history` (also encrypted) already keeps the real
-  before/after trail for balance changes specifically.
+  before/after trail for balance changes specifically. Phase 3 found
+  and fixed three more of the same bug: `transaction.created` logged
+  `payee`/`amount`, `transaction.transfer_created` logged both
+  accounts' names and the amount, and `recurring.marked_paid`/
+  `recurring.price_changed` logged the transaction amount — all now
+  either omit the value or log only an identifier (`entity_id`,
+  `account_id`, `transaction_id`).
 - **Deployment order matters here in a way it doesn't for this app's
   other optional features.** `ENCRYPTION_KEY` is not gracefully
   optional the way `MAIL_*`/`TURNSTILE_*` are — `AccountRepository`,
-  `AccountBalanceHistoryRepository`, `GoalRepository`, and
-  `RecurringItemRepository` encrypt unconditionally and throw without
-  it, so creating or editing any account, goal, or recurring item, or
-  adjusting any balance, fails outright, not just "isn't encrypted
-  yet," if this ships before the key is set. See `docs/deployment.md`'s
+  `AccountBalanceHistoryRepository`, `GoalRepository`,
+  `RecurringItemRepository`, `TransactionRepository`,
+  `TransactionSplitRepository`, and `ImportRowRepository` all encrypt
+  unconditionally and throw without it, so creating or editing any
+  account, goal, recurring item, or transaction, adjusting any balance,
+  or importing a CSV fails outright, not just "isn't encrypted yet," if
+  this ships before the key is set. See `docs/deployment.md`'s
   "Deploying encryption at rest" section for the exact required order.
 - **Losing `ENCRYPTION_KEY` is unrecoverable** — every encrypted value
   becomes permanently unreadable, with no reset path like a forgotten
   password. Back it up somewhere other than alongside database backups,
   same reasoning as `BACKUP_ENCRYPTION_PASSPHRASE`, but higher stakes.
+
+### Phase 3: transactions
+
+`transactions.amount`/`payee`/`notes` were deferred out of phases 1-2
+because, unlike everything encrypted before them, they were genuinely
+used as more than "load the row, display the value" — real SQL
+`SUM()`s, an SQL `LIKE` search, an SQL amount-range filter, and SQL
+`ORDER BY amount`/`ORDER BY payee`. Encrypting them meant finding and
+rewriting every one of those sites, not just adding columns:
+
+- **`TransactionRepository::sumsForHousehold()`** and
+  **`BudgetRepository::actualsByCategoryTrailingMonths()`** no longer
+  `SUM()`/`GROUP BY` in SQL — both fetch the matching raw rows (still
+  narrowed by whatever *is* still SQL-filterable: household, account,
+  category, date, type) and sum with `bcadd` in PHP instead, replicating
+  the original SQL logic exactly (including
+  `actualsByCategoryTrailingMonths()`'s zero-filled months).
+  `ReportingService::debtPaymentsForMonth()`'s `WHERE amount > 0` clause
+  moved the same way, into a `bccomp($amount, '0.00', 2) > 0` check
+  after decrypting. Every other aggregate in `BudgetRepository`/
+  `ReportingService` (`actualByCategory()`, `spendingByCategory()`,
+  `incomeByCategory()`, `monthlyIncomeExpense()`, `dailyIncomeExpense()`,
+  `monthlyAllocationSummary()`) was already summing in PHP after a raw
+  fetch, same as phase 1/2's balance methods — those only needed a
+  decrypt step added, not a rewrite.
+- **`TransactionRepository::existsSimilar()`** (CSV import's duplicate
+  check) can no longer do `WHERE amount = :amount AND payee = :payee` —
+  the same plaintext never produces the same ciphertext bytes twice
+  (each encryption uses a fresh random nonce), so an exact SQL equality
+  match against either column is structurally impossible now, not just
+  slow. It instead narrows to candidates by household/account/date
+  (still real, cheap SQL — typically a handful of rows for one account
+  on one day) and compares the decrypted amount/payee in PHP.
+- **The Transactions page's amount-range filter, payee/notes search,
+  and amount/payee sort** can't run as SQL against ciphertext either.
+  `TransactionRepository::listForHousehold()` now routes to one of two
+  private methods: `listForHouseholdViaSql()` (the original fast path —
+  SQL `WHERE`/`ORDER BY`/`LIMIT`/`OFFSET` — used whenever none of those
+  three are active, which is the common case: date range, account,
+  category, type, and tag filters, plus date sort, all stayed real SQL)
+  or `listForHouseholdViaPhp()` (fetches every SQL-still-filterable row,
+  capped at the same 20000-row ceiling `exportForHousehold()` already
+  used, decrypts, then filters/searches/sorts/paginates in PHP). Fine
+  for a self-hosted household's own transaction history; not a query
+  shape that would scale to a multi-tenant SaaS volume — see "Known
+  limitations".
+- **Two more "hidden duplicate copy" tables were found auditing this**,
+  the same class of gap phase 2 found in `account_balance_history`:
+  `import_rows.raw_data` (the original CSV line text for every imported
+  row — a second full copy of the same payee/amount/date) and
+  `account_balance_history.note`, which — separately from its own
+  already-encrypted `previous_balance`/`new_balance` — turned out to
+  carry the transaction payee (`"Transaction: Whole Foods"`), the
+  recurring item name (`"Recurring: Netflix"`), or the other side's
+  account name on a transfer (`"Transfer to Chase Checking"`) in plain
+  `VARCHAR(255)`. Both are now encrypted the same way as everything
+  else (migrations `0053`/`0054`).
+- **`transaction_splits.amount`** — a split transaction's per-category
+  line amounts — is a second table holding the same class of dollar
+  data as `transactions.amount` itself, encrypted for the same reason
+  `account_balance_history` was in phase 2: left alone, it would have
+  kept every split purchase's real amounts readable even after the
+  parent transaction's amount was encrypted.
 
 ## Budget review magic links
 
@@ -545,21 +620,27 @@ the drift that compounds across many transactions).
   during the accessibility pass, not fixed in it — a real fix needs
   keyboard-driven "move up"/"move down" controls per tile, not just an
   ARIA annotation on the existing drag handle.
-- **`transactions.amount`/`payee`/`notes` are not encrypted at rest.**
-  Everything on `accounts` and `account_balance_history` now is (see
-  "Encryption at rest" below), plus `financial_goals`/`recurring_items`'
-  name/description/notes — but `transactions.amount` genuinely is
-  `SUM()`'d in real SQL throughout the app
-  (`TransactionRepository::sumsForHousehold()`, budget/report rollups),
-  which encryption would break outright, not just slow down.
-  `payee`/`notes` back the Transactions page's SQL `LIKE` search, and
-  encrypting them means redesigning that search first
-  (fetch-and-filter-in-PHP after every other SQL filter narrows the
-  set), a deliberate separate follow-up, not done here. Someone with
-  database-only access (phpMyAdmin, a `mysql` shell, a raw backup) can
-  still see every transaction's amount and payee, and which household
-  each belongs to, even though account balances themselves are now
-  encrypted — encryption narrows what they see, it doesn't close the
-  boundary. *Who* can reach the database at all (`docs/deployment.md`'s
-  "Lock down phpMyAdmin" step, least-privilege DB credentials above) is
-  still the load-bearing control for everything not yet encrypted.
+- **The Transactions page's amount-range filter, payee/notes search,
+  and amount/payee sort now run in PHP, not SQL, and load up to 20000
+  rows to do it.** A direct consequence of encrypting
+  `transactions.amount`/`payee` (see "Encryption at rest" → "Phase 3:
+  transactions") — a household using any of those three loses SQL-level
+  `LIMIT`/`OFFSET` for that one request and pays a full decrypt pass
+  over their SQL-filterable result set instead. Every other filter
+  (date, account, category, type, tag) and the default date sort are
+  unaffected. Fine at real self-hosted-household transaction volumes
+  (thousands, not millions, of rows); not a query shape that would
+  scale to a multi-tenant SaaS volume, which this app was never meant
+  to be. `BudgetRepository::actualsByCategoryTrailingMonths()` and
+  `TransactionRepository::sumsForHousehold()` have the same "PHP sum
+  instead of SQL `SUM()`" tradeoff, at a much smaller row count (one
+  category's trailing months, one page's filtered totals).
+- **Not everything sensitive is encrypted, even now.** `imports.filename`
+  (the original CSV filename someone uploaded, e.g.
+  `Chase_Checking_Aug2026.csv`) and `transaction_rules.name`/conditions/
+  actions stay plaintext — lower-severity than a real transaction
+  amount or payee, but still readable by anyone with database-only
+  access, and out of scope for this pass. *Who* can reach the database
+  at all (`docs/deployment.md`'s "Lock down phpMyAdmin" step,
+  least-privilege DB credentials above) remains the load-bearing
+  control for everything not yet encrypted.
