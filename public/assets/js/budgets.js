@@ -202,4 +202,18 @@
       }
     });
   });
+
+  // --- Expense group "Expand all" -------------------------------------
+  // Groups with no plan and no spending start collapsed; this opens
+  // every <details> on the page at once — both the group-level ones and
+  // the nested "N more categories..." disclosures inside an already-open
+  // group — rather than making someone click through each one.
+  var expandAllBtn = document.getElementById('budget-expand-all');
+  if (expandAllBtn) {
+    expandAllBtn.addEventListener('click', function () {
+      document.querySelectorAll('details').forEach(function (details) {
+        details.open = true;
+      });
+    });
+  }
 })();

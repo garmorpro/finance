@@ -55,25 +55,40 @@ $positiveFramingDelta = function (string $remaining, string $shortOfPlanVerb): a
     return ['class' => 'delta-chip-neutral', 'text' => Money::format($remaining) . ' ' . $shortOfPlanVerb];
 };
 
-// Normalizes the trend series into an SVG polyline `points` string for the
-// hero's sparkline — pure display math, not a financial calculation.
-$sparklinePoints = function (array $trend): string {
+// "$X of $Y planned" only reads sensibly once something's actually been
+// planned — with nothing planned it degrades to "$X of $0.00", which
+// reads like a fraction of nothing rather than a status. Below that
+// threshold we say what happened in plain words instead.
+$actualOfPlannedLabel = function (string $actual, string $planned, string $verb): string {
+    if (bccomp($planned, '0.00', 2) > 0) {
+        return Money::format($actual) . ' <span class="text-stone-400 dark:text-stone-600">of</span> ' . Money::format($planned);
+    }
+
+    return bccomp($actual, '0.00', 2) > 0
+        ? Money::format($actual) . ' ' . $verb . ' <span class="text-stone-400 dark:text-stone-600">&middot; no budget set</span>'
+        : '';
+};
+
+// Normalizes the trend series into an SVG chart path for the hero's
+// area-filled sparkline — pure display math, not a financial calculation.
+// Matches dashboard/widgets/hero_stats.php's exact chart conventions
+// (400x120 viewBox, same gridlines/gradient/endpoint treatment) so the
+// two heroes read as the same component.
+$chartPath = function (array $trend): string {
     $values = array_map(fn (array $t): float => (float) $t['value'], $trend);
     $min = min($values);
     $max = max($values);
     $range = $max - $min;
-    $width = 150;
-    $height = 40;
-    $steps = count($values) - 1;
+    $count = count($values);
 
     $points = [];
     foreach ($values as $i => $value) {
-        $x = $steps > 0 ? ($i / $steps) * $width : 0;
-        $y = $range > 0 ? $height - (($value - $min) / $range) * $height : $height / 2;
+        $x = $count > 1 ? ($i / ($count - 1)) * 400 : 200;
+        $y = $range > 0 ? 110 - (($value - $min) / $range) * 100 : 60;
         $points[] = round($x, 1) . ',' . round($y, 1);
     }
 
-    return implode(' ', $points);
+    return implode(' L', $points);
 };
 
 $renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, $canManage, $percentFor): void {
@@ -135,69 +150,79 @@ $renderRow = function (array $row, string $type) use ($csrfToken, $periodMonth, 
     <?php
 };
 
-$renderSection = function (array $section, string $type) use ($renderRow, $expenseDelta, $positiveFramingDelta): void {
+$renderSection = function (array $section, string $type) use ($renderRow, $expenseDelta, $positiveFramingDelta, $actualOfPlannedLabel): void {
     $group = $section['group'];
     $title = $group !== null ? $group['name'] : 'Ungrouped';
+    $rows = $section['rows'];
 
     $planned = '0.00';
     $actual = '0.00';
-    foreach ($section['rows'] as $row) {
+    foreach ($rows as $row) {
         if ($row['planned'] !== null) {
             $planned = bcadd($planned, $row['planned'], 2);
             $actual = bcadd($actual, $row['actual'], 2);
         }
     }
     $remaining = bcsub($planned, $actual, 2);
-    $delta = $type === 'expense' ? $expenseDelta($remaining) : $positiveFramingDelta($remaining, 'left to earn');
+    $hasActivity = bccomp($planned, '0.00', 2) > 0 || bccomp($actual, '0.00', 2) > 0;
+
+    if ($hasActivity) {
+        $delta = $type === 'expense' ? $expenseDelta($remaining) : $positiveFramingDelta($remaining, 'left to earn');
+        $summaryLabel = $actualOfPlannedLabel($actual, $planned, $type === 'expense' ? 'spent' : 'earned');
+    } else {
+        $delta = ['class' => 'delta-chip-neutral', 'text' => 'No activity'];
+        $summaryLabel = '';
+    }
+
+    $count = count($rows);
+
+    // Rows with neither a plan nor any spending are folded into a
+    // "N more categories..." disclosure instead of each getting a full
+    // row — this only ever fires inside a group that's open (i.e. has
+    // at least one row with real activity), since a group with zero
+    // activity anywhere in it doesn't default-open at all.
+    $activeRows = array_values(array_filter($rows, fn (array $r): bool => $r['planned'] !== null || bccomp($r['actual'], '0.00', 2) > 0));
+    $emptyRows = array_values(array_filter($rows, fn (array $r): bool => $r['planned'] === null && bccomp($r['actual'], '0.00', 2) === 0));
     ?>
-    <details class="card budget-section-card p-0" open>
+    <details class="card budget-section-card p-0" <?= $hasActivity ? 'open' : '' ?>>
         <summary class="flex items-center justify-between gap-4 px-6 py-4 cursor-pointer select-none">
             <span class="flex items-center gap-3 min-w-0">
                 <span class="budget-group-icon"><?= CategoryGroupIcons::forName($group !== null ? $group['name'] : null) ?></span>
                 <span class="font-semibold text-stone-900 dark:text-white truncate"><?= View::e($title) ?></span>
+                <?php if ($count > 0): ?>
+                    <span class="delta-chip delta-chip-neutral"><?= $count ?> categor<?= $count === 1 ? 'y' : 'ies' ?></span>
+                <?php endif; ?>
             </span>
             <span class="flex items-center gap-3 text-sm flex-shrink-0">
-                <span class="text-stone-500 dark:text-stone-400"><?= Money::format($actual) ?> <span class="text-stone-400 dark:text-stone-600">of</span> <?= Money::format($planned) ?></span>
+                <?php if ($summaryLabel !== ''): ?>
+                    <span class="text-stone-500 dark:text-stone-400"><?= $summaryLabel ?></span>
+                <?php endif; ?>
                 <span class="delta-chip <?= $delta['class'] ?>"><?= View::e($delta['text']) ?></span>
             </span>
         </summary>
         <div class="px-4 pb-2 border-t border-stone-100 dark:border-stone-800 pt-2">
-            <?php if ($section['rows'] === []): ?>
+            <?php if ($rows === []): ?>
                 <p class="text-sm text-stone-500 dark:text-stone-400 py-4 px-2">No categories in this section yet.</p>
             <?php else: ?>
-                <?php foreach ($section['rows'] as $row): ?>
+                <?php foreach ($activeRows as $row): ?>
                     <?php $renderRow($row, $type); ?>
                 <?php endforeach; ?>
+                <?php if ($emptyRows !== []): ?>
+                    <?php $emptyCount = count($emptyRows); ?>
+                    <details class="mt-1">
+                        <summary class="text-xs text-stone-500 dark:text-stone-400 px-2 py-2 cursor-pointer select-none">
+                            <?= $emptyCount ?> more categor<?= $emptyCount === 1 ? 'y' : 'ies' ?> with no plan or activity yet
+                        </summary>
+                        <?php foreach ($emptyRows as $row): ?>
+                            <?php $renderRow($row, $type); ?>
+                        <?php endforeach; ?>
+                    </details>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </details>
     <?php
 };
-
-$statCard = function (string $label, string $planned, string $actual, array $delta, string $earnedOrSpentLabel, string $iconBg, string $iconColor, string $iconSvg, array $barColors) use ($percentFor): void {
-    ?>
-    <div class="card">
-        <div class="flex items-center gap-3 mb-3">
-            <span class="metric-icon" style="background: <?= $iconBg ?>; color: <?= $iconColor ?>;"><?= $iconSvg ?></span>
-            <div>
-                <div class="text-xs font-bold uppercase tracking-wide text-stone-900 dark:text-white"><?= View::e($label) ?></div>
-                <div class="text-xs text-stone-500 dark:text-stone-400"><?= Money::format($planned) ?> planned</div>
-            </div>
-        </div>
-        <div class="budget-cat-bar-track">
-            <div class="budget-cat-bar-fill" style="width: <?= $percentFor($actual, $planned) ?>%; --bar-a: <?= $barColors[0] ?>; --bar-b: <?= $barColors[1] ?>;"></div>
-        </div>
-        <div class="flex items-center justify-between mt-3 text-xs">
-            <span class="text-stone-500 dark:text-stone-400"><?= Money::format($actual) ?> <?= View::e($earnedOrSpentLabel) ?></span>
-            <span class="delta-chip <?= $delta['class'] ?>"><?= View::e($delta['text']) ?></span>
-        </div>
-    </div>
-    <?php
-};
-
-$arrowUpIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
-$arrowDownIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
-$targetIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>';
 
 $leftToBudgetPositive = bccomp($leftToBudget, '0.00', 2) >= 0;
 
@@ -216,31 +241,6 @@ $leftToBudgetPositive = bccomp($leftToBudget, '0.00', 2) >= 0;
 
         <div class="app-content">
             <main class="page-main-wide">
-                <div class="flex items-end justify-between flex-wrap gap-3">
-                    <div>
-                        <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white">Budgets</h1>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">
-                            Organized into sections you manage in
-                            <a href="/settings/categories" class="text-terracotta-600 dark:text-terracotta-400 hover:underline">Settings &rarr; Categories</a>.
-                        </p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <a href="/budgets?month=<?= View::e($prevMonth) ?>" class="btn-secondary" aria-label="Previous month">&larr;</a>
-                        <span class="text-sm font-medium text-stone-900 dark:text-white w-32 text-center"><?= View::e($monthLabel) ?></span>
-                        <a href="/budgets?month=<?= View::e($nextMonth) ?>" class="btn-secondary" aria-label="Next month">&rarr;</a>
-                        <?php if ($canManage && $hasPreviousBudget): ?>
-                            <form method="POST" action="/budgets/copy-previous">
-                                <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                                <input type="hidden" name="period_month" value="<?= View::e($periodMonth) ?>">
-                                <button type="submit" class="btn-secondary">Copy last month</button>
-                            </form>
-                        <?php endif; ?>
-                        <?php if ($canManage): ?>
-                            <a href="/budgets/review?month=<?= View::e(substr($periodMonth, 0, 7)) ?>" class="btn-primary">Review &amp; plan &rarr;</a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
                 <?php if (!empty($error)): ?>
                     <div class="alert-error"><?= View::e($error) ?></div>
                 <?php endif; ?>
@@ -248,65 +248,84 @@ $leftToBudgetPositive = bccomp($leftToBudget, '0.00', 2) >= 0;
                     <div class="alert-success"><?= View::e($notice) ?></div>
                 <?php endif; ?>
 
-                <!-- Left to Budget hero -->
-                <div class="stat-hero <?= $leftToBudgetPositive ? 'stat-hero-positive' : 'stat-hero-negative' ?> flex items-center justify-between flex-wrap gap-6">
-                    <span class="stat-hero-icon <?= $leftToBudgetPositive ? 'text-emerald-600' : 'text-red-600' ?>">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    </span>
-                    <div style="position: relative;">
-                        <div class="text-xs font-bold uppercase tracking-wide <?= $leftToBudgetPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' ?> mb-2">Left to Budget &middot; <?= View::e(date('F', strtotime($periodMonth))) ?></div>
-                        <div class="text-stone-900 dark:text-white" style="font-size: 2.75rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em;"><?= Money::format($leftToBudget) ?></div>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">Planned income minus planned expenses and goal contributions.</p>
+                <!-- Unified dark hero, matching Overview/Transactions/Accounts -->
+                <div class="dash-hero">
+                    <div class="dash-hero-top">
+                        <div>
+                            <h1>Budgets</h1>
+                            <p class="sub">Organized into sections you manage in <a href="/settings/categories" style="color:#f0a488;">Settings &rarr; Categories</a>.</p>
+                        </div>
+                        <div class="dash-hero-actions">
+                            <a href="/budgets?month=<?= View::e($prevMonth) ?>" class="btn-ghost-dark" aria-label="Previous month">&larr;</a>
+                            <span class="text-sm font-medium text-white w-28 text-center"><?= View::e($monthLabel) ?></span>
+                            <a href="/budgets?month=<?= View::e($nextMonth) ?>" class="btn-ghost-dark" aria-label="Next month">&rarr;</a>
+                            <?php if ($canManage && $hasPreviousBudget): ?>
+                                <form method="POST" action="/budgets/copy-previous">
+                                    <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                                    <input type="hidden" name="period_month" value="<?= View::e($periodMonth) ?>">
+                                    <button type="submit" class="btn-ghost-dark">Copy last month</button>
+                                </form>
+                            <?php endif; ?>
+                            <?php if ($canManage): ?>
+                                <a href="/budgets/review?month=<?= View::e(substr($periodMonth, 0, 7)) ?>" class="btn-primary">Review &amp; plan &rarr;</a>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <div style="position: relative;">
-                        <div class="text-[10px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-2">Last 6 months</div>
-                        <svg width="150" height="46" viewBox="0 0 150 46" role="img" aria-label="Left to budget over the last 6 months">
-                            <polyline points="<?= $sparklinePoints($leftToBudgetTrend) ?>" fill="none" stroke="<?= $leftToBudgetPositive ? '#34d399' : '#f87171' ?>" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                </div>
 
-                <!-- Summary row: Income / Expenses / Goals -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <?php
-                    $statCard(
-                        'Income',
-                        $totalPlannedIncome,
-                        $totalActualIncome,
-                        $positiveFramingDelta(bcsub($totalPlannedIncome, $totalActualIncome, 2), 'left to earn'),
-                        'earned',
-                        'rgba(52, 211, 153, .14)',
-                        '#059669',
-                        $arrowUpIcon,
-                        ['#059669', '#34d399']
-                    );
-                    ?>
-                    <?php
-                    $statCard(
-                        'Expenses',
-                        $totalPlannedExpense,
-                        $totalActualExpense,
-                        $expenseDelta(bcsub($totalPlannedExpense, $totalActualExpense, 2)),
-                        'spent',
-                        'rgba(226, 105, 75, .14)',
-                        '#c94f32',
-                        $arrowDownIcon,
-                        ['#c94f32', '#e2694b']
-                    );
-                    ?>
-                    <?php
-                    $statCard(
-                        'Goals',
-                        $plannedGoalContributions,
-                        $actualGoalContributions,
-                        $positiveFramingDelta(bcsub($plannedGoalContributions, $actualGoalContributions, 2), 'left to contribute'),
-                        'contributed',
-                        'rgba(168, 162, 158, .16)',
-                        '#78716c',
-                        $targetIcon,
-                        ['#78716c', '#a8a29e']
-                    );
-                    ?>
+                    <div class="dash-hero-body">
+                        <div class="dash-hero-nw">
+                            <p class="dash-hero-eyebrow">Left to Budget</p>
+                            <div class="dash-hero-nw-value tabular-nums"><?= Money::format($leftToBudget) ?></div>
+                            <p class="dash-hero-nw-caption" style="margin-top:0.75rem;">Planned income minus planned expenses and goal contributions.</p>
+
+                            <svg class="dash-hero-chart" viewBox="0 0 400 120" preserveAspectRatio="none" role="img" aria-label="Left to budget over the past <?= count($leftToBudgetTrend) ?> months">
+                                <defs>
+                                    <linearGradient id="budgetHeroFill" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#e2694b" stop-opacity="0.38"/>
+                                        <stop offset="100%" stop-color="#e2694b" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+                                <line x1="0" y1="70" x2="400" y2="70" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+                                <line x1="0" y1="110" x2="400" y2="110" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+                                <?php $path = $chartPath($leftToBudgetTrend); ?>
+                                <path d="M<?= $path ?> L400,120 L0,120 Z" fill="url(#budgetHeroFill)"/>
+                                <path d="M<?= $path ?>" fill="none" stroke="#f0a488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <?php $lastPoint = explode(',', substr($path, strrpos($path, 'L') + 1)); ?>
+                                <circle cx="<?= $lastPoint[0] ?>" cy="<?= $lastPoint[1] ?>" r="4.5" fill="#1c1917" stroke="#f0a488" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <div class="dash-hero-stats">
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon income">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                                </span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Income &middot; <?= Money::format($totalPlannedIncome) ?> planned</span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= Money::format($totalActualIncome) ?></span>
+                                </span>
+                            </div>
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon expense">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                                </span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Expenses &middot; <?= Money::format($totalPlannedExpense) ?> planned</span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= Money::format($totalActualExpense) ?></span>
+                                </span>
+                            </div>
+                            <div class="dash-hero-stat">
+                                <span class="dash-hero-stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+                                </span>
+                                <span>
+                                    <span class="dash-hero-stat-label">Goals &middot; <?= Money::format($plannedGoalContributions) ?> planned</span>
+                                    <span class="dash-hero-stat-value tabular-nums"><?= Money::format($actualGoalContributions) ?></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Income -->
@@ -323,14 +342,27 @@ $leftToBudgetPositive = bccomp($leftToBudget, '0.00', 2) >= 0;
                         <?php endforeach; ?>
                         <div class="budget-total-row flex items-center justify-between">
                             <span class="font-semibold text-stone-900 dark:text-white">Total Income</span>
-                            <span class="text-sm text-stone-600 dark:text-stone-300"><span class="font-semibold text-stone-900 dark:text-white"><?= Money::format($totalActualIncome) ?></span> of <?= Money::format($totalPlannedIncome) ?></span>
+                            <span class="text-sm text-stone-600 dark:text-stone-300">
+                                <?php if (bccomp($totalPlannedIncome, '0.00', 2) > 0): ?>
+                                    <span class="font-semibold text-stone-900 dark:text-white"><?= Money::format($totalActualIncome) ?></span> of <?= Money::format($totalPlannedIncome) ?>
+                                <?php elseif (bccomp($totalActualIncome, '0.00', 2) > 0): ?>
+                                    <span class="font-semibold text-stone-900 dark:text-white"><?= Money::format($totalActualIncome) ?></span> earned &middot; no budget set
+                                <?php else: ?>
+                                    No budget set yet
+                                <?php endif; ?>
+                            </span>
                         </div>
                     <?php endif; ?>
                 </div>
 
                 <!-- Expenses -->
                 <div>
-                    <h2 class="text-lg font-semibold text-stone-900 dark:text-white mb-3">Expenses</h2>
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-lg font-semibold text-stone-900 dark:text-white">Expenses</h2>
+                        <?php if ($expenseSections !== []): ?>
+                            <button type="button" id="budget-expand-all" class="text-xs font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">Expand all</button>
+                        <?php endif; ?>
+                    </div>
                     <?php if ($expenseSections === []): ?>
                         <div class="card text-center py-10">
                             <p class="text-stone-500 dark:text-stone-400 mb-2">No expense categories yet.</p>
@@ -342,7 +374,18 @@ $leftToBudgetPositive = bccomp($leftToBudget, '0.00', 2) >= 0;
                         <?php endforeach; ?>
                         <div class="budget-total-row flex items-center justify-between">
                             <span class="font-semibold text-stone-900 dark:text-white">Total Expenses</span>
-                            <span class="text-sm text-stone-600 dark:text-stone-300"><span class="font-semibold text-stone-900 dark:text-white"><?= Money::format($totalActualExpense) ?></span> of <?= Money::format($totalPlannedExpense) ?></span>
+                            <span class="text-sm text-stone-600 dark:text-stone-300">
+                                <?php
+                                $expenseRemaining = bcsub($totalPlannedExpense, $totalActualExpense, 2);
+                                ?>
+                                <?php if (bccomp($totalPlannedExpense, '0.00', 2) > 0): ?>
+                                    <span class="font-semibold <?= bccomp($expenseRemaining, '0.00', 2) < 0 ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white' ?>"><?= Money::format($totalActualExpense) ?></span> of <?= Money::format($totalPlannedExpense) ?>
+                                <?php elseif (bccomp($totalActualExpense, '0.00', 2) > 0): ?>
+                                    <span class="font-semibold text-stone-900 dark:text-white"><?= Money::format($totalActualExpense) ?></span> spent &middot; no budget set
+                                <?php else: ?>
+                                    No budget set yet
+                                <?php endif; ?>
+                            </span>
                         </div>
                     <?php endif; ?>
                 </div>
