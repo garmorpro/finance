@@ -8,7 +8,7 @@ Every core feature phase from `CLAUDE.md`'s roadmap is built and then some: auth
 
 Deliberately **not** built, per `CLAUDE.md`'s Manual-Only Data Policy: any bank connection, account-aggregation service, or automatic transaction sync. This is a fully manual finance tracker and will stay that way.
 
-Not yet built: real SMTP. Every outbound "email" this app generates — password resets, household invitations, and budget planning reminders — is logged instead of actually sent, until real SMTP is configured (see below).
+SMTP (via PHPMailer, `.env`'s `MAIL_*`) is available and used by budget planning reminders — see `.env.example` for Gmail/Workspace setup. Password resets and household invitations haven't been switched over yet and still log their link instead of emailing it.
 
 ## First-time setup
 

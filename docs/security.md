@@ -22,9 +22,11 @@ this doc, not just one of them.
   prevent session fixation.
 - Session cookies are `HttpOnly` always, `Secure` when `APP_URL` starts
   with `https://`, and `SameSite=Lax`.
-- Password reset tokens are logged, not emailed (this app has no SMTP
-  integration by design — see the README). Anyone with server log access
-  can already reach the database directly, so this isn't a meaningfully
+- Password reset tokens are logged, not emailed. `App\Support\Mailer`
+  (SMTP via PHPMailer) exists as of the budget reminder feature below,
+  but password reset and household invitations haven't been switched
+  over to it yet — see the README. Anyone with server log access can
+  already reach the database directly, so this isn't a meaningfully
   larger trust boundary for a self-hosted single-server deployment.
 
 ## Two-factor authentication
@@ -174,8 +176,10 @@ session-cookie authentication, so it gets its own write-up:
 - **Token**: `random_bytes(32)` (256 bits), only the SHA-256 hash is
   stored (`budget_review_links.token_hash`) — same pattern as password
   reset and invitation tokens. The plaintext token only ever exists in
-  the generated URL and the (currently stubbed, see "Authentication"
-  above) email.
+  the generated URL and the email itself (real, via `App\Support\Mailer`,
+  when `MAIL_*` is configured; otherwise logged instead — see
+  "Authentication" above). Either way it's never persisted anywhere but
+  that one outbound message and the recipient's inbox.
 - **Scope, not a general sign-in**: opening a valid link
   (`BudgetReviewLinkController::open()`) never sets
   `$_SESSION['user_id']`/`'household_id'`/`'role'` — the fields
@@ -210,6 +214,15 @@ session-cookie authentication, so it gets its own write-up:
   single-use or reusable until expiry, and how long it lives (default 7
   days) are all per-household settings
   (`households.budget_reminder_*`), editable only by Owner/Administrator.
+- **Mail transport**: `App\Support\Mailer` connects over SMTP with
+  `SMTPSecure = ENCRYPTION_STARTTLS` (never plaintext). Credentials come
+  only from `.env` (`MAIL_*`), never committed, and `.env.example`
+  documents using an app-specific password (e.g. Gmail's 2-Step
+  Verification App Passwords), not a real account password. A send
+  failure never surfaces to the person who triggered it (there isn't
+  one — this is a cron job) or blocks the link from working; it's only
+  logged, and the link itself was already issued and already usable
+  before the send was attempted.
 
 ## CSRF
 

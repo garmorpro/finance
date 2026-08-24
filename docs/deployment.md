@@ -164,12 +164,40 @@ just catches up. Add it to cron alongside the backup job:
 0 8 * * * php /var/www/finance/public_html/finance/bin/send-budget-reminders.php >> /var/log/finance-reminders.log 2>&1
 ```
 
-Email sending is stubbed app-wide for now (same as password resets and
-household invitations — see `docs/security.md`) — the review link is
-written to `storage/logs/app-*.log` instead of actually delivered,
-until real SMTP is configured. Until then, this job is only useful for
-generating links you copy out of the log by hand, or for validating
-the trigger-window/idempotency logic itself.
+Actually emails the link when `MAIL_*` is set in `.env` (see
+`.env.example` for Gmail/Workspace SMTP setup — App Password, and the
+From-address restrictions Gmail enforces). Without that configured,
+the link is written to `storage/logs/app-*.log` instead — the same
+convention this app still uses for password resets and household
+invitations (see `docs/security.md`), which haven't been switched over
+to real sending yet.
+
+**Testing it by hand**, without waiting for a real trigger date or cron:
+
+1. Run migrations if you haven't (`php bin/migrate.php`), then
+   `composer update phpmailer/phpmailer` to install the new dependency
+   (declared in `composer.json`, not installed until this runs).
+2. Fill in `MAIL_HOST`/`MAIL_PORT`/`MAIL_USERNAME`/`MAIL_PASSWORD`/
+   `MAIL_FROM_ADDRESS` in `.env`.
+3. Settings → Household → turn on "Email a review link before each
+   month starts". Set "Send reminder" to whichever option makes today
+   fall inside the window — e.g. if there are 10 or fewer days left in
+   the current month, "10 days before month starts" already covers
+   today; otherwise this won't trigger until closer to month-end (the
+   script deliberately won't fire early just because you asked it to
+   check).
+4. `php bin/send-budget-reminders.php` — prints what it did per
+   recipient (`Emailed ...` or `Logged (not emailed) ...`), so a bad
+   SMTP config is visible immediately rather than silently swallowed.
+5. Check the inbox on file for that Owner/Administrator. If it logged
+   instead, the link is in the newest `storage/logs/app-*.log` line
+   containing `review_url`.
+
+Running it again the same day is safe — a household/user/month that
+already has a link is skipped, not re-sent (see the repeated-run
+behavior described above), so testing a second time means changing
+the household's own reminder setting again, or manually deleting the
+row from `budget_review_links` for that combination first.
 
 ## Backups
 

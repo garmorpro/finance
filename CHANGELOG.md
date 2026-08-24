@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+- Budget planning reminder emails now actually send: new `App\Support\Mailer`
+  (SMTP via a new `phpmailer/phpmailer` dependency — run `composer update
+  phpmailer/phpmailer` after pulling) connects with `SMTPSecure =
+  ENCRYPTION_STARTTLS`, configured entirely from `.env`'s existing (until now
+  unused) `MAIL_*` vars — `.env.example` gained setup notes for Gmail/Google
+  Workspace specifically (App Passwords, and the From-address restrictions
+  Gmail enforces on personal accounts). `bin/send-budget-reminders.php` now
+  builds a real HTML+plain-text email (inline-styled, no external assets —
+  deliberately not a bulletproof cross-client template, since this app's
+  own reasoning for who reads these emails doesn't call for one) and
+  attempts a real send before falling back to the original log-the-link
+  behavior, which still fires unconditionally if `MAIL_*` isn't configured
+  or a send attempt fails for any reason — the link is always issued and
+  always usable either way; only whether an email actually reaches an
+  inbox is best-effort. Password reset and household invitations are
+  *not* switched over to real sending in this change — still logged, as
+  before — so as not to touch account-recovery flows in the same change
+  that's introducing and testing a brand-new mail dependency; trivial to
+  flip once `Mailer` has proven itself here. `docs/security.md`,
+  `docs/deployment.md` (now includes step-by-step manual testing
+  instructions), and README updated accordingly.
+
 - Budget planning reminder emails: an optional, per-household nudge (off by
   default — Settings → Household → "Budget planning reminders") that emails
   every Owner and Administrator a link to review next month's budget a
