@@ -416,13 +416,38 @@
     @apply min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100;
   }
 
+  /*
+   * Permanently dark, matching .dash-hero's own fixed (not light/dark
+   * theme-toggled) gradient — same reasoning as .dash-hero: this is a
+   * deliberate always-dark surface, not a themed page background, so its
+   * own text colors below are fixed rgba/hex too rather than dark:
+   * variants that would go unreadable against it in light mode.
+   */
   .review-topbar {
-    @apply sticky top-0 z-10 border-b border-stone-200 dark:border-stone-800 bg-stone-50/90 dark:bg-stone-950/90;
-    backdrop-filter: blur(8px);
+    @apply sticky top-0 z-10;
+    color: #f5f5f4;
+    background:
+      radial-gradient(760px 300px at 88% -20%, rgba(226, 105, 75, .28), transparent 60%),
+      linear-gradient(155deg, #1c1917 0%, #241b16 45%, #38130a 130%);
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
   }
 
   .review-topbar-inner {
     @apply max-w-2xl mx-auto px-5 py-4;
+  }
+
+  .review-mini-stats {
+    @apply flex gap-6 mt-3;
+  }
+
+  .review-mini-stat-label {
+    @apply text-[10px] font-bold uppercase tracking-wide;
+    color: rgba(245, 245, 244, .45);
+  }
+
+  .review-mini-stat-value {
+    @apply text-base font-semibold mt-0.5;
+    color: #fff;
   }
 
   .review-progress-track {
@@ -430,12 +455,14 @@
   }
 
   .review-progress-seg {
-    @apply flex-1 rounded-full bg-stone-200 dark:bg-stone-800 relative overflow-hidden;
+    @apply flex-1 rounded-full relative overflow-hidden;
+    background: rgba(255, 255, 255, .12);
   }
 
   .review-progress-seg::after {
     content: '';
-    @apply absolute inset-0 rounded-full bg-terracotta-600;
+    @apply absolute inset-0 rounded-full;
+    background: #e2694b;
     transform: scaleX(0);
     transform-origin: left;
     transition: transform .3s ease;
@@ -465,6 +492,18 @@
 
   .review-cat-row:last-child {
     @apply border-b-0;
+  }
+
+  /* Sub-headings inside the catch-all "Anything else?" step, where
+     several groups' skipped categories share one step. */
+  .review-group-heading {
+    @apply flex items-center gap-2 px-5 pt-4 pb-2 text-[11px] font-bold uppercase tracking-wide text-stone-400 dark:text-stone-500;
+  }
+  .review-group-heading svg {
+    @apply w-3.5 h-3.5;
+  }
+  .review-group-heading:first-child {
+    @apply pt-5;
   }
 
   .review-cat-input-wrap {

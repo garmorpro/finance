@@ -4,6 +4,7 @@
 /** @var string $monthLabel */
 /** @var list<array{group: array|null, rows: list<array>}> $incomeSteps */
 /** @var list<array{group: array|null, rows: list<array>}> $expenseSteps */
+/** @var list<array{type: string, groupName: string, rows: list<array>}> $catchAllGroups */
 /** @var string $plannedGoalContributions */
 /** @var bool $hasPreviousBudget */
 /** @var string $csrfToken */
@@ -16,8 +17,11 @@ use App\Support\View;
 
 $monthQuery = substr($periodMonth, 0, 7);
 
-// One step per category group that actually has categories in it — income
-// groups first, then expense groups — plus a final synthetic Summary step.
+// One step per category group that has anything worth confirming, income
+// groups first then expense groups, plus a final synthetic "Anything
+// else?" step bundling every category that had no plan and no recent
+// spending (see BudgetController::showReview()), and a synthetic Summary
+// step after that.
 $steps = [];
 foreach ($incomeSteps as $section) {
     $steps[] = ['type' => 'income', 'section' => $section];
@@ -25,8 +29,14 @@ foreach ($incomeSteps as $section) {
 foreach ($expenseSteps as $section) {
     $steps[] = ['type' => 'expense', 'section' => $section];
 }
+if ($catchAllGroups !== []) {
+    $steps[] = ['type' => 'catchall', 'groups' => $catchAllGroups];
+}
 
 $stepLabel = function (array $step): string {
+    if ($step['type'] === 'catchall') {
+        return 'Anything else?';
+    }
     $groupName = $step['section']['group']['name'] ?? null;
     if ($groupName !== null) {
         return $groupName;
@@ -35,8 +45,55 @@ $stepLabel = function (array $step): string {
 };
 
 $stepIcon = function (array $step): string {
+    if ($step['type'] === 'catchall') {
+        return CategoryGroupIcons::forName(null);
+    }
     $groupName = $step['section']['group']['name'] ?? ($step['type'] === 'income' ? 'Income' : null);
     return CategoryGroupIcons::forName($groupName);
+};
+
+$renderReviewRow = function (array $row, string $type) use ($csrfToken, $monthQuery): void {
+    $category = $row['category'];
+    $suggested = $row['planned'] ?? $row['average'];
+    ?>
+    <div class="review-cat-row">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: <?= View::e($category['color'] ?: '#a8a29e') ?>"></span>
+                <span class="font-medium text-stone-900 dark:text-white truncate"><?= View::e($category['name']) ?></span>
+            </div>
+            <div class="text-xs text-stone-500 dark:text-stone-400 ml-4">
+                <?= bccomp($row['average'], '0.00', 2) > 0 ? 'avg ' . Money::format($row['average']) . '/mo over 3 months' : 'no spending in the last 3 months' ?>
+            </div>
+        </div>
+        <form class="review-item-form" data-autosave="review-item" action="/budgets/items" method="POST">
+            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+            <input type="hidden" name="period_month" value="<?= View::e($monthQuery) ?>">
+            <input type="hidden" name="category_id" value="<?= (int) $category['id'] ?>">
+            <div class="review-cat-input-wrap">
+                <span class="text-sm text-stone-400 dark:text-stone-500">$</span>
+                <?php
+                // data-last-saved starts equal to the pre-filled value on purpose —
+                // budget-review.js's autosave only fires when a field's value differs
+                // from data-last-saved, so a category the user never touches (leaving
+                // the suggested average or blank in place) never gets saved at all,
+                // rather than silently recording that suggestion — a $0.00 average,
+                // in particular — as an explicit plan the user never actually set.
+                ?>
+                <input
+                    type="text"
+                    inputmode="decimal"
+                    name="planned_amount"
+                    class="review-cat-input review-amount-input tabular-nums"
+                    data-type="<?= View::e($type) ?>"
+                    data-last-saved="<?= View::e($suggested) ?>"
+                    value="<?= View::e($suggested) ?>"
+                    placeholder="0.00"
+                >
+            </div>
+        </form>
+    </div>
+    <?php
 };
 
 ?>
@@ -54,17 +111,29 @@ $stepIcon = function (array $step): string {
     <div class="review-topbar">
         <div class="review-topbar-inner">
             <div class="flex items-center justify-between gap-4">
-                <a href="/budgets?month=<?= View::e($monthQuery) ?>" class="inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">
+                <a href="/budgets?month=<?= View::e($monthQuery) ?>" class="inline-flex items-center gap-1.5 text-sm font-medium" style="color: rgba(245, 245, 244, .6);">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     Exit review
                 </a>
-                <div class="text-right">
-                    <div class="text-[10px] font-bold uppercase tracking-wide text-stone-400 dark:text-stone-500">Left to budget</div>
-                    <div class="text-xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400" id="reviewRemaining">$0.00</div>
+                <p class="text-xs" style="color: rgba(245, 245, 244, .45);" id="reviewStepCaption">&nbsp;</p>
+            </div>
+
+            <div class="review-mini-stats">
+                <div>
+                    <div class="review-mini-stat-label">Income so far</div>
+                    <div class="review-mini-stat-value tabular-nums" id="reviewIncomeSoFar">$0.00</div>
+                </div>
+                <div>
+                    <div class="review-mini-stat-label">Expenses so far</div>
+                    <div class="review-mini-stat-value tabular-nums" id="reviewExpenseSoFar">$0.00</div>
+                </div>
+                <div style="margin-left: auto; text-align: right;">
+                    <div class="review-mini-stat-label">Left to budget</div>
+                    <div class="review-mini-stat-value tabular-nums" id="reviewRemaining" style="color: #34d399;">$0.00</div>
                 </div>
             </div>
+
             <div class="review-progress-track" id="reviewProgressTrack"></div>
-            <p class="text-xs text-stone-500 dark:text-stone-400 mt-2" id="reviewStepCaption">&nbsp;</p>
         </div>
     </div>
 
@@ -85,19 +154,26 @@ $stepIcon = function (array $step): string {
         <?php else: ?>
 
             <?php foreach ($steps as $i => $step): ?>
-                <?php $section = $step['section']; ?>
                 <section class="review-step <?= $i === 0 ? 'active' : '' ?>" data-step="<?= $i ?>">
                     <div class="flex items-center gap-3 mb-1">
                         <span class="metric-icon flex-shrink-0" style="background: rgba(168, 162, 158, .16); color: #78716c;"><?= $stepIcon($step) ?></span>
                         <div class="min-w-0">
                             <p class="text-[11px] font-bold uppercase tracking-wide text-terracotta-600 dark:text-terracotta-400">
-                                <?= $step['type'] === 'income' ? 'Income' : 'Expense group' ?> &middot; <?= $i + 1 ?> of <?= count($steps) ?>
+                                <?php if ($step['type'] === 'catchall'): ?>
+                                    Final step &middot; <?= $i + 1 ?> of <?= count($steps) ?>
+                                <?php else: ?>
+                                    <?= $step['type'] === 'income' ? 'Income' : 'Expense group' ?> &middot; <?= $i + 1 ?> of <?= count($steps) ?>
+                                <?php endif; ?>
                             </p>
                             <h1 class="text-2xl font-semibold tracking-tight text-stone-900 dark:text-white truncate"><?= View::e($stepLabel($step)) ?></h1>
                         </div>
                     </div>
                     <p class="text-sm text-stone-500 dark:text-stone-400 mb-5 mt-2">
-                        Every field is pre-filled with a 3-month average so you're confirming numbers, not starting from scratch — adjust anything that's changed.
+                        <?php if ($step['type'] === 'catchall'): ?>
+                            These categories had no plan and no recent spending, so they were skipped earlier — everything below is optional. Leave anything blank to keep it unbudgeted.
+                        <?php else: ?>
+                            Every field is pre-filled with a 3-month average so you're confirming numbers, not starting from scratch — adjust anything that's changed.
+                        <?php endif; ?>
                     </p>
 
                     <?php if ($i === 0 && $hasPreviousBudget): ?>
@@ -110,39 +186,21 @@ $stepIcon = function (array $step): string {
                     <?php endif; ?>
 
                     <div class="card p-0 overflow-hidden">
-                        <?php foreach ($section['rows'] as $row): ?>
-                            <?php
-                            $category = $row['category'];
-                            $suggested = $row['planned'] ?? $row['average'];
-                            $wasPlanned = $row['planned'] !== null;
-                            ?>
-                            <div class="review-cat-row">
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: <?= View::e($category['color'] ?: '#a8a29e') ?>"></span>
-                                        <span class="font-medium text-stone-900 dark:text-white truncate"><?= View::e($category['name']) ?></span>
-                                    </div>
-                                    <div class="text-xs text-stone-500 dark:text-stone-400 ml-4">avg <?= Money::format($row['average']) ?>/mo over 3 months</div>
+                        <?php if ($step['type'] === 'catchall'): ?>
+                            <?php foreach ($step['groups'] as $group): ?>
+                                <div class="review-group-heading">
+                                    <?= CategoryGroupIcons::forName($group['groupName']) ?>
+                                    <?= View::e($group['groupName']) ?>
                                 </div>
-                                <form class="review-item-form" data-autosave="review-item" action="/budgets/items" method="POST">
-                                    <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-                                    <input type="hidden" name="period_month" value="<?= View::e($monthQuery) ?>">
-                                    <input type="hidden" name="category_id" value="<?= (int) $category['id'] ?>">
-                                    <div class="review-cat-input-wrap">
-                                        <span class="text-sm text-stone-400 dark:text-stone-500">$</span>
-                                        <input
-                                            type="text"
-                                            inputmode="decimal"
-                                            name="planned_amount"
-                                            class="review-cat-input review-amount-input tabular-nums"
-                                            data-type="<?= $step['type'] ?>"
-                                            data-last-saved="<?= $wasPlanned ? View::e($row['planned']) : '' ?>"
-                                            value="<?= View::e($suggested) ?>"
-                                        >
-                                    </div>
-                                </form>
-                            </div>
-                        <?php endforeach; ?>
+                                <?php foreach ($group['rows'] as $row): ?>
+                                    <?php $renderReviewRow($row, $group['type']); ?>
+                                <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <?php foreach ($step['section']['rows'] as $row): ?>
+                                <?php $renderReviewRow($row, $step['type']); ?>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </section>
             <?php endforeach; ?>

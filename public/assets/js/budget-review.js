@@ -20,6 +20,8 @@
   var backBtn = document.getElementById('reviewBackBtn');
   var nextBtn = document.getElementById('reviewNextBtn');
   var remainingEl = document.getElementById('reviewRemaining');
+  var incomeSoFarEl = document.getElementById('reviewIncomeSoFar');
+  var expenseSoFarEl = document.getElementById('reviewExpenseSoFar');
 
   var goalContributions = parseFloat(shell.dataset.goalContributions) || 0;
 
@@ -60,10 +62,13 @@
     var positive = remaining >= 0;
 
     remainingEl.textContent = money(remaining);
-    remainingEl.classList.toggle('text-emerald-700', positive);
-    remainingEl.classList.toggle('dark:text-emerald-400', positive);
-    remainingEl.classList.toggle('text-red-600', !positive);
-    remainingEl.classList.toggle('dark:text-red-400', !positive);
+    // .review-topbar is a fixed-dark surface (like .dash-hero), not a
+    // themed page background, so this sets color directly rather than
+    // toggling Tailwind's light/dark: utility classes.
+    remainingEl.style.color = positive ? '#34d399' : '#f87171';
+
+    if (incomeSoFarEl) { incomeSoFarEl.textContent = money(income); }
+    if (expenseSoFarEl) { expenseSoFarEl.textContent = money(expense); }
 
     var summaryIncome = document.getElementById('summaryIncome');
     var summaryExpense = document.getElementById('summaryExpense');

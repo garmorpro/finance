@@ -140,11 +140,49 @@ final class BudgetController
             }
         }
 
+        $incomeSteps = $withAverages($incomeSteps, 'income');
+        $expenseSteps = $withAverages($expenseSteps, 'expense');
+
+        // A category with no existing plan and no recent spending doesn't
+        // need its own moment in the wizard — pulled out of its group's
+        // step (which still gets a normal step if anything else in it has
+        // real activity) into one shared catch-all group, appended as a
+        // single final step below rather than each getting a whole screen
+        // to confirm "$0.00".
+        $isSkippable = fn (array $row): bool => $row['planned'] === null && bccomp($row['average'], '0.00', 2) === 0;
+
+        $catchAllGroups = [];
+        $partition = function (array $steps, string $type) use ($isSkippable, &$catchAllGroups): array {
+            $kept = [];
+            foreach ($steps as $section) {
+                $active = array_values(array_filter($section['rows'], fn (array $r): bool => !$isSkippable($r)));
+                $skipped = array_values(array_filter($section['rows'], $isSkippable));
+
+                if ($skipped !== []) {
+                    $catchAllGroups[] = [
+                        'type' => $type,
+                        'groupName' => $section['group']['name'] ?? ($type === 'income' ? 'Income' : 'Ungrouped'),
+                        'rows' => $skipped,
+                    ];
+                }
+
+                if ($active !== []) {
+                    $kept[] = ['group' => $section['group'], 'rows' => $active];
+                }
+            }
+
+            return $kept;
+        };
+
+        $incomeSteps = $partition($incomeSteps, 'income');
+        $expenseSteps = $partition($expenseSteps, 'expense');
+
         Response::html(View::render('budgets/review', [
             'periodMonth' => $periodMonth,
             'monthLabel' => date('F Y', strtotime($periodMonth)),
-            'incomeSteps' => $withAverages($incomeSteps, 'income'),
-            'expenseSteps' => $withAverages($expenseSteps, 'expense'),
+            'incomeSteps' => $incomeSteps,
+            'expenseSteps' => $expenseSteps,
+            'catchAllGroups' => $catchAllGroups,
             'plannedGoalContributions' => $plannedGoalContributions,
             'hasPreviousBudget' => $budgetRepo->findForMonth($householdId, date('Y-m-d', strtotime($periodMonth . ' -1 month'))) !== null,
             'csrfToken' => Csrf::token(),
