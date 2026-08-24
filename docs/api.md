@@ -201,7 +201,7 @@ real reconstructed value, not a stand-in for "unavailable"; only the
 ```bash
 curl -s \
   -H "Authorization: Bearer $MASTER_HQ_API_TOKEN" \
-  https://finance.morganserver.com/api/master-hq/v1/summary
+  https://mycfoplus.com/api/master-hq/v1/summary
 ```
 
 ### Example response

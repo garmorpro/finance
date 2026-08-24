@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- Canonical domain is now `mycfoplus.com` (was `finance.morganserver.com`).
+  `.env.example`'s `APP_URL` and `docs/api.md`'s Master HQ example request
+  updated to match — this is a documentation/config-placeholder change only,
+  the actual DNS/Cloudflare Tunnel/Apache switch happens on the server, not
+  in this repo. `bin/send-budget-reminders.php` also gained an explicit
+  `date_default_timezone_set()` (reading `config/app.php`'s `timezone`,
+  same as `public/index.php` already does) — discovered while testing the
+  reminder email live: the CLI script had no timezone of its own and was
+  silently trusting the server's system default (`America/Chicago` here)
+  for its "which day is it, has this household's trigger window opened
+  yet" math, which could disagree with the web app's UTC-based date
+  handling right around a day boundary.
+
 - Budget planning reminder emails now actually send: new `App\Support\Mailer`
   (SMTP via a new `phpmailer/phpmailer` dependency — run `composer update
   phpmailer/phpmailer` after pulling) connects with `SMTPSecure =

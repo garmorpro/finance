@@ -89,6 +89,14 @@ function buildReminderEmail(string $recipientName, string $monthLabel, string $r
 $envFile = getenv('APP_ENV') === 'testing' ? '.env.testing' : '.env';
 Dotenv::createImmutable(dirname(__DIR__), $envFile)->safeLoad();
 
+// The web app forces UTC (see config/app.php + public/index.php) so
+// "today" always means the same calendar date regardless of the
+// server's own system timezone. This script does date-boundary math
+// too (which day a household's trigger window opens/closes) and needs
+// to agree with the web app about what day it is, not drift by
+// whatever timezone cron's PHP CLI happens to default to.
+date_default_timezone_set((require dirname(__DIR__) . '/config/app.php')['timezone']);
+
 $today = new DateTimeImmutable('today');
 $nextMonthStart = $today->modify('first day of next month');
 $nextMonthKey = $nextMonthStart->format('Y-m-d');
