@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Database\Connection;
+use App\Support\FieldCipher;
 
 final class AccountBalanceHistoryRepository
 {
@@ -12,16 +13,18 @@ final class AccountBalanceHistoryRepository
     {
         $stmt = Connection::get()->prepare(
             'INSERT INTO account_balance_history
-                (account_id, changed_by_user_id, previous_balance, new_balance, note, created_at)
+                (account_id, changed_by_user_id, previous_balance, previous_balance_encrypted,
+                 new_balance, new_balance_encrypted, note, created_at)
              VALUES
-                (:account_id, :changed_by_user_id, :previous_balance, :new_balance, :note, :created_at)'
+                (:account_id, :changed_by_user_id, NULL, :previous_balance_encrypted,
+                 NULL, :new_balance_encrypted, :note, :created_at)'
         );
 
         $stmt->execute([
             'account_id' => $accountId,
             'changed_by_user_id' => $userId,
-            'previous_balance' => $previousBalance,
-            'new_balance' => $newBalance,
+            'previous_balance_encrypted' => FieldCipher::encrypt($previousBalance),
+            'new_balance_encrypted' => FieldCipher::encrypt($newBalance),
             'note' => $note,
             'created_at' => gmdate('Y-m-d H:i:s'),
         ]);
@@ -34,7 +37,8 @@ final class AccountBalanceHistoryRepository
     public function listForAccount(int $accountId, int $householdId): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT h.previous_balance, h.new_balance, h.note, h.created_at, u.name AS changed_by_name
+            'SELECT h.previous_balance, h.previous_balance_encrypted, h.new_balance, h.new_balance_encrypted,
+                    h.note, h.created_at, u.name AS changed_by_name
              FROM account_balance_history h
              INNER JOIN accounts a ON a.id = h.account_id
              INNER JOIN users u ON u.id = h.changed_by_user_id
@@ -45,7 +49,7 @@ final class AccountBalanceHistoryRepository
 
         $stmt->execute(['account_id' => $accountId, 'household_id' => $householdId]);
 
-        return $stmt->fetchAll();
+        return array_map(self::hydrate(...), $stmt->fetchAll());
     }
 
     /**
@@ -67,13 +71,31 @@ final class AccountBalanceHistoryRepository
 
         $placeholders = implode(',', array_fill(0, count($accountIds), '?'));
         $stmt = Connection::get()->prepare(
-            "SELECT account_id, previous_balance, new_balance, created_at
+            "SELECT account_id, previous_balance, previous_balance_encrypted, new_balance,
+                    new_balance_encrypted, created_at
              FROM account_balance_history
              WHERE account_id IN ({$placeholders})
              ORDER BY account_id, created_at ASC"
         );
         $stmt->execute(array_values($accountIds));
 
-        return $stmt->fetchAll();
+        return array_map(self::hydrate(...), $stmt->fetchAll());
+    }
+
+    /**
+     * Decrypts previous_balance/new_balance from their *_encrypted
+     * columns, falling back to the old plaintext column for any row not
+     * yet run through bin/encrypt-existing-balance-fields.php. Raw
+     * *_encrypted binary blobs are removed from the returned row
+     * entirely.
+     */
+    private static function hydrate(array $row): array
+    {
+        $row['previous_balance'] = FieldCipher::decryptOrFallback($row['previous_balance_encrypted'], $row['previous_balance']);
+        $row['new_balance'] = FieldCipher::decryptOrFallback($row['new_balance_encrypted'], $row['new_balance']);
+
+        unset($row['previous_balance_encrypted'], $row['new_balance_encrypted']);
+
+        return $row;
     }
 }

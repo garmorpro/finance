@@ -2,6 +2,46 @@
 
 ## [Unreleased]
 
+- Encryption at rest, phase 2: `accounts.current_balance`/`available_balance`/
+  `credit_limit`/`minimum_payment`/`original_balance`, and
+  `account_balance_history.previous_balance`/`new_balance`, are now
+  encrypted too (same `App\Support\FieldCipher` as phase 1 below).
+  Corrected something I initially got wrong: I'd said balances couldn't
+  be encrypted because this app's financial math runs as SQL
+  aggregation — true for `transactions.amount` (real `SUM()` queries),
+  but checked specifically for `accounts`' own balance columns and
+  confirmed they're never summed in SQL anywhere — `netWorthSummary()`
+  and `DebtService`'s totals already load full rows and sum with bcmath
+  in PHP. `interest_rate` and `payment_due_day` are deliberately
+  excluded (a percentage and a scheduling detail, not currency).
+  New nullable `*_encrypted` columns (migrations `0049`-`0050`), same
+  staged approach as phase 1 — old plaintext columns kept as a
+  read-only fallback, nothing dropped. New, separate backfill script
+  (`bin/encrypt-existing-balance-fields.php`, dry-run by default) so
+  this higher-stakes pass can run and be reviewed independently of the
+  text-field one. Every place that reads a balance already went through
+  `AccountRepository` (confirmed by the same grep sweep as phase 1's
+  `accounts.name` audit — unlike `name`, no other file reads a balance
+  via a raw `JOIN`), so extending its own decryption covered every
+  caller (`DebtController`/`DebtService`, `ReportingService`'s runway
+  and net-worth-trend calculations, `TransactionController`/
+  `ImportController`/`RecurringController`'s balance-adjustment flows)
+  with no other files needing changes. `account_balance_history` is
+  encrypted too, not just the current balance — left alone it would
+  have kept every historical balance readable, the same "hidden
+  duplicate copy" risk as `import_rows.raw_data` would have been for
+  phase 1. Also fixed: `account.balance_adjusted`'s audit log entry no
+  longer logs the exact before/after balance in plaintext metadata —
+  `account_balance_history` (also encrypted) already keeps that trail.
+  Verified locally the same way as phase 1: ran the actual
+  encrypt/decrypt algorithm and the real backfill logic against an
+  in-memory SQLite database shaped like `accounts`/`account_balance_history`,
+  including a `$0.00` balance specifically (to catch a falsy-value bug
+  a careless `if ($value)` check would introduce) — no MySQL available
+  in this environment, so this is real executed verification, not just
+  code review. `docs/database.md`/`docs/deployment.md`/`docs/security.md`
+  updated throughout.
+
 - Encryption at rest, phase 1: `accounts.name`/`institution_name`/`notes`,
   `financial_goals.name`/`description`, and `recurring_items.name`/`notes`
   are now encrypted (`App\Support\FieldCipher` — `sodium_crypto_secretbox`,

@@ -48,16 +48,18 @@ final class AccountRepository
         $stmt = Connection::get()->prepare(
             'INSERT INTO accounts
                 (household_id, created_by_user_id, name, name_encrypted, institution_name,
-                 institution_name_encrypted, account_type, current_balance, available_balance,
-                 credit_limit, interest_rate, minimum_payment, payment_due_day, original_balance,
-                 color, include_in_net_worth, include_in_budget, status, notes, notes_encrypted,
-                 created_at, updated_at)
+                 institution_name_encrypted, account_type, current_balance, current_balance_encrypted,
+                 available_balance, available_balance_encrypted, credit_limit, credit_limit_encrypted,
+                 interest_rate, minimum_payment, minimum_payment_encrypted, payment_due_day,
+                 original_balance, original_balance_encrypted, color, include_in_net_worth,
+                 include_in_budget, status, notes, notes_encrypted, created_at, updated_at)
              VALUES
                 (:household_id, :created_by_user_id, NULL, :name_encrypted, NULL,
-                 :institution_name_encrypted, :account_type, :current_balance, :available_balance,
-                 :credit_limit, :interest_rate, :minimum_payment, :payment_due_day, :original_balance,
-                 :color, :include_in_net_worth, :include_in_budget, :status, NULL, :notes_encrypted,
-                 :created_at, :updated_at)'
+                 :institution_name_encrypted, :account_type, NULL, :current_balance_encrypted,
+                 NULL, :available_balance_encrypted, NULL, :credit_limit_encrypted,
+                 :interest_rate, NULL, :minimum_payment_encrypted, :payment_due_day,
+                 NULL, :original_balance_encrypted, :color, :include_in_net_worth,
+                 :include_in_budget, :status, NULL, :notes_encrypted, :created_at, :updated_at)'
         );
 
         $stmt->execute([
@@ -66,13 +68,13 @@ final class AccountRepository
             'name_encrypted' => FieldCipher::encrypt($data['name']),
             'institution_name_encrypted' => FieldCipher::encrypt($data['institution_name']),
             'account_type' => $data['account_type'],
-            'current_balance' => $data['current_balance'],
-            'available_balance' => $data['available_balance'],
-            'credit_limit' => $data['credit_limit'],
+            'current_balance_encrypted' => FieldCipher::encrypt($data['current_balance']),
+            'available_balance_encrypted' => FieldCipher::encrypt($data['available_balance']),
+            'credit_limit_encrypted' => FieldCipher::encrypt($data['credit_limit']),
             'interest_rate' => $data['interest_rate'],
-            'minimum_payment' => $data['minimum_payment'],
+            'minimum_payment_encrypted' => FieldCipher::encrypt($data['minimum_payment']),
             'payment_due_day' => $data['payment_due_day'],
-            'original_balance' => $data['original_balance'],
+            'original_balance_encrypted' => FieldCipher::encrypt($data['original_balance']),
             'color' => $data['color'],
             'include_in_net_worth' => $data['include_in_net_worth'] ? 1 : 0,
             'include_in_budget' => $data['include_in_budget'] ? 1 : 0,
@@ -126,22 +128,33 @@ final class AccountRepository
     }
 
     /**
-     * Decrypts name/institution_name/notes from their *_encrypted
-     * columns, falling back to the old plaintext column for any row not
-     * yet run through bin/encrypt-existing-text-fields.php — this makes
-     * deploying this code and running that backfill script safe in
-     * either order, nothing breaks in between. The raw *_encrypted
-     * binary blobs are removed from the returned row entirely so no
-     * caller ever accidentally tries to treat/display/json_encode raw
-     * ciphertext bytes as text.
+     * Decrypts name/institution_name/notes/current_balance/available_balance/
+     * credit_limit/minimum_payment/original_balance from their
+     * *_encrypted columns, falling back to the old plaintext column for
+     * any row not yet run through bin/encrypt-existing-text-fields.php /
+     * bin/encrypt-existing-balance-fields.php — this makes deploying
+     * this code and running those backfill scripts safe in either
+     * order, nothing breaks in between. The raw *_encrypted binary
+     * blobs are removed from the returned row entirely so no caller
+     * ever accidentally tries to treat/display/json_encode/bcmath raw
+     * ciphertext bytes.
      */
     private static function hydrate(array $row): array
     {
         $row['name'] = FieldCipher::decryptOrFallback($row['name_encrypted'], $row['name']);
         $row['institution_name'] = FieldCipher::decryptOrFallback($row['institution_name_encrypted'], $row['institution_name']);
         $row['notes'] = FieldCipher::decryptOrFallback($row['notes_encrypted'], $row['notes']);
+        $row['current_balance'] = FieldCipher::decryptOrFallback($row['current_balance_encrypted'], $row['current_balance']);
+        $row['available_balance'] = FieldCipher::decryptOrFallback($row['available_balance_encrypted'], $row['available_balance']);
+        $row['credit_limit'] = FieldCipher::decryptOrFallback($row['credit_limit_encrypted'], $row['credit_limit']);
+        $row['minimum_payment'] = FieldCipher::decryptOrFallback($row['minimum_payment_encrypted'], $row['minimum_payment']);
+        $row['original_balance'] = FieldCipher::decryptOrFallback($row['original_balance_encrypted'], $row['original_balance']);
 
-        unset($row['name_encrypted'], $row['institution_name_encrypted'], $row['notes_encrypted']);
+        unset(
+            $row['name_encrypted'], $row['institution_name_encrypted'], $row['notes_encrypted'],
+            $row['current_balance_encrypted'], $row['available_balance_encrypted'], $row['credit_limit_encrypted'],
+            $row['minimum_payment_encrypted'], $row['original_balance_encrypted']
+        );
 
         return $row;
     }
@@ -195,12 +208,16 @@ final class AccountRepository
                 institution_name = NULL,
                 institution_name_encrypted = :institution_name_encrypted,
                 account_type = :account_type,
-                available_balance = :available_balance,
-                credit_limit = :credit_limit,
+                available_balance = NULL,
+                available_balance_encrypted = :available_balance_encrypted,
+                credit_limit = NULL,
+                credit_limit_encrypted = :credit_limit_encrypted,
                 interest_rate = :interest_rate,
-                minimum_payment = :minimum_payment,
+                minimum_payment = NULL,
+                minimum_payment_encrypted = :minimum_payment_encrypted,
                 payment_due_day = :payment_due_day,
-                original_balance = :original_balance,
+                original_balance = NULL,
+                original_balance_encrypted = :original_balance_encrypted,
                 color = :color,
                 include_in_net_worth = :include_in_net_worth,
                 include_in_budget = :include_in_budget,
@@ -213,17 +230,20 @@ final class AccountRepository
         // Every update also clears the old plaintext columns, not just
         // the encrypted ones — editing an account is what naturally
         // migrates it off plaintext for households that never run
-        // bin/encrypt-existing-text-fields.php at all.
+        // bin/encrypt-existing-text-fields.php / bin/encrypt-existing-balance-fields.php
+        // at all. current_balance itself isn't touched here — it's only
+        // ever changed via updateBalance() below, with its own audit
+        // trail (AccountBalanceHistoryRepository).
         $stmt->execute([
             'name_encrypted' => FieldCipher::encrypt($data['name']),
             'institution_name_encrypted' => FieldCipher::encrypt($data['institution_name']),
             'account_type' => $data['account_type'],
-            'available_balance' => $data['available_balance'],
-            'credit_limit' => $data['credit_limit'],
+            'available_balance_encrypted' => FieldCipher::encrypt($data['available_balance']),
+            'credit_limit_encrypted' => FieldCipher::encrypt($data['credit_limit']),
             'interest_rate' => $data['interest_rate'],
-            'minimum_payment' => $data['minimum_payment'],
+            'minimum_payment_encrypted' => FieldCipher::encrypt($data['minimum_payment']),
             'payment_due_day' => $data['payment_due_day'],
-            'original_balance' => $data['original_balance'],
+            'original_balance_encrypted' => FieldCipher::encrypt($data['original_balance']),
             'color' => $data['color'],
             'include_in_net_worth' => $data['include_in_net_worth'] ? 1 : 0,
             'include_in_budget' => $data['include_in_budget'] ? 1 : 0,
@@ -237,12 +257,12 @@ final class AccountRepository
     public function updateBalance(int $accountId, int $householdId, string $newBalance): void
     {
         $stmt = Connection::get()->prepare(
-            'UPDATE accounts SET current_balance = :balance, updated_at = :updated_at
+            'UPDATE accounts SET current_balance = NULL, current_balance_encrypted = :balance_encrypted, updated_at = :updated_at
              WHERE id = :id AND household_id = :household_id'
         );
 
         $stmt->execute([
-            'balance' => $newBalance,
+            'balance_encrypted' => FieldCipher::encrypt($newBalance),
             'updated_at' => gmdate('Y-m-d H:i:s'),
             'id' => $accountId,
             'household_id' => $householdId,

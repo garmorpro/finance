@@ -223,14 +223,19 @@ final class AccountController
 
         $accountRepo->updateBalance($accountId, $householdId, $newBalance);
 
+        // No before/after balance in metadata: current_balance is
+        // encrypted at rest (App\Support\FieldCipher) — logging it here
+        // in plaintext JSON would defeat that. The real before/after
+        // trail already lives in account_balance_history (also
+        // encrypted, see AccountBalanceHistoryRepository::record()
+        // above) — this entry just marks that the action happened.
         (new AuditLogRepository())->log(
             $userId,
             $householdId,
             'account.balance_adjusted',
             'account',
             $accountId,
-            $request->ip(),
-            ['previous_balance' => $account['current_balance'], 'new_balance' => $newBalance]
+            $request->ip()
         );
 
         $_SESSION['_flash_notice'] = 'Balance updated.';

@@ -58,13 +58,18 @@ time, never relying on MySQL's session timezone).
   `payment_due_day`, `original_balance`) used by the Debt overview
   without needing a separate table. `include_in_net_worth` and
   `include_in_budget` are independent flags. `name`/`institution_name`/
-  `notes` are legacy plaintext columns, NULLable and no longer written
-  to — the real values live encrypted in `name_encrypted`/
-  `institution_name_encrypted`/`notes_encrypted`
-  (`App\Support\FieldCipher`; see `docs/security.md`'s "Encryption at
-  rest"). The plaintext columns are a read-only fallback for any row
-  not yet run through `bin/encrypt-existing-text-fields.php`, kept
-  around as a rollback safety net rather than dropped immediately.
+  `notes`/`current_balance`/`available_balance`/`credit_limit`/
+  `minimum_payment`/`original_balance` are legacy plaintext columns,
+  NULLable and no longer written to — the real values live encrypted in
+  the matching `*_encrypted` column (`App\Support\FieldCipher`; see
+  `docs/security.md`'s "Encryption at rest"). `interest_rate` and
+  `payment_due_day` are the two exceptions, still plain — a percentage
+  and a scheduling detail, not currency. The plaintext columns are a
+  read-only fallback for any row not yet run through
+  `bin/encrypt-existing-text-fields.php` (name/institution_name/notes)
+  or `bin/encrypt-existing-balance-fields.php` (the balance/limit/payment
+  columns), kept around as a rollback safety net rather than dropped
+  immediately.
 - **Liability account balances are a positive "amount owed"**, not a
   negative number — `AccountRepository::LIABILITY_TYPES` (credit card,
   mortgage, auto/student/personal loan, other liability). Net worth
@@ -84,7 +89,11 @@ time, never relying on MySQL's session timezone).
   `previous_balance`/`new_balance`/`note`. Balances are never silently
   overwritten; this is also what `ReportingService::netWorthTrend()`
   reconstructs historical net worth from, rather than deriving it from
-  transactions.
+  transactions. `previous_balance`/`new_balance` are legacy plaintext,
+  NULLable and no longer written — encrypted the same way as
+  `accounts`' own balance columns above, for the same reason: left
+  alone, this table would keep every historical balance readable even
+  after the current one was encrypted.
 
 ## Categories
 

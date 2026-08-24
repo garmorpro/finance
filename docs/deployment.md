@@ -155,10 +155,11 @@ itself.
 This one deploy needs its steps done **in order**, not just
 `git pull` + `migrate.php` — unlike every other feature in this app,
 `ENCRYPTION_KEY` is not gracefully optional (see `.env.example`):
-`AccountRepository`/`GoalRepository`/`RecurringItemRepository` encrypt
-on every `create()`/`update()` unconditionally and throw without it, so
-skipping step 1 breaks adding/editing any account, goal, or recurring
-item outright, not just leaves data unencrypted.
+`AccountRepository`/`AccountBalanceHistoryRepository`/`GoalRepository`/
+`RecurringItemRepository` encrypt on every write unconditionally and
+throw without it, so skipping step 1 breaks adding/editing any account
+(including a balance adjustment), goal, or recurring item outright, not
+just leaves data unencrypted.
 
 1. Generate a key and set `ENCRYPTION_KEY` in `.env`:
    ```
@@ -168,23 +169,31 @@ item outright, not just leaves data unencrypted.
    losing it makes every encrypted value permanently unreadable, with
    no reset like a password.
 2. `git pull` and `php bin/migrate.php` as usual (migrations `0046`-`0048`
-   add the new columns).
+   add the name/notes/description columns, `0049`-`0050` add the
+   balance/limit/payment columns).
 3. Confirm the `sodium` PHP extension is enabled — it's bundled with PHP
    8.1+ by default, but a minimal/custom PHP build could have it
    disabled: `php -r "var_dump(extension_loaded('sodium'));"` should
    print `bool(true)`.
-4. Backfill every existing row (dry run first, then `--apply` — see the
-   script's own docblock for what each does):
+4. Backfill every existing row — two separate scripts, each dry run
+   first then `--apply` (see each script's own docblock for exactly
+   what it does), deliberately separate so the higher-stakes balance
+   pass can be run and reviewed on its own:
    ```
    php bin/encrypt-existing-text-fields.php
    php bin/encrypt-existing-text-fields.php --apply
+
+   php bin/encrypt-existing-balance-fields.php
+   php bin/encrypt-existing-balance-fields.php --apply
    ```
-   Safe to re-run — already-encrypted rows are skipped, so this can run
-   again later to pick up anything a previous run missed.
+   Both are safe to re-run — already-encrypted rows are skipped, so
+   either can run again later to pick up anything a previous run missed.
 5. Spot-check in the app itself (not phpMyAdmin, which will now show
    ciphertext for these columns by design) that account names,
-   institution names, notes, goal names/descriptions, and recurring
-   item names/notes all still display correctly.
+   institution names, notes, balances, goal names/descriptions, and
+   recurring item names/notes all still display correctly — including
+   an account's balance history (its edit page) and the Debt overview
+   (reads `credit_limit`/`interest_rate`/`minimum_payment`).
 
 ## Rollback procedure
 
