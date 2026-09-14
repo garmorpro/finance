@@ -2,6 +2,41 @@
 
 ## [Unreleased]
 
+- Dedicated Quick Add page (`resources/views/transactions/quick-add.php`,
+  `TransactionController::showQuickAdd()`, `GET /quick-add`) — the
+  home-screen icon's launch target (`manifest.json`'s `start_url`) is now
+  a standalone page with just the Amount/Payee/Account/Category form,
+  not the dashboard. Submits to the existing `POST /transactions` via
+  `fetch()` with an `Accept: application/json` header rather than a new
+  endpoint — `TransactionController::store()` now replies with JSON
+  (`{success: true}` / `{error: "..."}`, same validation and
+  transaction-creation logic either way) when that header is present,
+  and a plain page load otherwise, so the full create form and the
+  sidebar's quick-add popup are unaffected. On success the page shows an
+  inline "Added!" state for ~2 seconds, clears the amount/payee fields,
+  and refocuses amount — account/category are left as-is, since
+  back-to-back entries are often the same account. Replaces the previous
+  entry's "auto-trigger the passkey prompt in standalone mode" idea
+  (reverted from `webauthn.js` — landing directly on a real form beat a
+  faster path to the dashboard); the passkey-primary login button
+  ordering from that entry stays as-is.
+
+  Also added, since a session can expire while the app is closed and the
+  home-screen icon should land back where it was going rather than the
+  dashboard: `App\Support\SafeRedirect` (open-redirect-safe path check,
+  extracted from `TransactionController`'s existing `redirect_to`
+  handling so `AuthMiddleware`/`AuthController` could reuse the exact
+  same validation), `AuthMiddleware::requireAuth()` now records the
+  requested URL (GET requests only) in `$_SESSION['_intended_url']`
+  before redirecting to `/login`, and `AuthController::completeLogin()` —
+  shared by the password, 2FA, and passkey login paths — redirects there
+  instead of always `/`. `WebAuthnController::loginVerify()` needed its
+  own fix here too: it was hardcoding `redirect: '/'` in its JSON
+  response regardless of `completeLogin()`'s decision (a pre-existing
+  comment even noted `completeLogin()`'s own `Location:` header goes
+  unused on this path), which would have silently defeated this for
+  anyone signing back in with a passkey specifically.
+
 - Installable home-screen app (`public/manifest.json`, `resources/views/partials/_pwa_head.php`, `public/assets/icons/`).
   Adding the page to a phone's home screen now launches it full-screen
   with no browser address bar, for faster day-to-day transaction entry —

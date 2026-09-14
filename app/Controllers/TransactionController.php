@@ -18,6 +18,7 @@ use App\Repositories\TransactionRepository;
 use App\Repositories\TransactionSplitRepository;
 use App\Services\RuleMatchingService;
 use App\Support\Csrf;
+use App\Support\SafeRedirect;
 use App\Support\View;
 use App\Validation\MoneyInput;
 
@@ -150,6 +151,35 @@ final class TransactionController
         unset($_SESSION['_flash_error'], $_SESSION['_flash_old']);
     }
 
+    /**
+     * A standalone page (no sidebar/nav chrome) with just the four-field
+     * Amount/Payee/Account/Category form — the home-screen icon's launch
+     * target (public/manifest.json's start_url), for logging a
+     * transaction the moment the app opens rather than navigating to it
+     * from the dashboard first. Submits to store() the same way the
+     * sidebar's quick-add popup already does, just via fetch() with
+     * Accept: application/json instead of a plain form POST, so it can
+     * show its own inline success state instead of a full-page redirect.
+     * Same reduced data set as that popup (active accounts only, expense
+     * categories only) — see sidebar.php's identical query and its own
+     * comment on why.
+     */
+    public function showQuickAdd(): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $householdId = (int) AuthMiddleware::householdId();
+
+        Response::html(View::render('transactions/quick-add', [
+            'accounts' => (new AccountRepository())->listForHousehold($householdId),
+            'categories' => array_values(array_filter(
+                (new CategoryRepository())->listForHousehold($householdId),
+                fn (array $c): bool => $c['type'] === 'expense'
+            )),
+            'csrfToken' => Csrf::token(),
+        ]));
+    }
+
     public function store(Request $request): void
     {
         AuthMiddleware::requireAuth();
@@ -159,7 +189,20 @@ final class TransactionController
 
         $input = $this->readInput($request);
 
-        $redirectBack = function (string $message) use ($input): void {
+        // The dedicated Quick Add page (resources/views/transactions/
+        // quick-add.php) posts here via fetch() with this header set, so
+        // it can show its own inline success/error state instead of a
+        // full-page redirect — every other caller (the full /transactions/
+        // create form, the sidebar's quick-add popup) is a plain <form>
+        // POST with no Accept header override, so their behavior below is
+        // completely unchanged.
+        $wantsJson = str_contains($request->header('Accept') ?? '', 'application/json');
+
+        $redirectBack = function (string $message) use ($input, $wantsJson): void {
+            if ($wantsJson) {
+                Response::json(['error' => $message], 422);
+                return;
+            }
             $_SESSION['_flash_error'] = $message;
             $_SESSION['_flash_old'] = $input;
             header('Location: /transactions/create');
@@ -250,31 +293,13 @@ final class TransactionController
             return;
         }
 
+        if ($wantsJson) {
+            Response::json(['success' => true]);
+            return;
+        }
+
         $_SESSION['_flash_notice'] = 'Transaction added.';
-        header('Location: ' . ($this->safeRedirectPath($request->post('redirect_to')) ?? '/transactions'));
-    }
-
-    /**
-     * The sidebar's quick-add popup can be opened from any page and
-     * posts the page it was opened from as `redirect_to`, so submitting
-     * it lands you back where you were instead of always jumping to
-     * /transactions. Never trust that value as-is — only a single
-     * leading slash (same-origin, relative) is accepted; anything else
-     * (an absolute URL, a protocol-relative "//host/..." which browsers
-     * treat as a different host, a scheme) falls back to null and the
-     * caller's own default.
-     */
-    private function safeRedirectPath(?string $path): ?string
-    {
-        if ($path === null || $path === '') {
-            return null;
-        }
-
-        if (preg_match('#^/(?!/)[A-Za-z0-9\-_/?=&.]*$#', $path) !== 1) {
-            return null;
-        }
-
-        return $path;
+        header('Location: ' . (SafeRedirect::path($request->post('redirect_to')) ?? '/transactions'));
     }
 
     public function showEditForm(Request $request): void

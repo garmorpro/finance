@@ -2,7 +2,7 @@
   "name": "MyCFO+",
   "short_name": "MyCFO+",
   "description": "Your household's private, self-hosted finance tracker.",
-  "start_url": "/",
+  "start_url": "/quick-add",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0c0a09",

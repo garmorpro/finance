@@ -129,6 +129,7 @@ $router->post('/accounts/{id}/archive', fn (Request $r): mixed => $accountContro
 $router->post('/accounts/{id}/restore', fn (Request $r): mixed => $accountController->restore($r));
 
 $transactionController = new TransactionController();
+$router->get('/quick-add', fn (): mixed => $transactionController->showQuickAdd());
 $router->get('/transactions', fn (Request $r): mixed => $transactionController->index($r));
 $router->get('/transactions/export', fn (Request $r): mixed => $transactionController->export($r));
 $router->get('/transactions/create', fn (): mixed => $transactionController->showCreateForm());

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Middleware;
 
 use App\Repositories\UserSessionRepository;
+use App\Support\SafeRedirect;
 
 final class AuthMiddleware
 {
@@ -65,9 +66,28 @@ final class AuthMiddleware
         return true;
     }
 
+    /**
+     * A logged-out visit to a page like /quick-add (the home-screen
+     * icon's launch target) shouldn't dead-end at the dashboard after
+     * logging back in — it should return to whatever page was actually
+     * being asked for. Only captured for a GET: a POST being interrupted
+     * here isn't a page to revisit (its form data isn't preserved, and
+     * many POST-only routes aren't valid GET targets anyway), and an
+     * existing intended_url from an earlier GET shouldn't be clobbered
+     * by a POST hitting this same check on the way through. Consumed
+     * (and cleared either way) by AuthController::completeLogin().
+     */
     public static function requireAuth(): void
     {
         if (!self::check()) {
+            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+                $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+                $query = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_QUERY);
+                $intended = SafeRedirect::path($requestPath . ($query !== null && $query !== '' ? '?' . $query : ''));
+                if ($intended !== null) {
+                    $_SESSION['_intended_url'] = $intended;
+                }
+            }
             header('Location: /login');
             exit;
         }

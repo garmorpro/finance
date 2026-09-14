@@ -46,15 +46,9 @@ use App\Support\View;
          * versus typing an email and password, and it matters even more
          * now that the app can be installed to a phone's home screen:
          * an installed standalone web app has its own separate cookie
-         * storage from the browser it was added from (so the first
-         * open after installing is always a fresh login), and iOS's
-         * handling of session-only cookies for standalone apps
-         * specifically is known to be less reliable than a normal
-         * Safari tab's. Rather than fight that by extending how long
-         * the session cookie itself lives (a leaked session cookie
-         * would then stay useful for longer), re-entry stays fast by
-         * making the passkey prompt effectively instant instead — see
-         * webauthn.js's auto-attempt in standalone mode.
+         * storage from the browser it was added from, so the first open
+         * after installing (and any later re-open after the session
+         * expires) is always a fresh login.
          */
         ?>
         <button type="button" id="webauthn-login" class="btn-primary btn-block">

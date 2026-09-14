@@ -217,7 +217,17 @@ final class AuthController
             $request->ip()
         );
 
-        header('Location: /');
+        // Set by AuthMiddleware::requireAuth() when a logged-out GET hit
+        // a protected page — e.g. tapping the home-screen icon straight
+        // to /quick-add with an expired session. Shared by both the
+        // password form and WebAuthnController::loginVerify() (both call
+        // this same method), so either path returns to the page that was
+        // actually being asked for instead of always landing on the
+        // dashboard.
+        $intendedUrl = $_SESSION['_intended_url'] ?? null;
+        unset($_SESSION['_intended_url']);
+
+        header('Location: ' . ($intendedUrl ?? '/'));
     }
 
     public function logout(Request $request): void

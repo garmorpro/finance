@@ -13,6 +13,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\WebAuthnCredentialRepository;
 use App\Services\WebAuthnService;
 use App\Support\Csrf;
+use App\Support\SafeRedirect;
 use App\Support\UserAgent;
 use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialRequestOptions;
@@ -208,13 +209,16 @@ final class WebAuthnController
             return;
         }
 
-        // completeLogin() also sets a "Location: /" header as a leftover
-        // of it being written for the password flow's real redirect —
-        // harmless here since fetch() never follows headers on a 200
-        // JSON response, but the actual navigation this flow relies on
-        // is the redirect field below, read by webauthn.js.
+        // Read before completeLogin() runs — it consumes (unsets) this
+        // same session key for its own "Location:" header, which this
+        // flow never uses (fetch() doesn't follow headers on a 200 JSON
+        // response; the actual navigation is the redirect field below,
+        // read by webauthn.js), so the value has to be captured here or
+        // it's lost before this method could otherwise reuse it.
+        $intendedUrl = SafeRedirect::path($_SESSION['_intended_url'] ?? null);
+
         (new AuthController())->completeLogin($user, $request, new HouseholdRepository(), new AuditLogRepository());
 
-        Response::json(['redirect' => '/']);
+        Response::json(['redirect' => $intendedUrl ?? '/']);
     }
 }
