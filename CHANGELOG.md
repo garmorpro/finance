@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+- Installable home-screen app (`public/manifest.json`, `resources/views/partials/_pwa_head.php`, `public/assets/icons/`).
+  Adding the page to a phone's home screen now launches it full-screen
+  with no browser address bar, for faster day-to-day transaction entry —
+  a plain installable web app, not an offline-capable one (no service
+  worker; offline entry for a manual finance app raises its own real
+  question, what happens to a transaction typed with no signal and how
+  it reconciles once back online, that wasn't asked for here and isn't
+  solved by a service worker on its own). Every page includes the same
+  small partial rather than duplicating the manifest link/icon tags
+  across all 55 view files individually, since this app has no shared
+  `<head>`/layout wrapper — each view is already its own full HTML
+  document (`App\Support\View::render()`). Icons are freshly generated
+  (`stone-950` → `terracotta-950` gradient, the same "investment"
+  trend-line glyph `AccountTypeIcons` already uses elsewhere) rather
+  than reusing an existing asset, since none existed. No new attack
+  surface: the manifest and icons are static files with no user data,
+  and installing to a home screen doesn't change or bypass how login,
+  sessions, or household authorization work — the installed icon just
+  opens the same authenticated site in a browser-provided shell.
+
 - Encryption at rest, phase 3: `transactions.amount`/`payee`/`notes`,
   `transaction_splits.amount`, and `import_rows.raw_data` are now
   encrypted too — the case phases 1-2 deliberately deferred, since

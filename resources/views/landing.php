@@ -1,10 +1,13 @@
 <?php
 
+use App\Support\View;
+
 // Static marketing page shown at "/" for logged-out visitors — no
-// dynamic data, so nothing here needs View::e() escaping. Its styles are
-// intentionally self-contained rather than built on the app's Tailwind
-// component classes; this page has its own visual identity separate
-// from the dashboard shell.
+// dynamic data, so nothing here needs View::e() escaping (View::partial()
+// for the shared PWA head tags is the only View:: call on this page).
+// Its styles are intentionally self-contained rather than built on the
+// app's Tailwind component classes; this page has its own visual
+// identity separate from the dashboard shell.
 
 ?>
 <!DOCTYPE html>
@@ -12,6 +15,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <?php View::partial('partials/_pwa_head'); ?>
     <title>MyCFO+</title>
     <style>
         :root {
