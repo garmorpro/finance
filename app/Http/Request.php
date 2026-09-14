@@ -32,6 +32,20 @@ final class Request
     }
 
     /**
+     * Distinguishes "this key wasn't in the URL at all" from "it was
+     * there but blank" — query()'s own empty-string default can't tell
+     * those apart. TransactionController::index() needs exactly that
+     * distinction: a bare /transactions visit (no date_from/date_to key
+     * at all) defaults to the current month, while a filter form
+     * submitted with those fields left blank means "show every date,"
+     * and both cases would otherwise look identical to query().
+     */
+    public function hasQueryKey(string $key): bool
+    {
+        return array_key_exists($key, $_GET);
+    }
+
+    /**
      * For multi-select filter inputs (e.g. "account_ids[]"). Non-array or
      * non-string entries are dropped rather than trusted.
      *

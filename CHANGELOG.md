@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- The Transactions page (`/transactions`) now defaults to the current
+  calendar month instead of every transaction ever entered — nothing is
+  hidden permanently, it's just the starting view. A bare visit (no
+  `date_from`/`date_to` in the URL at all — including via "Clear",
+  which resets to this same default) resolves to the 1st through the
+  last day of the current month
+  (`TransactionController::defaultToCurrentMonth()`); explicitly
+  clearing both date fields in the filter toolbar and submitting still
+  shows every date, exactly as before. `/transactions/export` gets the
+  same default when hit with no date params. Fixed one place this would
+  otherwise have quietly broken: Search's "View all N matching
+  transactions" link now passes blank `date_from`/`date_to` explicitly,
+  so it still shows the full count it promises instead of silently
+  truncating to this month.
+
 - Quick Add key (Settings → Profile) — a per-user secret that lets a
   device skip login entirely on `/quick-add`, for a home-screen icon
   that shouldn't need Face ID or a password on every open. Migrations

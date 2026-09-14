@@ -58,7 +58,14 @@ $hasAnyResults = $results !== null && (
                                 <?php endforeach; ?>
                             </div>
                             <?php if ($results['transactionTotal'] > count($results['transactions'])): ?>
-                                <a href="/transactions?search=<?= urlencode($query) ?>" class="inline-block mt-2 text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">View all <?= $results['transactionTotal'] ?> matching transactions &rarr;</a>
+                                <?php
+                                // date_from/date_to explicitly blank, not omitted — the Transactions
+                                // page defaults a bare visit to the current month
+                                // (TransactionController::defaultToCurrentMonth()), which would
+                                // silently show fewer than the "$total matching" count promised
+                                // here if this search itself matched anything outside it.
+                                ?>
+                                <a href="/transactions?<?= http_build_query(['search' => $query, 'date_from' => '', 'date_to' => '']) ?>" class="inline-block mt-2 text-sm font-medium text-terracotta-600 dark:text-terracotta-400 hover:underline">View all <?= $results['transactionTotal'] ?> matching transactions &rarr;</a>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>

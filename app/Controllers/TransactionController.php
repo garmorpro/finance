@@ -39,8 +39,7 @@ final class TransactionController
             'account_id' => $request->query('account_id'),
             'category_id' => $request->query('category_id'),
             'type' => $request->query('type'),
-            'date_from' => $request->query('date_from'),
-            'date_to' => $request->query('date_to'),
+            ...$this->defaultToCurrentMonth($request),
             'search' => $request->query('search'),
             'tag_id' => $request->query('tag_id'),
             'amount_min' => $this->normalizeAmountFilter($request->query('amount_min')),
@@ -98,6 +97,31 @@ final class TransactionController
         return MoneyInput::normalize($value);
     }
 
+    /**
+     * Shared by index() and export(): a request with neither date_from
+     * nor date_to in the URL at all defaults to the current calendar
+     * month rather than every transaction ever entered. Checked with
+     * hasQueryKey() rather than query()'s own empty-string default
+     * specifically so a filter form submitted with both date fields
+     * deliberately cleared — a real "show every date" request, which
+     * does carry the keys, just blank — still works and is left alone
+     * here. Sort/page/column-header links and the Export link all carry
+     * $filters forward as concrete values too, so this only ever fires
+     * on a genuinely fresh visit — clicking "Clear" included, which is
+     * the point: Clear resets to this same default view, not to
+     * all-time.
+     *
+     * @return array{date_from: string, date_to: string}
+     */
+    private function defaultToCurrentMonth(Request $request): array
+    {
+        if (!$request->hasQueryKey('date_from') && !$request->hasQueryKey('date_to')) {
+            return ['date_from' => gmdate('Y-m-01'), 'date_to' => gmdate('Y-m-t')];
+        }
+
+        return ['date_from' => $request->query('date_from'), 'date_to' => $request->query('date_to')];
+    }
+
     public function export(Request $request): void
     {
         AuthMiddleware::requireAuth();
@@ -108,8 +132,7 @@ final class TransactionController
             'account_id' => $request->query('account_id'),
             'category_id' => $request->query('category_id'),
             'type' => $request->query('type'),
-            'date_from' => $request->query('date_from'),
-            'date_to' => $request->query('date_to'),
+            ...$this->defaultToCurrentMonth($request),
             'search' => $request->query('search'),
             'tag_id' => $request->query('tag_id'),
             'amount_min' => $this->normalizeAmountFilter($request->query('amount_min')),
