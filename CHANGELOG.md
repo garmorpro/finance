@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+- Quick Add key (Settings → Profile) — a per-user secret that lets a
+  device skip login entirely on `/quick-add`, for a home-screen icon
+  that shouldn't need Face ID or a password on every open. Migrations
+  0056-0057 add `users.quick_add_key_hash`/`_created_at`/`_last_used_at`
+  and a `quick_add_key_attempts` rate-limit table. Deliberately narrow:
+  a key only ever authorizes the new `POST /quick-add`
+  (`TransactionController::storeQuickAdd()`), a completely separate,
+  hardcoded-to-`expense` endpoint from `store()` — it can never reach
+  income, transfers, splits, balances, or any other page. Generating a
+  key requires the current password (like disabling 2FA); the plaintext
+  is shown once, like 2FA recovery codes; the unlocked device gets an
+  `HttpOnly`/`Secure`/`SameSite=Strict` cookie scoped to `/quick-add`
+  only, plus a "Forget this device" action that clears just that
+  cookie without touching the key itself. `/quick-add/unlock` is
+  rate-limited and audit-logged since it's reachable with no login at
+  all. See `docs/security.md`'s new "Quick Add key" section for the
+  full threat model.
+
 - Default account for Quick Add (Settings → Profile) and surfaced
   hardware security key support (Settings → Security). Migration 0055
   adds `users.quick_add_default_account_id` (nullable, FK to `accounts`)

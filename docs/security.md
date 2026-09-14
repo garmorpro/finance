@@ -204,6 +204,70 @@ falls back to "no default" instead of ever appearing preselected. It's a
 per-user column, not a household setting — one household member's
 default has no effect on another's.
 
+## Quick Add key
+
+Settings → Profile lets a user generate a **Quick Add key** — a secret,
+entered once on a device (typically right after adding the home-screen
+icon), that lets `/quick-add` skip login entirely on that device from
+then on. This is a deliberate, scoped exception to "every page requires
+a real session," so its design leans heavily on containing the blast
+radius of the key ever leaking:
+
+- **Narrowest possible capability.** A Quick Add key authorizes exactly
+  one thing: `TransactionController::storeQuickAdd()` (`POST
+  /quick-add`), which can only create a simple expense transaction
+  (amount/payee/account/category) against an account the household
+  already has. It is a completely separate code path from `store()`
+  (`POST /transactions`, used by the full form and the sidebar's
+  quick-add popup) — `transaction_type` isn't even read from the
+  request on this endpoint, it's hardcoded `'expense'` — so there is no
+  way for a key to reach income, transfers, splits, or any other part of
+  the app: no balances, no other transactions, no settings, nothing.
+- **Per-user, not per-household**, matching the same reasoning as the
+  default-account setting above — each household member generates their
+  own from their own Settings page while logged in normally; losing a
+  phone means revoking just that person's key.
+- **Stored as a SHA-256 hash** (`users.quick_add_key_hash`), not
+  `password_hash()`/bcrypt — deliberately: unlocking has to look up
+  *which* user a pasted key belongs to by an exact, indexed match, which
+  only a fast, deterministic hash allows (bcrypt's per-call random salt
+  makes that kind of lookup impossible). This is safe specifically
+  because the key itself is a 160-bit random secret, not a human
+  password — the same tradeoff this codebase already makes for
+  `webauthn_credentials.credential_id_hash`, and for the same reason.
+- **Rate-limited and audit-logged.** `POST /quick-add/unlock` is
+  reachable by anyone with no login at all (that's the point), so every
+  wrong guess is throttled by IP (`quick_add_key_attempts`, mirroring
+  how `registration_attempts` gets its own table rather than sharing
+  `login_attempts`) and logged (`quick_add_key.unlock_failed`,
+  `quick_add_key.rate_limited`), so a brute-force attempt is both slowed
+  down and visible in the audit log — on top of the key's own entropy
+  already making that attack impractical.
+- **Cookie, not `localStorage`.** A successful unlock sets `quick_add_key`
+  as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie scoped to
+  `Path=/quick-add` only. `HttpOnly` keeps it unreadable to JavaScript
+  (an XSS bug elsewhere in the app can't exfiltrate it); the path scope
+  means it's never sent to any other route, even by accident;
+  `SameSite=Strict` costs nothing here since opening an installed
+  home-screen icon is always a same-site navigation.
+- **Generating one requires the current password** (`ProfileController
+  ::generateQuickAddKey()`), the same "prove it's really you" bar as
+  disabling two-factor — creating this key is what grants standing,
+  login-free access to a device, so it deserves more than just an
+  already-unlocked settings tab. Revoking one doesn't require a
+  password, since revoking only removes access.
+- **Shown once, like 2FA recovery codes.** The plaintext key exists only
+  in a one-request session flash right after generation; from then on
+  Settings only shows "created ___, last used ___" and a
+  Regenerate/Revoke pair. Regenerating immediately invalidates the old
+  key everywhere — `TransactionController::resolveQuickAddAuth()`
+  re-checks the hash on every single request, nothing about a prior
+  unlock is cached or trusted going forward.
+- **"Forget this device"** (`POST /quick-add/forget`) clears the cookie
+  on the current device only, without touching the underlying key — for
+  handing back a borrowed phone without having to regenerate and
+  re-enter the key on every other device too.
+
 ## Active session management
 
 Settings → Security lists every device currently signed in and can log

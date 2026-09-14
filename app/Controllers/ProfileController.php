@@ -14,6 +14,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\UserSessionRepository;
 use App\Repositories\WebAuthnCredentialRepository;
 use App\Support\Csrf;
+use App\Support\QuickAddKey;
 use App\Support\Totp;
 use App\Support\UserAgent;
 use App\Support\View;
@@ -36,12 +37,16 @@ final class ProfileController
             // point letting someone default to an account Quick Add
             // wouldn't actually show them.
             'quickAddAccounts' => $householdId !== null ? (new AccountRepository())->listForHousehold($householdId) : [],
+            // Only set immediately after generateQuickAddKey() below —
+            // the one chance to see the plaintext value, same "flash it
+            // once then it's gone" idiom as 2FA recovery codes.
+            'newQuickAddKey' => $_SESSION['_flash_quick_add_key'] ?? null,
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,
         ]));
 
-        unset($_SESSION['_flash_error'], $_SESSION['_flash_notice']);
+        unset($_SESSION['_flash_error'], $_SESSION['_flash_notice'], $_SESSION['_flash_quick_add_key']);
     }
 
     public function showSecurity(): void
@@ -360,6 +365,75 @@ final class ProfileController
         (new UserRepository())->updateQuickAddDefaultAccount($userId, $accountId);
 
         $_SESSION['_flash_notice'] = 'Quick Add settings updated.';
+        header('Location: /settings/profile');
+    }
+
+    /**
+     * Generates (or replaces) this user's Quick Add key — see
+     * docs/security.md's "Quick Add key" section. Requires the current
+     * password, the same way disabling 2FA does: this key lets a device
+     * skip login entirely, so creating one deserves the same "prove it's
+     * really you, not just an unlocked browser tab" check as turning off
+     * a security control.
+     */
+    public function generateQuickAddKey(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $userId = (int) AuthMiddleware::userId();
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
+            header('Location: /settings/profile');
+            return;
+        }
+
+        $user = (new UserRepository())->findById($userId);
+        if ($user === null || !password_verify($request->post('current_password'), $user['password_hash'])) {
+            $_SESSION['_flash_error'] = 'Incorrect password.';
+            header('Location: /settings/profile');
+            return;
+        }
+
+        $key = QuickAddKey::generate();
+        (new UserRepository())->setQuickAddKey($userId, QuickAddKey::hash($key));
+
+        (new AuditLogRepository())->log($userId, AuthMiddleware::householdId(), 'quick_add_key.generated', 'user', $userId, $request->ip());
+
+        // Stored hashed the moment it's generated (see QuickAddKey) —
+        // this flash is the only chance the user gets to see the
+        // plaintext value, same idiom as 2FA recovery codes above.
+        $_SESSION['_flash_quick_add_key'] = $key;
+        header('Location: /settings/profile');
+    }
+
+    /**
+     * Revokes this user's Quick Add key outright — every device that had
+     * it stops working immediately (the next lookup there just won't
+     * match anymore; App\Controllers\TransactionController::
+     * resolveQuickAddAuth() re-checks the hash on every request, nothing
+     * is cached). Doesn't require the current password the way
+     * generating one does — revoking only removes access, it doesn't
+     * grant anything, so it carries none of the risk password
+     * confirmation guards against.
+     */
+    public function revokeQuickAddKey(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $userId = (int) AuthMiddleware::userId();
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
+            header('Location: /settings/profile');
+            return;
+        }
+
+        (new UserRepository())->clearQuickAddKey($userId);
+
+        (new AuditLogRepository())->log($userId, AuthMiddleware::householdId(), 'quick_add_key.revoked', 'user', $userId, $request->ip());
+
+        $_SESSION['_flash_notice'] = 'Quick Add key revoked.';
         header('Location: /settings/profile');
     }
 

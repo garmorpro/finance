@@ -135,6 +135,83 @@ final class UserRepository
     }
 
     /**
+     * TransactionController::resolveQuickAddAuth() — the one lookup that
+     * lets a device holding a valid Quick Add key skip login entirely.
+     * $hash must already be QuickAddKey::hash()'s output; this does a
+     * plain indexed equality match; there is nothing left to "verify" the
+     * way password_verify() would, since the hash itself is already a
+     * deterministic function of the pasted key (see QuickAddKey's own
+     * doc comment for why that's the right tradeoff here).
+     */
+    public function findByQuickAddKeyHash(string $hash): ?array
+    {
+        $stmt = Connection::get()->prepare(
+            'SELECT * FROM users WHERE quick_add_key_hash = :hash AND deleted_at IS NULL LIMIT 1'
+        );
+        $stmt->execute(['hash' => $hash]);
+
+        $user = $stmt->fetch();
+
+        return $user === false ? null : $user;
+    }
+
+    /**
+     * Settings > Profile's "Generate" / "Regenerate" action. Replaces
+     * whatever key existed before outright — there is only ever one
+     * live key per user, never a list, so regenerating immediately
+     * invalidates the old value on every device that had it (the next
+     * lookup there just won't match anymore).
+     */
+    public function setQuickAddKey(int $userId, string $hash): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET quick_add_key_hash = :hash, quick_add_key_created_at = :created_at, quick_add_key_last_used_at = NULL, updated_at = :updated_at WHERE id = :id'
+        );
+
+        $now = gmdate('Y-m-d H:i:s');
+        $stmt->execute([
+            'hash' => $hash,
+            'created_at' => $now,
+            'updated_at' => $now,
+            'id' => $userId,
+        ]);
+    }
+
+    /**
+     * Settings > Profile's "Revoke" action — clears the key outright
+     * rather than just marking it inactive, so no residual row lingers
+     * that a future bug could accidentally start honoring again.
+     */
+    public function clearQuickAddKey(int $userId): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET quick_add_key_hash = NULL, quick_add_key_created_at = NULL, quick_add_key_last_used_at = NULL, updated_at = :updated_at WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+    }
+
+    /**
+     * Touched on every successful /quick-add/unlock and every
+     * key-authenticated transaction — Settings > Profile shows this so
+     * a household member can notice activity they don't recognize.
+     */
+    public function touchQuickAddKeyLastUsed(int $userId): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET quick_add_key_last_used_at = :last_used_at WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'last_used_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+    }
+
+    /**
      * @param list<string> $recoveryCodeHashes already password_hash()'d —
      *     recovery codes are stored the same way passwords are, never
      *     in plaintext.

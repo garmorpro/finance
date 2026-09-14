@@ -26,11 +26,12 @@
   // transactions/quick-add.php only — the sidebar popup's own form is a
   // plain POST-and-redirect (it wants the normal full-page navigation
   // back to whatever page it was opened from) and is left alone here.
-  // This one instead posts via fetch() with Accept: application/json so
-  // TransactionController::store() replies with JSON instead of a
-  // redirect, and shows its own 2-second inline "Added!" state without
-  // ever leaving the page — the whole point of a dedicated home-screen
-  // launch target being fast for back-to-back entries.
+  // This one instead posts to TransactionController::storeQuickAdd()
+  // via fetch() with Accept: application/json, which always replies
+  // with JSON (success or error) rather than a redirect, and shows its
+  // own 2-second inline "Added!" state without ever leaving the page —
+  // the whole point of a dedicated home-screen launch target being fast
+  // for back-to-back entries.
   var pageForm = document.getElementById('quick-add-page-form');
   if (pageForm) {
     var submitBtn = document.getElementById('quick-add-page-submit');
@@ -53,15 +54,14 @@
         credentials: 'same-origin',
       })
         .then(function (response) {
-          // An expired session sends AuthMiddleware::requireAuth()'s
-          // plain "Location: /login" redirect instead of JSON (it only
-          // records an intended-URL to return to for a GET request, not
-          // this POST) — fetch() follows it to the login page's HTML,
-          // which response.json() can't parse. Treated as "please sign
-          // in again" rather than the generic error below.
-          if (response.redirected) {
-            window.location.href = response.url;
-            return Promise.reject(new Error('__redirecting__'));
+          // 401 means resolveQuickAddAuth() found neither a session nor
+          // a valid key cookie — the session expired, or the key was
+          // revoked from another device mid-visit. A reload re-renders
+          // the "enter your key" screen server-side rather than trying
+          // to fake that state here.
+          if (response.status === 401) {
+            window.location.reload();
+            return Promise.reject(new Error('__reloading__'));
           }
 
           return response.json().then(function (data) {
@@ -88,7 +88,7 @@
           }, 2000);
         })
         .catch(function (error) {
-          if (error.message === '__redirecting__') {
+          if (error.message === '__reloading__') {
             return;
           }
           errorBox.textContent = error.message || 'Something went wrong. Please try again.';

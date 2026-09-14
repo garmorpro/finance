@@ -3,6 +3,7 @@
 /** @var array<int, array<string, mixed>> $accounts */
 /** @var array<int, array<string, mixed>> $categories */
 /** @var int|null $defaultAccountId */
+/** @var bool $isKeyAuth */
 /** @var string $csrfToken */
 
 use App\Support\View;
@@ -18,9 +19,16 @@ use App\Support\View;
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
 </head>
 <body class="quickadd-page">
-    <a href="/" class="absolute left-4 text-xs font-semibold text-stone-400 dark:text-stone-600 hover:text-stone-600 dark:hover:text-stone-300 transition-colors" style="top: calc(1rem + env(safe-area-inset-top));">
-        &larr; Dashboard
-    </a>
+    <?php if ($isKeyAuth): ?>
+        <form method="POST" action="/quick-add/forget" class="absolute left-4" style="top: calc(1rem + env(safe-area-inset-top));" onsubmit="return confirm('Forget this device? You\'ll need to enter your Quick Add key again to use this page here.');">
+            <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+            <button type="submit" class="text-xs font-semibold text-stone-400 dark:text-stone-600 hover:text-stone-600 dark:hover:text-stone-300 transition-colors">Forget this device</button>
+        </form>
+    <?php else: ?>
+        <a href="/" class="absolute left-4 text-xs font-semibold text-stone-400 dark:text-stone-600 hover:text-stone-600 dark:hover:text-stone-300 transition-colors" style="top: calc(1rem + env(safe-area-inset-top));">
+            &larr; Dashboard
+        </a>
+    <?php endif; ?>
 
     <div class="quickadd-modal">
         <div id="quick-add-success" class="quickadd-success-overlay hidden" role="status" aria-live="polite">
@@ -46,10 +54,8 @@ use App\Support\View;
 
         <p id="quick-add-error" class="alert-error mb-4 hidden"></p>
 
-        <form id="quick-add-page-form" method="POST" action="/transactions">
+        <form id="quick-add-page-form" method="POST" action="/quick-add">
             <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-            <input type="hidden" name="transaction_type" value="expense">
-            <input type="hidden" name="transaction_date" value="<?= View::e(date('Y-m-d')) ?>">
 
             <div class="quickadd-amount-box">
                 <p class="quickadd-amount-eyebrow">Amount</p>

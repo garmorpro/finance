@@ -13,12 +13,16 @@ use App\Repositories\AccountRepository;
 use App\Repositories\AttachmentRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\CategoryRepository;
+use App\Repositories\HouseholdRepository;
 use App\Repositories\TagRepository;
 use App\Repositories\TransactionRepository;
 use App\Repositories\TransactionSplitRepository;
 use App\Repositories\UserRepository;
 use App\Services\RuleMatchingService;
 use App\Support\Csrf;
+use App\Support\Env;
+use App\Support\QuickAddKey;
+use App\Support\RateLimiter;
 use App\Support\SafeRedirect;
 use App\Support\View;
 use App\Validation\MoneyInput;
@@ -157,22 +161,37 @@ final class TransactionController
      * Amount/Payee/Account/Category form — the home-screen icon's launch
      * target (public/manifest.json's start_url), for logging a
      * transaction the moment the app opens rather than navigating to it
-     * from the dashboard first. Submits to store() the same way the
-     * sidebar's quick-add popup already does, just via fetch() with
-     * Accept: application/json instead of a plain form POST, so it can
-     * show its own inline success state instead of a full-page redirect.
-     * Same reduced data set as that popup (active accounts only, expense
-     * categories only) — see sidebar.php's identical query and its own
-     * comment on why.
+     * from the dashboard first.
+     *
+     * Reachable two ways, resolved by resolveQuickAddAuth(): a normal
+     * logged-in session (unchanged from before), or a device that's
+     * unlocked itself with a Quick Add key (Settings > Profile) and
+     * skips login entirely — see docs/security.md's "Quick Add key"
+     * section for the full threat model. Neither present renders the
+     * "enter your key" screen instead of the form.
+     *
+     * Posts to storeQuickAdd() (POST /quick-add), not store() — a
+     * separate, deliberately narrower endpoint than the full form/
+     * sidebar popup use, since a Quick Add key must never be able to
+     * reach anything store() can do beyond "create one expense."
      */
     public function showQuickAdd(): void
     {
-        AuthMiddleware::requireAuth();
+        $auth = $this->resolveQuickAddAuth();
 
-        $householdId = (int) AuthMiddleware::householdId();
+        if ($auth === null) {
+            Response::html(View::render('transactions/quick-add-locked', [
+                'csrfToken' => Csrf::token(),
+                'error' => $_SESSION['_flash_error'] ?? null,
+            ]));
+            unset($_SESSION['_flash_error']);
+            return;
+        }
+
+        $householdId = $auth['householdId'];
         $accounts = (new AccountRepository())->listForHousehold($householdId);
 
-        $user = (new UserRepository())->findById((int) AuthMiddleware::userId());
+        $user = (new UserRepository())->findById($auth['userId']);
         $defaultAccountId = $user['quick_add_default_account_id'] ?? null;
 
         // Settings > Profile only ever lets someone choose from this
@@ -192,8 +211,252 @@ final class TransactionController
                 fn (array $c): bool => $c['type'] === 'expense'
             )),
             'defaultAccountId' => $defaultAccountId !== null ? (int) $defaultAccountId : null,
+            'isKeyAuth' => !AuthMiddleware::check(),
             'csrfToken' => Csrf::token(),
         ]));
+    }
+
+    /**
+     * Exchanges a pasted Quick Add key for the long-lived cookie that
+     * lets this device skip login on /quick-add from now on. Public —
+     * reachable with no session at all, which is the entire point — so
+     * every failure path here is rate-limited and audit-logged rather
+     * than trusted to be a good-faith mistake.
+     */
+    public function unlockQuickAdd(Request $request): void
+    {
+        $ip = $request->ip();
+
+        $redirectBack = function (string $message): void {
+            $_SESSION['_flash_error'] = $message;
+            header('Location: /quick-add');
+        };
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $redirectBack('Your session expired. Please try again.');
+            return;
+        }
+
+        if (RateLimiter::tooManyQuickAddKeyAttempts($ip)) {
+            (new AuditLogRepository())->log(null, null, 'quick_add_key.rate_limited', null, null, $ip);
+            $redirectBack('Too many attempts. Please wait 15 minutes and try again.');
+            return;
+        }
+
+        $key = trim($request->post('key'));
+        $user = $key !== '' ? (new UserRepository())->findByQuickAddKeyHash(QuickAddKey::hash($key)) : null;
+
+        if ($user === null) {
+            RateLimiter::recordQuickAddKeyAttempt($ip, false);
+            (new AuditLogRepository())->log(null, null, 'quick_add_key.unlock_failed', null, null, $ip);
+            $redirectBack("That key wasn't recognized. Please check it and try again.");
+            return;
+        }
+
+        RateLimiter::recordQuickAddKeyAttempt($ip, true);
+
+        $userRepo = new UserRepository();
+        $userRepo->touchQuickAddKeyLastUsed((int) $user['id']);
+
+        (new AuditLogRepository())->log((int) $user['id'], null, 'quick_add_key.unlocked', 'user', (int) $user['id'], $ip);
+
+        // Path scoped to /quick-add only — this cookie is never sent to
+        // any other route, so even a bug elsewhere in the app couldn't
+        // accidentally read or act on it. HttpOnly keeps it invisible to
+        // JavaScript (an XSS bug elsewhere can't exfiltrate it);
+        // SameSite=Strict is safe (not just extra-safe) because opening
+        // an installed home-screen icon is always a same-site
+        // navigation, never a cross-site one.
+        setcookie('quick_add_key', QuickAddKey::normalize($key), [
+            'expires' => time() + 60 * 60 * 24 * 365,
+            'path' => '/quick-add',
+            'httponly' => true,
+            'secure' => Env::isHttps(),
+            'samesite' => 'Strict',
+        ]);
+
+        header('Location: /quick-add');
+    }
+
+    /**
+     * "Forget this device" on the unlocked Quick Add page — clears the
+     * cookie set by unlockQuickAdd() above without touching the
+     * underlying key itself (Settings > Profile's "Revoke" does that).
+     * For handing back a shared/borrowed device, or just not trusting a
+     * particular phone with standing access anymore, without having to
+     * regenerate the key and re-enter it on every other device too.
+     */
+    public function forgetQuickAddDevice(Request $request): void
+    {
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            header('Location: /quick-add');
+            return;
+        }
+
+        setcookie('quick_add_key', '', [
+            'expires' => time() - 3600,
+            'path' => '/quick-add',
+            'httponly' => true,
+            'secure' => Env::isHttps(),
+            'samesite' => 'Strict',
+        ]);
+
+        header('Location: /quick-add');
+    }
+
+    /**
+     * A logged-in session always wins when both are present. Otherwise,
+     * a Quick Add key cookie resolves to whichever user it belongs to
+     * (via an exact hash match — see QuickAddKey's own doc comment) and,
+     * from there, that user's current household — re-derived every call
+     * rather than trusted from the cookie, in case membership ever
+     * changes. Returns null when neither authorizes anything, meaning
+     * the caller should show the "enter your key" screen instead.
+     *
+     * @return array{householdId: int, userId: int}|null
+     */
+    private function resolveQuickAddAuth(): ?array
+    {
+        if (AuthMiddleware::check()) {
+            return ['householdId' => (int) AuthMiddleware::householdId(), 'userId' => (int) AuthMiddleware::userId()];
+        }
+
+        $cookieKey = $_COOKIE['quick_add_key'] ?? null;
+        if (!is_string($cookieKey) || $cookieKey === '') {
+            return null;
+        }
+
+        $user = (new UserRepository())->findByQuickAddKeyHash(QuickAddKey::hash($cookieKey));
+        if ($user === null) {
+            return null;
+        }
+
+        $membership = (new HouseholdRepository())->findMembership((int) $user['id']);
+        if ($membership === null) {
+            return null;
+        }
+
+        return ['householdId' => (int) $membership['household_id'], 'userId' => (int) $user['id']];
+    }
+
+    /**
+     * POST /quick-add — the only thing a Quick Add key is ever able to
+     * do. Deliberately separate from store(), not a shared code path
+     * with it: store() also handles income, transfers, splits, and
+     * arbitrary category/tag/notes input for the full form and the
+     * sidebar's (session-only) popup, none of which exist as fields
+     * here at all. transaction_type is never read from the request —
+     * it's hardcoded 'expense' below — so there is no input on this
+     * endpoint a leaked key could use for anything beyond "create one
+     * expense transaction on an account this household already has."
+     */
+    public function storeQuickAdd(Request $request): void
+    {
+        $auth = $this->resolveQuickAddAuth();
+        if ($auth === null) {
+            Response::json(['error' => 'Please unlock Quick Add first.'], 401);
+            return;
+        }
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            Response::json(['error' => 'Your session expired. Please refresh and try again.'], 419);
+            return;
+        }
+
+        $householdId = $auth['householdId'];
+        $userId = $auth['userId'];
+
+        $payee = trim($request->post('payee'));
+        $amount = trim($request->post('amount'));
+        $accountId = (int) $request->post('account_id');
+        $categoryId = $request->post('category_id') !== '' ? (int) $request->post('category_id') : null;
+
+        $accounts = (new AccountRepository())->listForHousehold($householdId);
+        if (!in_array($accountId, array_map(fn (array $a): int => (int) $a['id'], $accounts), true)) {
+            Response::json(['error' => 'Please choose a valid account.'], 422);
+            return;
+        }
+
+        if ($categoryId !== null) {
+            $categories = array_filter(
+                (new CategoryRepository())->listForHousehold($householdId),
+                fn (array $c): bool => $c['type'] === 'expense'
+            );
+            if (!in_array($categoryId, array_map(fn (array $c): int => (int) $c['id'], $categories), true)) {
+                Response::json(['error' => 'Please choose a valid category.'], 422);
+                return;
+            }
+        }
+
+        if ($payee === '') {
+            Response::json(['error' => 'Payee is required.'], 422);
+            return;
+        }
+
+        if (!MoneyInput::isValid($amount) || bccomp($amount, '0', 2) <= 0) {
+            Response::json(['error' => 'Please enter a valid amount greater than zero.'], 422);
+            return;
+        }
+
+        $accountRepo = new AccountRepository();
+        $account = $accountRepo->findById($accountId, $householdId);
+        $signedAmount = $this->signedAmount('expense', $amount);
+
+        $pdo = Connection::get();
+        $pdo->beginTransaction();
+
+        try {
+            $transactionId = (new TransactionRepository())->create($householdId, $userId, [
+                'account_id' => $accountId,
+                'category_id' => $categoryId,
+                'is_split' => false,
+                'transaction_type' => 'expense',
+                'transaction_date' => date('Y-m-d'),
+                'signed_amount' => $signedAmount,
+                'payee' => $payee,
+                'notes' => null,
+                'exclude_from_budget' => false,
+                'exclude_from_reports' => false,
+            ]);
+
+            (new TagRepository())->setTagsForTransaction($transactionId, []);
+
+            (new RuleMatchingService())->applyToTransaction($householdId, $transactionId, [
+                'payee' => $payee,
+                'notes' => null,
+                'amount' => $signedAmount,
+                'account_id' => $accountId,
+                'transaction_type' => 'expense',
+            ]);
+
+            $newBalance = AccountRepository::applyDelta($account['current_balance'], $signedAmount, $account['account_type']);
+
+            (new AccountBalanceHistoryRepository())->record($accountId, $userId, $account['current_balance'], $newBalance, 'Transaction: ' . $payee);
+            $accountRepo->updateBalance($accountId, $householdId, $newBalance);
+
+            $isKeyAuth = !AuthMiddleware::check();
+
+            (new AuditLogRepository())->log(
+                $userId,
+                $householdId,
+                $isKeyAuth ? 'transaction.created_via_quick_add_key' : 'transaction.created',
+                'transaction',
+                $transactionId,
+                $request->ip()
+            );
+
+            if ($isKeyAuth) {
+                (new UserRepository())->touchQuickAddKeyLastUsed($userId);
+            }
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            Response::json(['error' => 'Something went wrong saving that transaction. Please try again.'], 500);
+            return;
+        }
+
+        Response::json(['success' => true]);
     }
 
     public function store(Request $request): void
