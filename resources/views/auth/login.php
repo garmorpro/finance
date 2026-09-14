@@ -11,7 +11,7 @@ use App\Support\View;
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <?php View::partial('partials/_pwa_head'); ?>
     <title>Log in · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
@@ -39,6 +39,35 @@ use App\Support\View;
         <?php if (!empty($notice)): ?>
             <div class="alert-success mb-4"><?= View::e($notice) ?></div>
         <?php endif; ?>
+
+        <?php
+        /**
+         * Passkey login leads — it's a single Face ID/Touch ID tap
+         * versus typing an email and password, and it matters even more
+         * now that the app can be installed to a phone's home screen:
+         * an installed standalone web app has its own separate cookie
+         * storage from the browser it was added from (so the first
+         * open after installing is always a fresh login), and iOS's
+         * handling of session-only cookies for standalone apps
+         * specifically is known to be less reliable than a normal
+         * Safari tab's. Rather than fight that by extending how long
+         * the session cookie itself lives (a leaked session cookie
+         * would then stay useful for longer), re-entry stays fast by
+         * making the passkey prompt effectively instant instead — see
+         * webauthn.js's auto-attempt in standalone mode.
+         */
+        ?>
+        <button type="button" id="webauthn-login" class="btn-primary btn-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="16" r="1.5"/><path d="M7 11V7a5 5 0 0 1 10 0"/></svg>
+            Sign in with a passkey
+        </button>
+        <p id="webauthn-login-status" class="text-sm text-center text-stone-500 dark:text-stone-400 mt-2"></p>
+
+        <div class="flex items-center gap-3 my-5" aria-hidden="true">
+            <div class="flex-1 h-px bg-stone-200 dark:bg-stone-800"></div>
+            <span class="text-xs font-medium text-stone-400 dark:text-stone-600">or</span>
+            <div class="flex-1 h-px bg-stone-200 dark:bg-stone-800"></div>
+        </div>
 
         <form method="POST" action="/login" class="space-y-4">
             <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
@@ -76,20 +105,8 @@ use App\Support\View;
                     </button>
                 </div>
             </div>
-            <button type="submit" class="btn-primary btn-block">Log in</button>
+            <button type="submit" class="btn-secondary btn-block">Log in with password</button>
         </form>
-
-        <div class="flex items-center gap-3 my-5" aria-hidden="true">
-            <div class="flex-1 h-px bg-stone-200 dark:bg-stone-800"></div>
-            <span class="text-xs font-medium text-stone-400 dark:text-stone-600">or</span>
-            <div class="flex-1 h-px bg-stone-200 dark:bg-stone-800"></div>
-        </div>
-
-        <button type="button" id="webauthn-login" class="btn-secondary btn-block">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="16" r="1.5"/><path d="M7 11V7a5 5 0 0 1 10 0"/></svg>
-            Sign in with a passkey
-        </button>
-        <p id="webauthn-login-status" class="text-sm text-center text-stone-500 dark:text-stone-400 mt-2"></p>
 
         <p class="mt-5 text-sm text-center">
             <a href="/forgot-password" class="text-terracotta-600 dark:text-terracotta-400 hover:underline font-medium">Forgot password?</a>

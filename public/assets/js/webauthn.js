@@ -148,14 +148,22 @@
   // --- Sign-in: login page "Sign in with a passkey" ---
   var loginBtn = document.getElementById('webauthn-login');
   if (loginBtn) {
-    loginBtn.addEventListener('click', function () {
+    // Shared by the button's own click and the standalone auto-attempt
+    // below. `silent` skips the "Follow the prompt…"/error status text
+    // and re-enabling the button on failure — for the auto-attempt,
+    // a user with no passkey registered (or one who just dismisses the
+    // system prompt) should land on an untouched, normal-looking login
+    // form, not one that flashed a scary error message on page load
+    // before they did anything.
+    var attemptLogin = function (silent) {
       var statusEl = document.getElementById('webauthn-login-status');
       var setStatus = function (text, isError) {
-        if (statusEl) {
-          statusEl.textContent = text;
-          statusEl.classList.toggle('text-red-600', !!isError);
-          statusEl.classList.toggle('dark:text-red-400', !!isError);
+        if (silent || !statusEl) {
+          return;
         }
+        statusEl.textContent = text;
+        statusEl.classList.toggle('text-red-600', !!isError);
+        statusEl.classList.toggle('dark:text-red-400', !!isError);
       };
 
       loginBtn.disabled = true;
@@ -191,6 +199,28 @@
             setStatus('');
           }
         });
+    };
+
+    loginBtn.addEventListener('click', function () {
+      attemptLogin(false);
     });
+
+    // Installed home-screen apps get their own separate cookie storage
+    // from the browser they were added from, so the first open after
+    // installing (and any later one where iOS has cleared the session
+    // cookie — its handling of session-only cookies for standalone web
+    // apps specifically is known to be less reliable than a normal
+    // Safari tab) always lands here logged out. Firing the passkey
+    // prompt immediately, before any tap, turns that back into a
+    // ~1-second Face ID/Touch ID moment instead of typing a password —
+    // scoped to standalone mode only, since auto-popping a biometric
+    // prompt on every ordinary browser visit to /login would be a
+    // strange, unwanted surprise for anyone not using the installed app.
+    // Only tried once per page load; a dismissed/failed attempt falls
+    // back to the now-prominent button, no retry loop.
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) {
+      attemptLogin(true);
+    }
   }
 })();

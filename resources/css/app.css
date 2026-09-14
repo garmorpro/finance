@@ -123,6 +123,14 @@
   .sidebar {
     @apply fixed inset-y-0 left-0 z-40 w-60 flex flex-col border-r border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 transition-transform duration-200;
     transform: translateX(-100%);
+    /*
+     * Safe-area padding: harmless (resolves to 0) in a normal desktop
+     * browser or anywhere viewport-fit=cover isn't set, and needed
+     * everywhere it is — a plain mobile Safari tab once viewport-fit
+     * is set, not just an installed home-screen app — so this isn't
+     * gated behind @media (display-mode: standalone).
+     */
+    padding-top: env(safe-area-inset-top);
   }
 
   @screen lg {
@@ -147,6 +155,8 @@
 
   .mobile-topbar {
     @apply flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 sticky top-0 z-20;
+    /* See .sidebar's own safe-area comment above — same reasoning. */
+    padding-top: calc(0.75rem + env(safe-area-inset-top));
   }
 
   @screen lg {
@@ -530,6 +540,10 @@
 
   .sidebar-footer {
     @apply border-t border-stone-200 dark:border-stone-800 p-3 space-y-2;
+    /* Same safe-area reasoning as .sidebar/.mobile-topbar, bottom edge
+       this time — the logout button shouldn't sit flush against the
+       home indicator. */
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
   }
 
   .sidebar-user {
@@ -1167,6 +1181,25 @@
   .quickadd-fab {
     background: linear-gradient(155deg, #e2694b, #a53d27);
     box-shadow: 0 10px 24px -8px rgba(201, 79, 50, .55), inset 0 1px 0 rgba(255, 255, 255, .22);
+    /*
+     * `bottom` lives here rather than as a bottom-20/lg:bottom-6
+     * Tailwind utility in the markup, on purpose: Tailwind's own
+     * utilities sit in the @tailwind "utilities" layer, which always
+     * wins over anything in this file's "components" layer regardless
+     * of selector specificity — @layer order overrides normal cascade
+     * rules. A plain utility class here couldn't be overridden by this
+     * rule at all, safe-area-aware or not (same root cause as an
+     * earlier bug in .table-group-row's padding, fixed by raising that
+     * rule's specificity instead — there's no plain-specificity fix
+     * for a cross-layer conflict like this one, so the value has to
+     * live in the same layer as everything it needs to beat).
+     */
+    bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+  @screen lg {
+    .quickadd-fab {
+      bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    }
   }
   .quickadd-fab:hover {
     filter: brightness(1.06);

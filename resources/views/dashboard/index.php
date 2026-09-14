@@ -24,7 +24,7 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <?php View::partial('partials/_pwa_head'); ?>
     <title>Overview · MyCFO+</title>
     <link rel="stylesheet" href="<?= View::asset('/assets/css/app.css') ?>">
