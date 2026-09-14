@@ -3,6 +3,7 @@
 /** @var array $user */
 /** @var array|null $household */
 /** @var string|null $role */
+/** @var array<int, array<string, mixed>> $quickAddAccounts */
 /** @var string $csrfToken */
 /** @var string|null $error */
 /** @var string|null $notice */
@@ -76,6 +77,24 @@ $initials = $nameParts !== false && $nameParts !== []
                                     <input type="email" id="email" name="email" value="<?= View::e($user['email']) ?>" required class="field-input">
                                 </div>
                                 <button type="submit" class="btn-primary">Save changes</button>
+                            </form>
+                        </div>
+
+                        <div class="card max-w-lg">
+                            <h3 class="text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-4">Quick Add</h3>
+                            <form method="POST" action="/settings/profile/quick-add" class="space-y-4">
+                                <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+                                <div>
+                                    <label for="quick_add_default_account_id" class="field-label">Default account</label>
+                                    <select id="quick_add_default_account_id" name="quick_add_default_account_id" class="field-input">
+                                        <option value="">No default &mdash; ask every time</option>
+                                        <?php foreach ($quickAddAccounts as $account): ?>
+                                            <option value="<?= (int) $account['id'] ?>" <?= (int) $account['id'] === (int) ($user['quick_add_default_account_id'] ?? 0) ? 'selected' : '' ?>><?= View::e($account['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <p class="field-help">Preselected on the Quick Add page (your home-screen icon's launch target) &mdash; you can still change it per transaction.</p>
+                                </div>
+                                <button type="submit" class="btn-primary">Save</button>
                             </form>
                         </div>
                     </div>

@@ -108,18 +108,26 @@ final class WebAuthnCredentialRepository implements PublicKeyCredentialSourceRep
 
     /**
      * For Settings → Security's passkey list — household-app-specific,
-     * not part of the library's own interface.
+     * not part of the library's own interface. `transports` comes back
+     * decoded (it's stored as a JSON array — see create() above) so
+     * ProfileController::showSecurity() can derive a "Security key" vs.
+     * "This device" label via UserAgent::authenticatorType() without a
+     * second json_decode() at the call site.
      *
-     * @return list<array{id: int, device_name: string, created_at: string, last_used_at: ?string}>
+     * @return list<array{id: int, device_name: string, transports: list<string>, created_at: string, last_used_at: ?string}>
      */
     public function listForUser(int $userId): array
     {
         $stmt = Connection::get()->prepare(
-            'SELECT id, device_name, created_at, last_used_at FROM webauthn_credentials WHERE user_id = :user_id ORDER BY created_at DESC'
+            'SELECT id, device_name, transports, created_at, last_used_at FROM webauthn_credentials WHERE user_id = :user_id ORDER BY created_at DESC'
         );
         $stmt->execute(['user_id' => $userId]);
 
-        return $stmt->fetchAll();
+        return array_map(function (array $row): array {
+            $row['transports'] = json_decode($row['transports'], true) ?? [];
+
+            return $row;
+        }, $stmt->fetchAll());
     }
 
     public function deleteForUser(int $credentialRowId, int $userId): bool

@@ -109,6 +109,7 @@ $router->post('/accept-invite', fn (Request $r): mixed => $householdController->
 $profileController = new ProfileController();
 $router->get('/settings/profile', fn (): mixed => $profileController->show());
 $router->post('/settings/profile', fn (Request $r): mixed => $profileController->updateProfile($r));
+$router->post('/settings/profile/quick-add', fn (Request $r): mixed => $profileController->updateQuickAddSettings($r));
 $router->get('/settings/security', fn (): mixed => $profileController->showSecurity());
 $router->post('/settings/security', fn (Request $r): mixed => $profileController->updatePassword($r));
 $router->get('/settings/security/2fa/setup', fn (): mixed => $profileController->showTwoFactorSetup());

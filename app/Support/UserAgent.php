@@ -40,4 +40,35 @@ final class UserAgent
 
         return $device !== null ? "{$browser} on {$device}" : $browser;
     }
+
+    /**
+     * A passkey's device_name is always derived from describe() above —
+     * the browser/OS user agent — which can't actually tell a hardware
+     * security key apart from that same device's own Face ID/Touch ID:
+     * both register from the same browser, so both would otherwise show
+     * up identically (e.g. "Safari on Mac"). The one thing that *does*
+     * differ is which transports the authenticator itself reported
+     * during registration (WebAuthnCredentialRepository::create()) —
+     * 'usb'/'nfc'/'ble' means a separate physical key was used, 'internal'
+     * means the device's own built-in authenticator. Returns null for a
+     * platform authenticator or when transports isn't reported at all
+     * (older browsers, or a resident key that legitimately answered with
+     * an empty list) — describe()'s existing label already covers that
+     * case well enough on its own.
+     *
+     * @param list<string> $transports
+     */
+    public static function authenticatorType(array $transports): ?string
+    {
+        if (in_array('internal', $transports, true)) {
+            return null;
+        }
+
+        $roaming = ['usb', 'nfc', 'ble'];
+        if (array_intersect($roaming, $transports) !== []) {
+            return 'Security key';
+        }
+
+        return null;
+    }
 }

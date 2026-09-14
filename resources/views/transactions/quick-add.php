@@ -2,6 +2,7 @@
 
 /** @var array<int, array<string, mixed>> $accounts */
 /** @var array<int, array<string, mixed>> $categories */
+/** @var int|null $defaultAccountId */
 /** @var string $csrfToken */
 
 use App\Support\View;
@@ -73,7 +74,7 @@ use App\Support\View;
                     <select id="quick-add-account" name="account_id" required class="quickadd-select" data-swatch-target="quick-add-account-swatch">
                         <option value="">Select an account&hellip;</option>
                         <?php foreach ($accounts as $account): ?>
-                            <option value="<?= (int) $account['id'] ?>" data-color="<?= View::e($account['color'] ?: '#a8a29e') ?>"><?= View::e($account['name']) ?></option>
+                            <option value="<?= (int) $account['id'] ?>" data-color="<?= View::e($account['color'] ?: '#a8a29e') ?>" <?= $defaultAccountId !== null && (int) $account['id'] === $defaultAccountId ? 'selected' : '' ?>><?= View::e($account['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <span id="quick-add-account-swatch" class="quickadd-swatch" aria-hidden="true"></span>

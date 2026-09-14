@@ -115,6 +115,26 @@ final class UserRepository
     }
 
     /**
+     * Settings > Profile's "default account for Quick Add" — null clears
+     * it back to "no default" (the plain placeholder option). The
+     * caller (ProfileController::updateQuickAddSettings()) is
+     * responsible for checking the id actually belongs to this user's
+     * household before it ever reaches here.
+     */
+    public function updateQuickAddDefaultAccount(int $userId, ?int $accountId): void
+    {
+        $stmt = Connection::get()->prepare(
+            'UPDATE users SET quick_add_default_account_id = :account_id, updated_at = :updated_at WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'account_id' => $accountId,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+    }
+
+    /**
      * @param list<string> $recoveryCodeHashes already password_hash()'d —
      *     recovery codes are stored the same way passwords are, never
      *     in plaintext.

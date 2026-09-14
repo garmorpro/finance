@@ -131,9 +131,10 @@ Authenticator, Authy, 1Password, etc.), enabled from Settings → Security.
 
 ## Passkeys (WebAuthn)
 
-Optional per-user passkey sign-in (Face ID, Touch ID, Windows Hello, or
-a platform's own screen lock), registered from Settings → Security and
-offered as a "Sign in with a passkey" option on the login page.
+Optional per-user passkey sign-in (Face ID, Touch ID, Windows Hello, a
+platform's own screen lock, or a roaming hardware security key such as a
+YubiKey), registered from Settings → Security and offered as a "Sign in
+with a passkey" option on the login page.
 
 - Built on `web-auth/webauthn-lib` rather than a hand-rolled
   implementation — unlike TOTP's straightforward HMAC math, WebAuthn's
@@ -175,6 +176,33 @@ offered as a "Sign in with a passkey" option on the login page.
   confirmation the way disabling 2FA does — it's not disabling a
   control, just removing one sign-in method while password (and TOTP,
   if enabled and not skipped) remain fully intact.
+- Registration never sets `authenticatorAttachment`, so the browser's
+  own picker offers both platform (Face ID/Touch ID/screen lock) and
+  cross-platform (a physical security key over USB/NFC/BLE) options —
+  hardware keys already worked before Settings → Security's copy
+  mentioned them. Settings → Security labels a credential "Security
+  key" purely for display, derived from which transports the
+  authenticator itself reported at registration (`UserAgent::
+  authenticatorType()`) — `internal` means the device's own built-in
+  authenticator, `usb`/`nfc`/`ble` means a separate physical key. This
+  is cosmetic only: it doesn't change what a credential can do, and an
+  authenticator that reports no transports at all (some do) is simply
+  left unlabeled rather than guessed at.
+
+## Quick Add default account
+
+Settings → Profile lets a user pick which account `/quick-add` (the
+home-screen icon's launch target) preselects, stored as
+`users.quick_add_default_account_id`. Two things keep this from being an
+IDOR vector: `ProfileController::updateQuickAddSettings()` only accepts
+an id that's actually in the current household's active-accounts list
+(the same list Quick Add itself renders) before saving it, never a raw
+account id at face value; and `TransactionController::showQuickAdd()`
+re-validates the stored default against that same list on every page
+load, so an account archived after being set as the default just quietly
+falls back to "no default" instead of ever appearing preselected. It's a
+per-user column, not a household setting — one household member's
+default has no effect on another's.
 
 ## Active session management
 

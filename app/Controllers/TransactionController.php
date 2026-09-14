@@ -16,6 +16,7 @@ use App\Repositories\CategoryRepository;
 use App\Repositories\TagRepository;
 use App\Repositories\TransactionRepository;
 use App\Repositories\TransactionSplitRepository;
+use App\Repositories\UserRepository;
 use App\Services\RuleMatchingService;
 use App\Support\Csrf;
 use App\Support\SafeRedirect;
@@ -169,13 +170,28 @@ final class TransactionController
         AuthMiddleware::requireAuth();
 
         $householdId = (int) AuthMiddleware::householdId();
+        $accounts = (new AccountRepository())->listForHousehold($householdId);
+
+        $user = (new UserRepository())->findById((int) AuthMiddleware::userId());
+        $defaultAccountId = $user['quick_add_default_account_id'] ?? null;
+
+        // Settings > Profile only ever lets someone choose from this
+        // same active-accounts list, but re-check here too: the default
+        // could have been set before the account was archived, and an
+        // id that isn't one of these <option>s would just leave the
+        // field looking unset anyway (the browser can't preselect an
+        // option that isn't there).
+        if ($defaultAccountId !== null && !in_array((int) $defaultAccountId, array_map(fn (array $a): int => (int) $a['id'], $accounts), true)) {
+            $defaultAccountId = null;
+        }
 
         Response::html(View::render('transactions/quick-add', [
-            'accounts' => (new AccountRepository())->listForHousehold($householdId),
+            'accounts' => $accounts,
             'categories' => array_values(array_filter(
                 (new CategoryRepository())->listForHousehold($householdId),
                 fn (array $c): bool => $c['type'] === 'expense'
             )),
+            'defaultAccountId' => $defaultAccountId !== null ? (int) $defaultAccountId : null,
             'csrfToken' => Csrf::token(),
         ]));
     }

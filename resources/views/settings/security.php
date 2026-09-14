@@ -2,7 +2,7 @@
 
 /** @var bool $twoFactorEnabled */
 /** @var list<array{id: int, label: string, ip_address: ?string, last_active_at: string, is_current: bool}> $sessions */
-/** @var list<array{id: int, device_name: string, created_at: string, last_used_at: ?string}> $passkeys */
+/** @var list<array{id: int, device_name: string, transports: list<string>, authenticator_type: ?string, created_at: string, last_used_at: ?string}> $passkeys */
 /** @var string $csrfToken */
 /** @var string|null $error */
 /** @var string|null $notice */
@@ -72,14 +72,19 @@ use App\Support\View;
                                 <h2 class="font-medium text-stone-900 dark:text-white">Passkeys</h2>
                                 <span class="<?= $passkeys !== [] ? 'badge-owner' : 'badge' ?>"><?= count($passkeys) ?></span>
                             </div>
-                            <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Sign in with Face ID, Touch ID, or your device's screen lock instead of typing your password — a passkey satisfies two-factor on its own, so it skips the code step below too.</p>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">Sign in with Face ID, Touch ID, your device's screen lock, or a hardware security key instead of typing your password — a passkey satisfies two-factor on its own, so it skips the code step below too.</p>
 
                             <?php if ($passkeys !== []): ?>
                                 <div class="divide-y divide-stone-100 dark:divide-stone-800 mb-4">
                                     <?php foreach ($passkeys as $passkey): ?>
                                         <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
                                             <div class="min-w-0">
-                                                <div class="text-sm font-medium text-stone-900 dark:text-white"><?= View::e($passkey['device_name']) ?></div>
+                                                <div class="flex items-center gap-2">
+                                                    <div class="text-sm font-medium text-stone-900 dark:text-white truncate"><?= View::e($passkey['device_name']) ?></div>
+                                                    <?php if ($passkey['authenticator_type'] !== null): ?>
+                                                        <span class="badge flex-shrink-0"><?= View::e($passkey['authenticator_type']) ?></span>
+                                                    <?php endif; ?>
+                                                </div>
                                                 <div class="text-xs text-stone-500 dark:text-stone-400">
                                                     Added <?= View::e($passkey['created_at']) ?><?= $passkey['last_used_at'] !== null ? ' &middot; last used ' . View::e($passkey['last_used_at']) : '' ?>
                                                 </div>

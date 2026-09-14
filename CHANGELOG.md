@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+- Default account for Quick Add (Settings → Profile) and surfaced
+  hardware security key support (Settings → Security). Migration 0055
+  adds `users.quick_add_default_account_id` (nullable, FK to `accounts`)
+  — a per-user preselection for `/quick-add`'s account field, validated
+  against the same active-accounts list Quick Add itself renders both
+  when it's saved (`ProfileController::updateQuickAddSettings()`) and
+  every time the page loads (`TransactionController::showQuickAdd()`),
+  so a posted id can never reach the column unless it's genuinely one of
+  the current household's own accounts, and an account archived after
+  being set as the default just quietly falls back to "no default." A
+  household setting this isn't — each member's default is independent.
+  Separately: `Settings → Security`'s "Add a passkey" already accepted
+  hardware security keys (YubiKey, etc.) — `WebAuthnService::
+  registrationOptions()` never restricted `authenticatorAttachment` — it
+  just wasn't advertised, and a registered key's `device_name` (derived
+  from the browser/OS user agent) couldn't actually be told apart from
+  that same device's own Face ID/Touch ID. `UserAgent::authenticatorType()`
+  now derives a "Security key" label from the transports a credential
+  itself reported at registration (`usb`/`nfc`/`ble` vs. `internal`,
+  already stored in `webauthn_credentials.transports` and previously
+  unused), and the security page's copy now mentions hardware keys
+  outright. See `docs/security.md`'s "Passkeys" and new "Quick Add
+  default account" sections for the full reasoning.
+
 - Dedicated Quick Add page (`resources/views/transactions/quick-add.php`,
   `TransactionController::showQuickAdd()`, `GET /quick-add`) — the
   home-screen icon's launch target (`manifest.json`'s `start_url`) is now

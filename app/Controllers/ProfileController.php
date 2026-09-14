@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Http\Request;
 use App\Http\Response;
 use App\Middleware\AuthMiddleware;
+use App\Repositories\AccountRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\HouseholdRepository;
 use App\Repositories\UserRepository;
@@ -31,6 +32,10 @@ final class ProfileController
             'user' => $user,
             'household' => $householdId !== null ? (new HouseholdRepository())->findById($householdId) : null,
             'role' => AuthMiddleware::role(),
+            // Same active-accounts list Quick Add itself offers — no
+            // point letting someone default to an account Quick Add
+            // wouldn't actually show them.
+            'quickAddAccounts' => $householdId !== null ? (new AccountRepository())->listForHousehold($householdId) : [],
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,
@@ -60,10 +65,16 @@ final class ProfileController
         // Current session first, then most-recently-active.
         usort($sessions, fn (array $a, array $b): int => $b['is_current'] <=> $a['is_current']);
 
+        $passkeys = array_map(function (array $passkey): array {
+            $passkey['authenticator_type'] = UserAgent::authenticatorType($passkey['transports']);
+
+            return $passkey;
+        }, (new WebAuthnCredentialRepository())->listForUser($userId));
+
         Response::html(View::render('settings/security', [
             'twoFactorEnabled' => $user !== null && $user['two_factor_enabled_at'] !== null,
             'sessions' => $sessions,
-            'passkeys' => (new WebAuthnCredentialRepository())->listForUser($userId),
+            'passkeys' => $passkeys,
             'csrfToken' => Csrf::token(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,
@@ -304,6 +315,51 @@ final class ProfileController
         );
 
         $_SESSION['_flash_notice'] = 'Profile updated.';
+        header('Location: /settings/profile');
+    }
+
+    /**
+     * Settings > Profile's "default account for Quick Add" card. A
+     * blank selection clears the default (back to the plain placeholder
+     * on /quick-add) rather than being rejected as invalid input.
+     */
+    public function updateQuickAddSettings(Request $request): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $userId = (int) AuthMiddleware::userId();
+        $householdId = (int) AuthMiddleware::householdId();
+        $posted = $request->post('quick_add_default_account_id');
+
+        if (!Csrf::verify($request->post('csrf_token'))) {
+            $_SESSION['_flash_error'] = 'Your session expired. Please try again.';
+            header('Location: /settings/profile');
+            return;
+        }
+
+        $accountId = null;
+        if ($posted !== null && $posted !== '') {
+            // Never trust a posted account id at face value — it must
+            // actually belong to this household, and be one of the
+            // active accounts Quick Add itself would offer (an archived
+            // account could still be *found*, since findById() doesn't
+            // filter by status, but defaulting to one Quick Add wouldn't
+            // even list would just leave the field looking unset).
+            $accounts = (new AccountRepository())->listForHousehold($householdId);
+            $validIds = array_map(fn (array $account): int => (int) $account['id'], $accounts);
+
+            if (!in_array((int) $posted, $validIds, true)) {
+                $_SESSION['_flash_error'] = 'Please choose a valid account.';
+                header('Location: /settings/profile');
+                return;
+            }
+
+            $accountId = (int) $posted;
+        }
+
+        (new UserRepository())->updateQuickAddDefaultAccount($userId, $accountId);
+
+        $_SESSION['_flash_notice'] = 'Quick Add settings updated.';
         header('Location: /settings/profile');
     }
 
