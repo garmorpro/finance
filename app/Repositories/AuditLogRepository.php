@@ -84,7 +84,7 @@ final class AuditLogRepository
     }
 
     /**
-     * @param array{date_from?: string, date_to?: string} $filters
+     * @param array{date_from?: string, date_to?: string, category?: string} $filters
      * @return array{0: string, 1: array<string, mixed>}
      */
     private function buildWhere(int $householdId, array $filters): array
@@ -100,6 +100,21 @@ final class AuditLogRepository
         if (!empty($filters['date_to'])) {
             $clauses[] = 'a.created_at <= :date_to';
             $params['date_to'] = $filters['date_to'] . ' 23:59:59';
+        }
+
+        // Mirrors App\Support\AuditActionLabels::category() as a SQL
+        // fragment rather than sharing code with it — that method
+        // classifies a single already-known action string for display,
+        // this builds a WHERE clause, different enough jobs that a
+        // shared implementation would need to serve both awkwardly. Keep
+        // the two in sync if a new category-affecting action pattern is
+        // ever added.
+        if (($filters['category'] ?? '') === 'quick_add_key') {
+            $clauses[] = "(a.action LIKE 'quick\\_add\\_key.%' OR a.action = 'transaction.created_via_quick_add_key')";
+        } elseif (($filters['category'] ?? '') === 'security') {
+            $clauses[] = "(a.action LIKE 'login.%' OR a.action LIKE '2fa.%' OR a.action LIKE 'webauthn.%'
+                OR a.action LIKE 'password.%' OR a.action LIKE 'password\\_reset.%' OR a.action LIKE 'session.%'
+                OR a.action LIKE 'registration.%' OR a.action IN ('email.verified', 'logout'))";
         }
 
         return ['WHERE ' . implode(' AND ', $clauses), $params];

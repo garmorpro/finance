@@ -401,7 +401,27 @@ household-readable text for display only — it has no bearing on what's
 actually stored or queried, and a new `action` added anywhere in the
 app without a corresponding label just falls back to a readably
 formatted version of the raw string rather than needing this list kept
-in sync.
+in sync. Its `category()`/`dotColor()` methods (the page's filter chips
+and per-event timeline dot) are pattern-matched against the action
+string too — a `danger` dot is specifically "a failed or blocked
+attempt," matched via `str_contains($action, 'failed'|'rate_limited'|
+'blocked')` rather than a hand-maintained list, so a new failure-style
+action anywhere in the app is correctly flagged without this file
+needing an update every time one's added. The "Security"/"Quick Add
+key" filter chips re-express that same classification as SQL in
+`AuditLogRepository::buildWhere()` (a `WHERE` clause and a display
+classifier are different enough jobs that sharing an implementation
+between them isn't worth it) — keep the two in sync if a new
+category-affecting action pattern is ever introduced.
+
+The timeline's day headers are grouped twice: once server-side by the
+*server's* UTC calendar day (works with no JS, and is the fallback if
+it never runs), then replaced client-side
+(`public/assets/js/local-time.js`) by the *viewer's own local* calendar
+day — an event at 7pm CDT is already past midnight UTC, i.e.
+"tomorrow" by the server's own clock, which would otherwise group it
+under a day header that visibly disagrees with the local time sitting
+right next to it once that's converted.
 
 ## Encryption at rest
 

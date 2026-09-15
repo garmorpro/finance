@@ -100,4 +100,56 @@ final class AuditActionLabels
 
         return mb_strtoupper(mb_substr($readable, 0, 1)) . mb_substr($readable, 1);
     }
+
+    /**
+     * The timeline dot color on Settings > Audit Log. Pattern-matched
+     * against the action string itself rather than a hand-maintained
+     * per-action list, so a new *_failed/*rate_limited/*blocked_*
+     * action anywhere in the app is correctly flagged red without this
+     * file needing an update every time one's added. "danger" is
+     * reserved specifically for a failed or blocked attempt — a
+     * deliberate, successful action like revoking a key or removing a
+     * passkey is a routine security housekeeping action, not a red
+     * flag, even though the word alone ("revoked") might read as
+     * alarming out of context.
+     */
+    public static function dotColor(string $action): string
+    {
+        if ($action === 'login.success') {
+            return 'success';
+        }
+
+        if (str_contains($action, 'failed') || str_contains($action, 'rate_limited') || str_contains($action, 'blocked')) {
+            return 'danger';
+        }
+
+        if (str_starts_with($action, 'quick_add_key.') || $action === 'transaction.created_via_quick_add_key') {
+            return 'accent';
+        }
+
+        return 'routine';
+    }
+
+    /**
+     * Settings > Audit Log's filter chips (All activity / Security /
+     * Quick Add key). "other" covers everything else (transactions,
+     * budgets, categories, ...) and has no dedicated chip of its own —
+     * "All activity" already shows it.
+     */
+    public static function category(string $action): string
+    {
+        if (str_starts_with($action, 'quick_add_key.') || $action === 'transaction.created_via_quick_add_key') {
+            return 'quick_add_key';
+        }
+
+        if (str_starts_with($action, 'login.') || str_starts_with($action, '2fa.') || str_starts_with($action, 'webauthn.')
+            || str_starts_with($action, 'password.') || str_starts_with($action, 'password_reset.')
+            || str_starts_with($action, 'session.') || str_starts_with($action, 'registration.')
+            || $action === 'email.verified' || $action === 'logout'
+        ) {
+            return 'security';
+        }
+
+        return 'other';
+    }
 }

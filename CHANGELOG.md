@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+- Redesigned Settings: the sub-nav is now a real search box (filters
+  the nav links as you type — `settings-nav.js`) over pill-style links,
+  applied across every Settings page since it's one shared partial.
+  Audit Log specifically moves from a table (whose "Details" column had
+  nowhere to go on the ~all-empty common case) to a day-grouped
+  timeline — a colored dot per event (green for a successful sign-in,
+  red for anything failed/blocked, terracotta for Quick Add key
+  activity), an initials avatar and IP chip under each event, and three
+  real filter chips (All activity / Security / Quick Add key) that
+  narrow the same query the date-range fields already did. Day headers
+  are grouped server-side by UTC as a no-JS fallback, then corrected
+  client-side to the viewer's own local calendar day — an event at 7pm
+  CDT is already "tomorrow" in UTC, which would otherwise show it under
+  a day header that visibly disagreed with the local time next to it.
+  See `docs/security.md`'s "Audit log" section for the filter/category
+  matching details.
+
 - Settings → Audit Log (Owner-only) — a household's own security/
   activity trail in the app itself: sign-ins, failed sign-in/2FA/
   passkey attempts, transaction and settings changes, Quick Add key

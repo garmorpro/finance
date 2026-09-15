@@ -31,6 +31,13 @@ final class AuditLogController
         $filters = [
             'date_from' => $request->query('date_from'),
             'date_to' => $request->query('date_to'),
+            // Anything other than the two real categories is treated as
+            // "All activity" by AuditLogRepository::buildWhere() (no
+            // extra WHERE clause added) rather than needing a whitelist
+            // check here first — there's no query this value could ever
+            // reach that isn't a plain `=== 'quick_add_key'` /
+            // `=== 'security'` string comparison.
+            'category' => $request->query('category'),
         ];
 
         $page = max(1, (int) $request->query('page', '1'));

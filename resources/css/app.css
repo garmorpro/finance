@@ -223,12 +223,41 @@
     }
   }
 
+  /*
+   * Settings nav v2 ("Option B" from the redesign) — a search box above
+   * pill-style links, active item filled solid rather than tinted.
+   * Search is real (settings-nav.js filters by link text as you type),
+   * not decorative — a control that looks interactive but isn't is
+   * worse than not having it.
+   */
+  .settings-search {
+    @apply flex items-center gap-2 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-2 mb-4 text-stone-400 dark:text-stone-500;
+  }
+
+  .settings-search svg {
+    @apply w-4 h-4 flex-shrink-0;
+  }
+
+  .settings-search input {
+    @apply flex-1 min-w-0 bg-transparent border-none outline-none text-sm text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-stone-500;
+  }
+
   .settings-nav-heading {
     @apply text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-600 mb-2 px-3;
   }
+  /*
+   * Space before every group but the first — .settings-nav-heading
+   * itself is always the first child of its own .settings-nav-group
+   * (_nav.php), so a :not(:first-child) on the heading would never
+   * match anything; the adjacent-sibling combinator on the *group*
+   * correctly targets "any group that follows another one" instead.
+   */
+  .settings-nav-group + .settings-nav-group {
+    @apply mt-4;
+  }
 
   .settings-nav-link {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-white transition-colors;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-full text-sm font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-white transition-colors;
   }
 
   .settings-nav-link svg {
@@ -236,11 +265,93 @@
   }
 
   .settings-nav-link-active {
-    @apply settings-nav-link bg-terracotta-50 text-terracotta-700 hover:bg-terracotta-50 hover:text-terracotta-700 dark:bg-terracotta-950/50 dark:text-terracotta-300 dark:hover:bg-terracotta-950/50 dark:hover:text-terracotta-300;
+    @apply settings-nav-link bg-terracotta-600 text-white hover:bg-terracotta-600 hover:text-white dark:bg-terracotta-600 dark:hover:bg-terracotta-600 dark:hover:text-white;
   }
 
   .settings-nav-link-active svg {
     @apply opacity-100;
+  }
+
+  /*
+   * Audit Log's day-grouped timeline (replaces a plain table — see
+   * docs/security.md's "Audit log" section for why a table's own
+   * "Details" column had nowhere to go when empty, which is most rows).
+   * The connecting line is a single absolutely-positioned pseudo-element
+   * on the wrapper, not per-row, so it reads as one continuous thread
+   * rather than disconnected segments.
+   */
+  .audit-timeline {
+    @apply relative pl-6;
+  }
+  .audit-timeline::before {
+    content: "";
+    @apply absolute top-1 bottom-1 w-px bg-stone-200 dark:bg-stone-800;
+    left: 5px;
+  }
+
+  .audit-day-label {
+    @apply text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-stone-600 mt-6 mb-3;
+  }
+  .audit-day-label:first-child {
+    @apply mt-0;
+  }
+
+  .audit-event {
+    @apply relative pb-4;
+  }
+  .audit-event::before {
+    content: "";
+    @apply absolute w-2.5 h-2.5 rounded-full border-2 border-white dark:border-stone-900 bg-stone-400 dark:bg-stone-600;
+    left: -1.5rem;
+    top: 0.2rem;
+  }
+  /*
+   * One modifier class per App\Support\AuditActionLabels::dotColor()
+   * outcome, added alongside .audit-event in the view — not a CSS
+   * custom property set via an inline style, since theme() (used for
+   * .audit-event::before's own default color above) only resolves at
+   * Tailwind's build time and is meaningless written into a runtime
+   * style="" attribute. The combined selector (0,2,1) reliably beats
+   * the plain .audit-event::before default (0,1,1) regardless of
+   * source order, same reasoning as .table-base .table-group-row td
+   * elsewhere in this file.
+   */
+  .audit-event.audit-event-success::before {
+    @apply bg-emerald-500;
+  }
+  .audit-event.audit-event-danger::before {
+    @apply bg-red-500;
+  }
+  .audit-event.audit-event-accent::before {
+    @apply bg-terracotta-500;
+  }
+  .audit-event-row {
+    @apply flex items-baseline justify-between gap-4;
+  }
+  .audit-event-title {
+    @apply text-sm font-semibold text-stone-900 dark:text-white;
+  }
+  .audit-event-time {
+    @apply text-xs text-stone-400 dark:text-stone-600 whitespace-nowrap flex-shrink-0;
+  }
+  .audit-event-meta {
+    @apply flex items-center gap-2 mt-1.5;
+  }
+  .audit-avatar {
+    @apply inline-flex items-center justify-center w-[18px] h-[18px] rounded-full bg-terracotta-100 dark:bg-terracotta-950 text-terracotta-700 dark:text-terracotta-300 text-[.6rem] font-bold flex-shrink-0;
+  }
+  .audit-ip-chip {
+    @apply text-xs text-stone-400 dark:text-stone-600 bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded;
+  }
+  .audit-event-detail {
+    @apply text-xs text-stone-400 dark:text-stone-600 mt-1;
+  }
+
+  .audit-filter-chip {
+    @apply text-sm font-semibold px-3.5 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:border-stone-300 dark:hover:border-stone-600 transition-colors;
+  }
+  .audit-filter-chip-active {
+    @apply audit-filter-chip bg-stone-900 border-stone-900 text-white hover:text-white dark:bg-white dark:border-white dark:text-stone-900 dark:hover:text-stone-900;
   }
 
   /*

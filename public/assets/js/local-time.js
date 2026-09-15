@@ -23,4 +23,42 @@
       minute: '2-digit',
     });
   });
+
+  // Settings > Audit Log's day-grouped timeline (resources/views/
+  // settings/audit-log.php) is rendered with day headers grouped by
+  // the *server's* UTC calendar day, as a no-JS fallback — but a 7pm
+  // CDT event is already past midnight UTC, i.e. "tomorrow" server-
+  // side, which would show it grouped under the wrong day relative to
+  // the local time sitting right next to it once the pass above
+  // converts that. Replaces those headers with ones grouped by the
+  // viewer's own local calendar day instead, reading the same
+  // <time datetime> instants rather than re-deriving anything.
+  var timeline = document.querySelector('.audit-timeline');
+  if (timeline) {
+    timeline.querySelectorAll('.audit-day-label').forEach(function (el) {
+      el.remove();
+    });
+
+    var lastLabel = null;
+    timeline.querySelectorAll('.audit-event').forEach(function (event) {
+      var timeEl = event.querySelector('time[datetime]');
+      if (!timeEl) {
+        return;
+      }
+
+      var date = new Date(timeEl.getAttribute('datetime'));
+      if (isNaN(date.getTime())) {
+        return;
+      }
+
+      var label = date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+      if (label !== lastLabel) {
+        lastLabel = label;
+        var heading = document.createElement('p');
+        heading.className = 'audit-day-label';
+        heading.textContent = label;
+        timeline.insertBefore(heading, event);
+      }
+    });
+  }
 })();
