@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+- Fixed every login/registration/Quick-Add-key rate limit and every IP
+  column in the audit log and active-sessions list showing `::1`
+  instead of the real visitor address — found while running the new
+  audit script above. This deployment reaches the internet through
+  Cloudflare Tunnel, which connects to Apache over loopback, so
+  `REMOTE_ADDR` was never the actual client IP. `Request::ip()` now
+  reads Cloudflare's own `CF-Connecting-IP` header (validated, with a
+  `REMOTE_ADDR` fallback) — trustworthy specifically because the tunnel
+  means there's no way to reach this origin except through Cloudflare's
+  edge, so the header can't be forged by hitting the server directly.
+  See `docs/security.md`'s new "Client IP detection" section, which
+  also flags this reasoning needs revisiting if this deployment ever
+  moves off Cloudflare Tunnel.
+
 - `bin/audit-access.php` — a new, read-only CLI report listing every
   household, user, active session, pending invitation, and registered
   passkey/hardware key in the database, plus recent registration,

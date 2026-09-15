@@ -112,8 +112,30 @@ final class Request
         return array_values(array_unique(array_map('intval', array_filter($values, 'is_numeric'))));
     }
 
+    /**
+     * This deployment sits behind Cloudflare Tunnel (cloudflared), which
+     * connects to Apache over the local loopback interface — every
+     * request's real REMOTE_ADDR is always ::1/127.0.0.1 regardless of
+     * who's actually visiting, which makes IP-based rate limiting
+     * (RateLimiter) and audit-log IP tracking (AuditLogRepository)
+     * meaningless without this. CF-Connecting-IP is safe to trust here
+     * specifically because Cloudflare's edge sets it on every request
+     * and the tunnel means there is no other way to reach this origin —
+     * an attacker can't bypass Cloudflare to hit Apache directly and
+     * forge the header themselves the way they could on a normal
+     * internet-facing port. Falls back to REMOTE_ADDR (and validates
+     * whatever CF-Connecting-IP contains) so this stays correct if the
+     * header's ever missing — a local CLI request, or if this
+     * deployment ever moves off Cloudflare Tunnel — rather than trusting
+     * a malformed or absent value.
+     */
     public function ip(): string
     {
+        $cfConnectingIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? null;
+        if (is_string($cfConnectingIp) && filter_var($cfConnectingIp, FILTER_VALIDATE_IP) !== false) {
+            return $cfConnectingIp;
+        }
+
         return is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
     }
 

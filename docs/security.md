@@ -33,6 +33,33 @@ this doc, not just one of them.
   isn't a meaningfully larger trust boundary for a self-hosted
   single-server deployment.
 
+## Client IP detection
+
+This deployment reaches the internet via Cloudflare Tunnel
+(`cloudflared`), which connects to Apache over the local loopback
+interface — every request's real `REMOTE_ADDR` is `::1`/`127.0.0.1`
+regardless of who's actually visiting. `Request::ip()` uses the
+`CF-Connecting-IP` header instead when present (falling back to
+`REMOTE_ADDR`, and validating whatever the header contains with
+`FILTER_VALIDATE_IP` rather than trusting it blindly) — every login
+rate limit, registration rate limit, Quick Add key unlock rate limit,
+and IP column in the audit log/active-sessions list depends on this
+being the real visitor address, not the tunnel's own loopback
+connection to itself.
+
+Trusting a client-supplied header for the "real" IP is normally a
+spoofing risk (an attacker sets it themselves to dodge a rate limit or
+poison a log) — safe here specifically because Cloudflare Tunnel means
+there is no other way to reach this origin at all. Cloudflare's edge
+sets `CF-Connecting-IP` on every request before it ever reaches the
+tunnel; an attacker can't bypass Cloudflare and hit Apache directly to
+forge the header themselves, unlike on a normal internet-facing port.
+**This reasoning breaks if this deployment ever moves off Cloudflare
+Tunnel** (a different reverse proxy, or a directly-exposed port) —
+revisit `Request::ip()` first if that ever changes, since a
+directly-reachable origin would need to stop trusting this header (or
+verify it against a different, actually-trustworthy hop instead).
+
 ## Public registration
 
 `RegistrationController` (`/register`) lets anyone create a brand new
