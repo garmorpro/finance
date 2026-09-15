@@ -111,6 +111,37 @@ $rowIcons = [
     'expense' => $arrowDownIcon,
 ];
 
+/**
+ * Grouping the list into a header row per day (like the summary cards
+ * above, transfers count toward neither total) only makes sense when
+ * the rows are actually in date order — sorted by payee or amount, "the
+ * 22nd" would appear scattered across several unrelated single-row
+ * groups instead of one block, which reads as broken rather than
+ * grouped. Falls back to the plain one-row-per-transaction table (with
+ * its own Date column) for those two sorts; date is the default and by
+ * far the common case.
+ */
+$isDateSorted = $sort === 'date';
+
+$dayTotals = [];
+if ($isDateSorted) {
+    foreach ($transactions as $transaction) {
+        if ($transaction['transaction_type'] === 'transfer') {
+            continue;
+        }
+        $day = $transaction['transaction_date'];
+        $dayTotals[$day] = bcadd($dayTotals[$day] ?? '0.00', $transaction['amount'], 2);
+    }
+}
+
+$currentYear = gmdate('Y');
+$dayLabel = static function (string $date) use ($currentYear): string {
+    $timestamp = strtotime($date);
+    $format = date('Y', $timestamp) === $currentYear ? 'l, M j' : 'l, M j, Y';
+
+    return date($format, $timestamp);
+};
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -293,12 +324,20 @@ $rowIcons = [
                         <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
                         <input type="hidden" name="return_query" value="<?= View::e($returnQuery) ?>">
 
+                        <?php if ($isDateSorted): ?>
+                            <div class="flex items-center justify-end mb-2 px-1">
+                                <a href="<?= View::e($sortLink('date')) ?>" class="text-xs font-medium text-stone-500 dark:text-stone-400 hover:text-terracotta-600 dark:hover:text-terracotta-400"><?= $dir === 'desc' ? 'Newest first' : 'Oldest first' ?><?= $sortIndicator('date') ?></a>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="card">
                             <table class="table-base">
                                 <thead>
                                     <tr>
                                         <th class="w-8"><input type="checkbox" id="select-all-checkbox" title="Select all on this page" class="rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500"></th>
-                                        <th><a href="<?= View::e($sortLink('date')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Date<?= $sortIndicator('date') ?></a></th>
+                                        <?php if (!$isDateSorted): ?>
+                                            <th><a href="<?= View::e($sortLink('date')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Date<?= $sortIndicator('date') ?></a></th>
+                                        <?php endif; ?>
                                         <th><a href="<?= View::e($sortLink('payee')) ?>" class="hover:text-stone-700 dark:hover:text-stone-200">Payee<?= $sortIndicator('payee') ?></a></th>
                                         <th>Category</th>
                                         <th>Account</th>
@@ -307,7 +346,16 @@ $rowIcons = [
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <?php $currentGroupDate = null; ?>
                                     <?php foreach ($transactions as $transaction): ?>
+                                        <?php if ($isDateSorted && $transaction['transaction_date'] !== $currentGroupDate): ?>
+                                            <?php $currentGroupDate = $transaction['transaction_date']; ?>
+                                            <tr class="table-group-row">
+                                                <td colspan="4"><?= View::e($dayLabel($currentGroupDate)) ?></td>
+                                                <td class="text-right table-group-row-total tabular-nums"><?= Money::format($dayTotals[$currentGroupDate] ?? '0.00') ?></td>
+                                                <td></td>
+                                            </tr>
+                                        <?php endif; ?>
                                         <?php
                                         $categoryColor = $transaction['category_color'] ?? null;
                                         $isTransfer = $transaction['transaction_type'] === 'transfer';
@@ -319,7 +367,9 @@ $rowIcons = [
                                             <td>
                                                 <input type="checkbox" name="transaction_ids[]" value="<?= (int) $transaction['id'] ?>" class="row-checkbox rounded border-stone-300 dark:border-stone-700 text-terracotta-600 focus:ring-terracotta-500">
                                             </td>
-                                            <td class="text-stone-500 dark:text-stone-400 whitespace-nowrap"><?= View::e($transaction['transaction_date']) ?></td>
+                                            <?php if (!$isDateSorted): ?>
+                                                <td class="text-stone-500 dark:text-stone-400 whitespace-nowrap"><?= View::e($transaction['transaction_date']) ?></td>
+                                            <?php endif; ?>
                                             <td class="font-medium text-stone-900 dark:text-white">
                                                 <div class="flex items-center gap-3">
                                                     <span class="txn-icon" style="background:<?= View::e($rowIconColor) ?>;"><?= $rowIcon ?></span>

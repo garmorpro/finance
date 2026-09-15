@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- Transactions page: rows are now grouped under a header for each day
+  (matching the app's existing "grouped section" table style already
+  used on the Accounts page — reused verbatim, no new CSS), each
+  showing that day's net total (income minus expenses; transfers count
+  toward neither, same rule as the page's own summary cards). Only
+  applies when sorted by date (the default) — sorting by payee or
+  amount instead falls back to the previous flat table with its own
+  Date column, since grouping rows that aren't in date order would
+  scatter one day across several unrelated single-row groups. A small
+  "Newest first / Oldest first" link above the table replaces the
+  removed Date column header as the way to flip sort direction while
+  grouped.
+
 - The Transactions page (`/transactions`) now defaults to the current
   calendar month instead of every transaction ever entered — nothing is
   hidden permanently, it's just the starting view. A bare visit (no
