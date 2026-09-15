@@ -148,19 +148,103 @@ printRowsOrNone(
         . "created: {$r['created_at']} UTC  last used: " . ($r['last_used_at'] ?? 'never') . " UTC"
 );
 
+section('Row count vs. highest ID ever assigned (reveals past deletions)');
+foreach (['households', 'users'] as $table) {
+    $autoIncrement = (int) $pdo->query(
+        "SELECT AUTO_INCREMENT FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{$table}'"
+    )->fetchColumn();
+    $rowCount = (int) $pdo->query("SELECT COUNT(*) FROM `{$table}`")->fetchColumn();
+    // AUTO_INCREMENT is the *next* id to be handed out, so minus one is
+    // the highest id this table has ever assigned, deleted or not — a
+    // gap between that and how many rows actually exist now is direct
+    // proof something was created and later removed, independent of
+    // whatever an app-level "deleted_at" soft-delete column says.
+    $highestEverAssigned = $autoIncrement - 1;
+    $everRemoved = $highestEverAssigned - $rowCount;
+
+    echo "{$table}: {$rowCount} row(s) now, highest id ever assigned was {$highestEverAssigned}";
+    echo $everRemoved > 0 ? " — {$everRemoved} row(s) existed at some point and are now gone\n" : " — none ever removed\n";
+}
+
 section('Integrity check');
-$orphanHouseholds = (int) $pdo->query(
-    'SELECT COUNT(*) FROM households h LEFT JOIN users u ON u.id = h.owner_user_id WHERE u.id IS NULL'
-)->fetchColumn();
 $usersWithoutHousehold = (int) $pdo->query(
     "SELECT COUNT(*) FROM users u
      LEFT JOIN household_members m ON m.user_id = u.id
      WHERE m.id IS NULL AND u.deleted_at IS NULL"
 )->fetchColumn();
-echo "Households with a missing owner account: {$orphanHouseholds}\n";
 echo "Active users not in any household: {$usersWithoutHousehold}\n";
 
+/**
+ * Every (table, column, referenced table) triple this schema's own
+ * migrations declare a real FOREIGN KEY for, pointed at households or
+ * users — see `grep -rhoE "FOREIGN KEY \([a-z_]+\) REFERENCES
+ * (households|users)"  database/migrations/*.sql` for how this list was
+ * built. A live FK constraint makes a genuine dangling reference
+ * impossible through a normal DELETE (MySQL refuses it outright) — the
+ * only way one of these can actually be non-zero is if
+ * FOREIGN_KEY_CHECKS was turned off for a manual cleanup (a common
+ * instinct when a delete hits a constraint error), which is exactly the
+ * scenario worth checking for after removing something by hand rather
+ * than through the app itself.
+ */
+$foreignKeyChecks = [
+    ['accounts', 'household_id', 'households'],
+    ['accounts', 'created_by_user_id', 'users'],
+    ['account_balance_history', 'changed_by_user_id', 'users'],
+    ['attachments', 'uploaded_by_user_id', 'users'],
+    ['audit_logs', 'household_id', 'households'],
+    ['audit_logs', 'user_id', 'users'],
+    ['budget_category_defaults', 'household_id', 'households'],
+    ['budget_review_links', 'household_id', 'households'],
+    ['budget_review_links', 'user_id', 'users'],
+    ['budgets', 'household_id', 'households'],
+    ['categories', 'household_id', 'households'],
+    ['category_groups', 'household_id', 'households'],
+    ['email_verification_tokens', 'user_id', 'users'],
+    ['financial_goals', 'household_id', 'households'],
+    ['financial_goals', 'created_by_user_id', 'users'],
+    ['financial_goals', 'responsible_user_id', 'users'],
+    ['goal_contributions', 'user_id', 'users'],
+    ['household_invitations', 'household_id', 'households'],
+    ['household_invitations', 'invited_by_user_id', 'users'],
+    ['household_members', 'household_id', 'households'],
+    ['household_members', 'user_id', 'users'],
+    ['households', 'owner_user_id', 'users'],
+    ['imports', 'household_id', 'households'],
+    ['imports', 'imported_by_user_id', 'users'],
+    ['password_reset_tokens', 'user_id', 'users'],
+    ['recurring_items', 'household_id', 'households'],
+    ['recurring_items', 'created_by_user_id', 'users'],
+    ['tags', 'household_id', 'households'],
+    ['transaction_rules', 'household_id', 'households'],
+    ['transaction_rules', 'created_by_user_id', 'users'],
+    ['transactions', 'household_id', 'households'],
+    ['transactions', 'created_by_user_id', 'users'],
+    ['transactions', 'last_edited_by_user_id', 'users'],
+    ['user_notification_preferences', 'user_id', 'users'],
+    ['user_sessions', 'user_id', 'users'],
+    ['webauthn_credentials', 'user_id', 'users'],
+];
+
+$danglingFound = false;
+foreach ($foreignKeyChecks as [$table, $column, $referencedTable]) {
+    $count = (int) $pdo->query(
+        "SELECT COUNT(*) FROM `{$table}` c
+         LEFT JOIN `{$referencedTable}` p ON p.id = c.`{$column}`
+         WHERE c.`{$column}` IS NOT NULL AND p.id IS NULL"
+    )->fetchColumn();
+
+    if ($count > 0) {
+        $danglingFound = true;
+        echo "DANGLING: {$table}.{$column} has {$count} row(s) pointing at a {$referencedTable} row that no longer exists\n";
+    }
+}
+
+if (!$danglingFound) {
+    echo "No dangling references found across " . count($foreignKeyChecks) . " household_id/user_id foreign keys checked.\n";
+}
+
 echo "\nDone. Everything above is exactly what's in the database — nothing here decides\n"
-    . "what's yours. If a household, user, session, or invitation above isn't one you\n"
-    . "recognize, don't delete anything yet — flag it and we'll figure out the safest way\n"
-    . "to remove it (a household has real foreign-key relationships to clean up in order).\n";
+    . "what's yours. If a household, user, session, invitation, or DANGLING line above\n"
+    . "isn't something you recognize or expect, don't delete anything else yet — flag it\n"
+    . "and we'll figure out the safest way to clean it up.\n";

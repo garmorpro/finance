@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- `bin/audit-access.php` now also checks for genuinely dangling data
+  after a manual database cleanup (removing something by hand rather
+  than through the app can skip real foreign-key relationships): a
+  row-count-vs-highest-id-ever-assigned check on `households`/`users`
+  (proves something existed and was deleted even after the row itself
+  is gone, independent of any soft-delete flag), and a sweep of every
+  `household_id`/`user_id` foreign key this schema actually declares
+  (36 of them), flagging any row whose parent household or user no
+  longer exists.
+
 - Fixed every login/registration/Quick-Add-key rate limit and every IP
   column in the audit log and active-sessions list showing `::1`
   instead of the real visitor address — found while running the new
