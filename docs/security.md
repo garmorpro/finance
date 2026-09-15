@@ -43,6 +43,13 @@ boundary between households at all (see "Authorization" below and
 `tests/Integration/HouseholdIsolationTest.php`'s
 `test_registration_seeded_categories_are_isolated_between_households`).
 
+`php bin/audit-access.php` (read-only) lists every household, user,
+active session, pending invitation, and registered passkey in the
+database, plus recent registration/login/Quick-Add-key failure activity
+from the audit log — run it any time to confirm nothing unrecognized
+has made it in, especially right after a suspicious signup attempt
+(which is exactly why this script exists).
+
 - **Gated behind `REGISTRATION_ENABLED`, closed by default.**
   `App\Support\PublicRegistration::isOpen()` reads it, and — unlike
   every other feature flag in this file (Turnstile, mail) — treats an

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- `bin/audit-access.php` — a new, read-only CLI report listing every
+  household, user, active session, pending invitation, and registered
+  passkey/hardware key in the database, plus recent registration,
+  login-failure, and Quick-Add-key-failure activity from the audit log.
+  Written to answer "is there anything in my database that isn't mine"
+  after a stranger reached the (now-closed) public registration form.
+  Makes no changes on its own — it surfaces everything and leaves the
+  judgment call to a human. See `docs/security.md`'s "Public
+  registration" section.
+
 - Public registration (the "Create a household" button, `/register`) is
   now closed by default — a stranger reached it and attempted to sign
   up. `App\Support\PublicRegistration::isOpen()` reads a new
