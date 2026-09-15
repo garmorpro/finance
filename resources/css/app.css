@@ -1215,6 +1215,32 @@
     background: linear-gradient(90deg, transparent, #b5854e, transparent);
   }
 
+  /*
+   * Expense/Income toggle — sits above the amount box. Color-coded to
+   * match how the rest of the app already distinguishes the two
+   * (terracotta for expense throughout this component already; the
+   * same emerald as .quickadd-success-mark and the transactions list's
+   * income amounts for income), so the active state alone communicates
+   * type without needing a separate label.
+   */
+  .quickadd-type-toggle {
+    @apply flex gap-2 mb-4;
+  }
+  .quickadd-type-btn {
+    @apply flex-1 rounded-xl py-2.5 text-sm font-bold text-center border border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 bg-white dark:bg-stone-950 transition-colors;
+  }
+  .quickadd-type-btn[aria-pressed="true"] {
+    @apply border-transparent text-white;
+  }
+  .quickadd-type-btn[aria-pressed="true"][data-type="expense"] {
+    background: linear-gradient(155deg, #e2694b, #a53d27);
+    box-shadow: 0 6px 16px -6px rgba(201, 79, 50, .5);
+  }
+  .quickadd-type-btn[aria-pressed="true"][data-type="income"] {
+    background: linear-gradient(155deg, #34a35f, #1f7a44);
+    box-shadow: 0 6px 16px -6px rgba(31, 122, 68, .5);
+  }
+
   .quickadd-amount-box {
     @apply rounded-2xl border p-4 pb-3.5 mb-4;
     background: linear-gradient(160deg, #fbf4ee, #f7e9dd);

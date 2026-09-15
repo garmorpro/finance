@@ -262,14 +262,15 @@ radius of the key ever leaking:
 
 - **Narrowest possible capability.** A Quick Add key authorizes exactly
   one thing: `TransactionController::storeQuickAdd()` (`POST
-  /quick-add`), which can only create a simple expense transaction
-  (amount/payee/account/category) against an account the household
-  already has. It is a completely separate code path from `store()`
-  (`POST /transactions`, used by the full form and the sidebar's
-  quick-add popup) — `transaction_type` isn't even read from the
-  request on this endpoint, it's hardcoded `'expense'` — so there is no
-  way for a key to reach income, transfers, splits, or any other part of
-  the app: no balances, no other transactions, no settings, nothing.
+  /quick-add`), which can only create a simple income or expense
+  transaction (type/amount/payee/account/category) against an account
+  the household already has. It is a completely separate code path from
+  `store()` (`POST /transactions`, used by the full form and the
+  sidebar's quick-add popup) — `transaction_type` is read from the
+  request, but strictly whitelisted to `income`/`expense` only (never
+  trusted as-is), so there is no way for a key to reach a transfer, a
+  split, or any other part of the app: no balances, no other
+  transactions, no settings, nothing.
 - **Per-user, not per-household**, matching the same reasoning as the
   default-account setting above — each household member generates their
   own from their own Settings page while logged in normally; losing a

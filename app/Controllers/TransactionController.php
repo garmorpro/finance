@@ -180,9 +180,9 @@ final class TransactionController
     }
 
     /**
-     * A standalone page (no sidebar/nav chrome) with just the four-field
-     * Amount/Payee/Account/Category form — the home-screen icon's launch
-     * target (public/manifest.json's start_url), for logging a
+     * A standalone page (no sidebar/nav chrome) with an Expense/Income
+     * toggle plus Amount/Payee/Account/Category — the home-screen icon's
+     * launch target (public/manifest.json's start_url), for logging a
      * transaction the moment the app opens rather than navigating to it
      * from the dashboard first.
      *
@@ -196,7 +196,8 @@ final class TransactionController
      * Posts to storeQuickAdd() (POST /quick-add), not store() — a
      * separate, deliberately narrower endpoint than the full form/
      * sidebar popup use, since a Quick Add key must never be able to
-     * reach anything store() can do beyond "create one expense."
+     * reach anything store() can do beyond "create one income or
+     * expense transaction" — never a transfer, never a split.
      */
     public function showQuickAdd(): void
     {
@@ -227,12 +228,19 @@ final class TransactionController
             $defaultAccountId = null;
         }
 
+        // Both types, not just expense — the Expense/Income toggle in
+        // the view filters which of these actually show in the
+        // <select> client-side (each <option> carries its own
+        // data-type), same "swap what's visible, not what's fetched"
+        // approach the account/category color swatches already use.
+        $categories = array_values(array_filter(
+            (new CategoryRepository())->listForHousehold($householdId),
+            fn (array $c): bool => in_array($c['type'], ['expense', 'income'], true)
+        ));
+
         Response::html(View::render('transactions/quick-add', [
             'accounts' => $accounts,
-            'categories' => array_values(array_filter(
-                (new CategoryRepository())->listForHousehold($householdId),
-                fn (array $c): bool => $c['type'] === 'expense'
-            )),
+            'categories' => $categories,
             'defaultAccountId' => $defaultAccountId !== null ? (int) $defaultAccountId : null,
             'isKeyAuth' => !AuthMiddleware::check(),
             'csrfToken' => Csrf::token(),
@@ -365,12 +373,13 @@ final class TransactionController
     /**
      * POST /quick-add — the only thing a Quick Add key is ever able to
      * do. Deliberately separate from store(), not a shared code path
-     * with it: store() also handles income, transfers, splits, and
-     * arbitrary category/tag/notes input for the full form and the
-     * sidebar's (session-only) popup, none of which exist as fields
-     * here at all. transaction_type is never read from the request —
-     * it's hardcoded 'expense' below — so there is no input on this
-     * endpoint a leaked key could use for anything beyond "create one
+     * with it: store() also handles transfers, splits, and arbitrary
+     * category/tag/notes input for the full form and the sidebar's
+     * (session-only) popup, none of which exist as fields here at all.
+     * transaction_type IS read from the request now (income or expense,
+     * an Expense/Income toggle in the view), but strictly whitelisted —
+     * never anything else — so there is still no input on this endpoint
+     * a leaked key could use for anything beyond "create one income or
      * expense transaction on an account this household already has."
      */
     public function storeQuickAdd(Request $request): void
@@ -389,6 +398,12 @@ final class TransactionController
         $householdId = $auth['householdId'];
         $userId = $auth['userId'];
 
+        $transactionType = $request->post('transaction_type');
+        if (!in_array($transactionType, ['income', 'expense'], true)) {
+            Response::json(['error' => 'Please choose a valid transaction type.'], 422);
+            return;
+        }
+
         $payee = trim($request->post('payee'));
         $amount = trim($request->post('amount'));
         $accountId = (int) $request->post('account_id');
@@ -401,9 +416,15 @@ final class TransactionController
         }
 
         if ($categoryId !== null) {
+            // Matched to the selected type — an expense category can't
+            // be attached to an income transaction here even though the
+            // full form's own validate() doesn't bother re-checking
+            // that (its category <select> is already filtered to match
+            // whatever the form's own type picker shows); this endpoint
+            // holds itself to a stricter bar than the rest of the app.
             $categories = array_filter(
                 (new CategoryRepository())->listForHousehold($householdId),
-                fn (array $c): bool => $c['type'] === 'expense'
+                fn (array $c): bool => $c['type'] === $transactionType
             );
             if (!in_array($categoryId, array_map(fn (array $c): int => (int) $c['id'], $categories), true)) {
                 Response::json(['error' => 'Please choose a valid category.'], 422);
@@ -423,7 +444,7 @@ final class TransactionController
 
         $accountRepo = new AccountRepository();
         $account = $accountRepo->findById($accountId, $householdId);
-        $signedAmount = $this->signedAmount('expense', $amount);
+        $signedAmount = $this->signedAmount($transactionType, $amount);
 
         $pdo = Connection::get();
         $pdo->beginTransaction();
@@ -433,7 +454,7 @@ final class TransactionController
                 'account_id' => $accountId,
                 'category_id' => $categoryId,
                 'is_split' => false,
-                'transaction_type' => 'expense',
+                'transaction_type' => $transactionType,
                 'transaction_date' => date('Y-m-d'),
                 'signed_amount' => $signedAmount,
                 'payee' => $payee,
@@ -449,7 +470,7 @@ final class TransactionController
                 'notes' => null,
                 'amount' => $signedAmount,
                 'account_id' => $accountId,
-                'transaction_type' => 'expense',
+                'transaction_type' => $transactionType,
             ]);
 
             $newBalance = AccountRepository::applyDelta($account['current_balance'], $signedAmount, $account['account_type']);

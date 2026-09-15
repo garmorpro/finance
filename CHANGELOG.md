@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+- Quick Add (both the standalone `/quick-add` page and the sidebar's
+  popup) can now log income, not just expenses — an Expense/Income
+  toggle above the amount, color-coded to match the rest of the app
+  (terracotta/emerald). Toggling swaps which categories are offered
+  (each `<option>` carries its own `data-type`) and clears the category
+  if the one picked no longer applies, rather than re-fetching anything.
+  `TransactionController::storeQuickAdd()` now reads `transaction_type`
+  from the request but strictly whitelists it to `income`/`expense` —
+  the Quick Add key (see below) still can't reach a transfer or a
+  split, just one more kind of simple transaction. Also added a short
+  help line under Payee ("who you paid, or who paid you") after being
+  asked what it means — genuinely wasn't explained anywhere in the app
+  before this.
+
 - `bin/audit-access.php` now also checks for genuinely dangling data
   after a manual database cleanup (removing something by hand rather
   than through the app can skip real foreign-key relationships): a

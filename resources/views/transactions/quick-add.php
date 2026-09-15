@@ -56,6 +56,12 @@ use App\Support\View;
 
         <form id="quick-add-page-form" method="POST" action="/quick-add">
             <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
+            <input type="hidden" id="quick-add-type" name="transaction_type" value="expense">
+
+            <div class="quickadd-type-toggle" role="group" aria-label="Transaction type">
+                <button type="button" id="quick-add-type-expense" class="quickadd-type-btn" data-type="expense" aria-pressed="true">Expense</button>
+                <button type="button" id="quick-add-type-income" class="quickadd-type-btn" data-type="income" aria-pressed="false">Income</button>
+            </div>
 
             <div class="quickadd-amount-box">
                 <p class="quickadd-amount-eyebrow">Amount</p>
@@ -69,8 +75,9 @@ use App\Support\View;
                 <label for="quick-add-payee" class="quickadd-field-label">Payee</label>
                 <div class="quickadd-input-shell">
                     <svg class="quickadd-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21v-6h6v6"/></svg>
-                    <input type="text" id="quick-add-payee" name="payee" required class="quickadd-input">
+                    <input type="text" id="quick-add-payee" name="payee" required class="quickadd-input" placeholder="e.g. Whole Foods">
                 </div>
+                <p id="quick-add-payee-help" class="field-help">Who you paid, or who paid you — the merchant, company, or person on the other side of this transaction.</p>
             </div>
 
             <div class="quickadd-field">
@@ -94,7 +101,7 @@ use App\Support\View;
                     <select id="quick-add-category" name="category_id" class="quickadd-select" data-swatch-target="quick-add-category-swatch">
                         <option value="">No category</option>
                         <?php foreach ($categories as $category): ?>
-                            <option value="<?= (int) $category['id'] ?>" data-color="<?= View::e($category['color'] ?: '#a8a29e') ?>"><?= View::e($category['name']) ?></option>
+                            <option value="<?= (int) $category['id'] ?>" data-color="<?= View::e($category['color'] ?: '#a8a29e') ?>" data-type="<?= View::e($category['type']) ?>" <?= $category['type'] !== 'expense' ? 'hidden' : '' ?>><?= View::e($category['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <span id="quick-add-category-swatch" class="quickadd-swatch" aria-hidden="true"></span>
@@ -104,7 +111,7 @@ use App\Support\View;
             <button type="submit" id="quick-add-page-submit" class="quickadd-cta">Add transaction</button>
         </form>
 
-        <p class="quickadd-footnote">Need to split it, add notes, or log income? Use the <a href="/transactions/create">full form</a> instead.</p>
+        <p class="quickadd-footnote">Need to split it or add notes? Use the <a href="/transactions/create">full form</a> instead.</p>
     </div>
 
     <script src="<?= View::asset('/assets/js/quick-add.js') ?>" defer></script>

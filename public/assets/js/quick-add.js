@@ -23,6 +23,69 @@
     sync();
   });
 
+  // Expense/Income toggle — present on both the sidebar popup and the
+  // standalone quick-add page (same ids; only one of the two is ever on
+  // a given page). Swaps which category <option>s are visible (each one
+  // already carries its own data-type, hidden server-side to match the
+  // default "Expense" state) rather than re-fetching anything, clears
+  // the category if the one that was picked no longer applies to the
+  // new type, and updates the Payee field's placeholder/hint since
+  // "who you paid" isn't quite right once this is income.
+  var typeInput = document.getElementById('quick-add-type');
+  var typeButtons = document.querySelectorAll('.quickadd-type-btn');
+  if (typeInput && typeButtons.length) {
+    var categorySelect = document.getElementById('quick-add-category');
+    var payeeInput = document.getElementById('quick-add-payee');
+    var payeeHelp = document.getElementById('quick-add-payee-help');
+    var payeeCopy = {
+      expense: {
+        placeholder: 'e.g. Whole Foods',
+        help: 'Who you paid — the merchant, company, or person you spent this on.',
+      },
+      income: {
+        placeholder: 'e.g. Paycheck, Employer',
+        help: 'Who paid you — your employer, client, or the source of this income.',
+      },
+    };
+
+    typeButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var type = btn.dataset.type;
+        typeInput.value = type;
+
+        typeButtons.forEach(function (b) {
+          b.setAttribute('aria-pressed', b.dataset.type === type ? 'true' : 'false');
+        });
+
+        if (categorySelect) {
+          var selectedStillValid = false;
+          categorySelect.options.forEach(function (option) {
+            if (option.value === '') {
+              return;
+            }
+            var matches = option.dataset.type === type;
+            option.hidden = !matches;
+            if (matches && option.selected) {
+              selectedStillValid = true;
+            }
+          });
+
+          if (!selectedStillValid) {
+            categorySelect.value = '';
+            categorySelect.dispatchEvent(new Event('change'));
+          }
+        }
+
+        if (payeeInput && payeeCopy[type]) {
+          payeeInput.placeholder = payeeCopy[type].placeholder;
+        }
+        if (payeeHelp && payeeCopy[type]) {
+          payeeHelp.textContent = payeeCopy[type].help;
+        }
+      });
+    });
+  }
+
   // transactions/quick-add.php only — the sidebar popup's own form is a
   // plain POST-and-redirect (it wants the normal full-page navigation
   // back to whatever page it was opened from) and is left alone here.

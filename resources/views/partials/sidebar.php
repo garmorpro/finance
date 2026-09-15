@@ -26,7 +26,7 @@ $notificationCount = (new NotificationService())->badgeCount($householdId, (int)
 $quickAddAccounts = (new AccountRepository())->listForHousehold($householdId);
 $quickAddCategories = array_values(array_filter(
     (new CategoryRepository())->listForHousehold($householdId),
-    fn (array $c): bool => $c['type'] === 'expense'
+    fn (array $c): bool => in_array($c['type'], ['expense', 'income'], true)
 ));
 
 require __DIR__ . '/_modal_shell.php';
@@ -112,11 +112,10 @@ require __DIR__ . '/_modal_shell.php';
 /**
  * Quick-add: reachable from anywhere (most useful on mobile, where
  * there's no faster path to "log a transaction" than a full page
- * navigation today). Deliberately minimal — Amount, Payee, Account,
- * Category — everything else (splits, notes, tags, exclude flags)
- * stays on the full /transactions/create form, linked below. Always
- * an expense; logging income or a split still goes through the full
- * form. `redirect_to` carries the current page back through
+ * navigation today). Deliberately minimal — a type toggle, Amount,
+ * Payee, Account, Category — everything else (splits, notes, tags,
+ * exclude flags) stays on the full /transactions/create form, linked
+ * below. `redirect_to` carries the current page back through
  * TransactionController::store() so a quick add doesn't yank you to
  * the Transactions list from wherever you actually were.
  *
@@ -153,9 +152,14 @@ require __DIR__ . '/_modal_shell.php';
 
         <form method="POST" action="/transactions">
             <input type="hidden" name="csrf_token" value="<?= View::e($csrfToken) ?>">
-            <input type="hidden" name="transaction_type" value="expense">
+            <input type="hidden" id="quick-add-type" name="transaction_type" value="expense">
             <input type="hidden" name="transaction_date" value="<?= View::e(date('Y-m-d')) ?>">
             <input type="hidden" name="redirect_to" value="<?= View::e($_SERVER['REQUEST_URI'] ?? '/') ?>">
+
+            <div class="quickadd-type-toggle" role="group" aria-label="Transaction type">
+                <button type="button" id="quick-add-type-expense" class="quickadd-type-btn" data-type="expense" aria-pressed="true">Expense</button>
+                <button type="button" id="quick-add-type-income" class="quickadd-type-btn" data-type="income" aria-pressed="false">Income</button>
+            </div>
 
             <div class="quickadd-amount-box">
                 <p class="quickadd-amount-eyebrow">Amount</p>
@@ -169,8 +173,9 @@ require __DIR__ . '/_modal_shell.php';
                 <label for="quick-add-payee" class="quickadd-field-label">Payee</label>
                 <div class="quickadd-input-shell">
                     <svg class="quickadd-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21v-6h6v6"/></svg>
-                    <input type="text" id="quick-add-payee" name="payee" required class="quickadd-input">
+                    <input type="text" id="quick-add-payee" name="payee" required class="quickadd-input" placeholder="e.g. Whole Foods">
                 </div>
+                <p id="quick-add-payee-help" class="field-help">Who you paid, or who paid you — the merchant, company, or person on the other side of this transaction.</p>
             </div>
 
             <div class="quickadd-field">
@@ -194,7 +199,7 @@ require __DIR__ . '/_modal_shell.php';
                     <select id="quick-add-category" name="category_id" class="quickadd-select" data-swatch-target="quick-add-category-swatch">
                         <option value="">No category</option>
                         <?php foreach ($quickAddCategories as $category): ?>
-                            <option value="<?= (int) $category['id'] ?>" data-color="<?= View::e($category['color'] ?: '#a8a29e') ?>"><?= View::e($category['name']) ?></option>
+                            <option value="<?= (int) $category['id'] ?>" data-color="<?= View::e($category['color'] ?: '#a8a29e') ?>" data-type="<?= View::e($category['type']) ?>" <?= $category['type'] !== 'expense' ? 'hidden' : '' ?>><?= View::e($category['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <span id="quick-add-category-swatch" class="quickadd-swatch" aria-hidden="true"></span>
@@ -204,7 +209,7 @@ require __DIR__ . '/_modal_shell.php';
             <button type="submit" class="quickadd-cta">Add transaction</button>
         </form>
 
-        <p class="quickadd-footnote">Need to split it, add notes, or log income? Use the <a href="/transactions/create">full form</a> instead.</p>
+        <p class="quickadd-footnote">Need to split it or add notes? Use the <a href="/transactions/create">full form</a> instead.</p>
     </div>
 </div>
 
