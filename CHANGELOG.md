@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- `docs/deployment.md`: added `sudo systemctl restart apache2` as the
+  last step of every deploy. Root cause of a real "the code is deployed
+  but the change isn't showing up" case: PHP's own
+  `php.ini-production` template sets `opcache.validate_timestamps=0`,
+  so `mod_php` can keep running a file's previously-compiled bytecode
+  after `git pull` overwrites it on disk until the process restarts —
+  a plain `git pull` isn't guaranteed to make a code change take effect
+  on this server on its own.
+
 - Transactions page: rows are now grouped under a header for each day
   (matching the app's existing "grouped section" table style already
   used on the Accounts page — reused verbatim, no new CSS), each

@@ -138,12 +138,25 @@ cd /var/www/finance/public_html/finance
 git pull
 composer install --no-dev --optimize-autoloader
 php bin/migrate.php
+sudo systemctl restart apache2
 ```
 
 `composer install` is a no-op if `composer.lock` didn't change.
 `bin/migrate.php` only applies migrations not already recorded in its
 `migrations` table — safe to run on every deploy even when there's
 nothing new.
+
+The `restart apache2` step matters more than it looks like it should:
+PHP's own `php.ini-production` template (a common starting point for a
+security-conscious setup) sets `opcache.validate_timestamps=0`, which
+means `mod_php` keeps executing whatever bytecode it already compiled
+for a file — even after `git pull` overwrites that file on disk — until
+the process restarts. Skipping this step is exactly how a deploy can
+*look* like it landed (new views, new routes reachable) while a
+specific changed method quietly keeps running its old logic; if
+`opcache.validate_timestamps` is `1` in this server's actual `php.ini`
+the restart is a harmless no-op, so it's left in unconditionally rather
+than depending on knowing which setting is active.
 
 If the deploy changed `resources/css/app.css`'s source or added new
 Tailwind classes to a view, the compiled CSS must be rebuilt *before*
