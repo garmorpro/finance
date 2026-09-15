@@ -12,6 +12,7 @@ use App\Repositories\HouseholdRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserSessionRepository;
 use App\Support\Csrf;
+use App\Support\PublicRegistration;
 use App\Support\RateLimiter;
 use App\Support\Totp;
 use App\Support\View;
@@ -27,6 +28,7 @@ final class AuthController
 
         Response::html(View::render('auth/login', [
             'csrfToken' => Csrf::token(),
+            'registrationOpen' => PublicRegistration::isOpen(),
             'error' => $_SESSION['_flash_error'] ?? null,
             'notice' => $_SESSION['_flash_notice'] ?? null,
         ]));

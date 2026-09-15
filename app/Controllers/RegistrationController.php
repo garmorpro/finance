@@ -15,6 +15,7 @@ use App\Repositories\UserRepository;
 use App\Support\Csrf;
 use App\Support\Logger;
 use App\Support\Mailer;
+use App\Support\PublicRegistration;
 use App\Support\RateLimiter;
 use App\Support\Turnstile;
 use App\Support\View;
@@ -40,6 +41,11 @@ final class RegistrationController
             return;
         }
 
+        if (!PublicRegistration::isOpen()) {
+            Response::html(View::render('auth/register-closed'), 403);
+            return;
+        }
+
         Response::html(View::render('auth/register', [
             'turnstileSiteKey' => Turnstile::siteKey(),
             'csrfToken' => Csrf::token(),
@@ -54,6 +60,16 @@ final class RegistrationController
     {
         if (!empty($_SESSION['user_id'])) {
             header('Location: /');
+            return;
+        }
+
+        // Blocks the actual POST, not just the form that links to it —
+        // hiding the "Create a household" button (see login.php/
+        // landing.php) alone wouldn't stop anything sent straight to
+        // this URL. Checked before CSRF/rate-limiting/anything else:
+        // when registration is closed, none of that matters.
+        if (!PublicRegistration::isOpen()) {
+            Response::html(View::render('auth/register-closed'), 403);
             return;
         }
 

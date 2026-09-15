@@ -1,5 +1,7 @@
 <?php
 
+/** @var bool $registrationOpen */
+
 use App\Support\View;
 
 // Static marketing page shown at "/" for logged-out visitors — no
@@ -548,7 +550,9 @@ use App\Support\View;
             </div>
             <div style="display:flex; align-items:center; gap:0.6rem;">
                 <a class="btn btn-ghost" href="/login">Log in</a>
-                <a class="btn btn-primary" href="/register">Create a household</a>
+                <?php if ($registrationOpen): ?>
+                    <a class="btn btn-primary" href="/register">Create a household</a>
+                <?php endif; ?>
             </div>
         </div>
     </header>
@@ -564,8 +568,12 @@ use App\Support\View;
                     no data brokers, nothing syncing anywhere you can't see.
                 </p>
                 <div class="hero-actions">
-                    <a class="btn btn-primary" href="/register">Create your household</a>
-                    <a class="btn btn-ghost" href="/login">Log in</a>
+                    <?php if ($registrationOpen): ?>
+                        <a class="btn btn-primary" href="/register">Create your household</a>
+                        <a class="btn btn-ghost" href="/login">Log in</a>
+                    <?php else: ?>
+                        <a class="btn btn-primary" href="/login">Log in</a>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -670,10 +678,14 @@ use App\Support\View;
     <section class="closing">
         <div class="wrap">
             <h2>Ready to see where things stand?</h2>
-            <p>Create your household, or log in to pick up right where you left off.</p>
+            <p><?= $registrationOpen ? 'Create your household, or log in to pick up right where you left off.' : 'Log in to pick up right where you left off.' ?></p>
             <div style="display:flex; align-items:center; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
-                <a class="btn btn-primary" href="/register">Create a household</a>
-                <a class="btn btn-ghost" href="/login">Log in</a>
+                <?php if ($registrationOpen): ?>
+                    <a class="btn btn-primary" href="/register">Create a household</a>
+                    <a class="btn btn-ghost" href="/login">Log in</a>
+                <?php else: ?>
+                    <a class="btn btn-primary" href="/login">Log in</a>
+                <?php endif; ?>
             </div>
         </div>
     </section>

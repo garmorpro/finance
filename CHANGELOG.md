@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- Public registration (the "Create a household" button, `/register`) is
+  now closed by default — a stranger reached it and attempted to sign
+  up. `App\Support\PublicRegistration::isOpen()` reads a new
+  `REGISTRATION_ENABLED` env var and, unlike every other feature flag
+  in this app, treats it as **off** when unset rather than "on with
+  reduced protection" — so this closes immediately on deploy with no
+  `.env` change needed, and can be reopened later by setting
+  `REGISTRATION_ENABLED=true` when actually wanted (e.g. a genuine
+  multi-tenant deployment). Both `RegistrationController::showForm()`
+  and `register()` check it independently, so a direct POST to
+  `/register` is blocked the same as the button being hidden — this
+  isn't just a UI change. The login and landing pages hide the
+  "Create a household" button entirely rather than linking to a dead
+  end. See `docs/security.md`'s "Public registration" section.
+
 - Every full timestamp shown in the app (session "last active", passkey
   "added"/"last used", Quick Add key "created"/"last used", account
   balance-history entries, recent CSV imports) now displays in the

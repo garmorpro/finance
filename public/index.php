@@ -35,6 +35,7 @@ use App\Http\Request;
 use App\Http\Response;
 use App\Http\Router;
 use App\Support\ErrorHandler;
+use App\Support\PublicRegistration;
 use App\Support\SecurityHeaders;
 use App\Support\View;
 use Dotenv\Dotenv;
@@ -258,7 +259,7 @@ $router->get('/', function () use ($dashboardController): void {
         return;
     }
 
-    Response::html(View::render('landing'));
+    Response::html(View::render('landing', ['registrationOpen' => PublicRegistration::isOpen()]));
 });
 
 $router->get('/health', function (): void {

@@ -43,6 +43,19 @@ boundary between households at all (see "Authorization" below and
 `tests/Integration/HouseholdIsolationTest.php`'s
 `test_registration_seeded_categories_are_isolated_between_households`).
 
+- **Gated behind `REGISTRATION_ENABLED`, closed by default.**
+  `App\Support\PublicRegistration::isOpen()` reads it, and — unlike
+  every other feature flag in this file (Turnstile, mail) — treats an
+  *unset* value as **off**, not "on with reduced protection." Both
+  `RegistrationController::showForm()` and `register()` check it
+  independently (the POST handler doesn't rely on the GET form being
+  hidden to actually stop a submission sent straight to the URL), and
+  the login/landing pages hide the "Create a household" button entirely
+  when it's closed rather than showing a button that leads to a dead
+  end. This exists because self-hosted, single/small-household use is
+  this app's actual normal case — public signup is opt-in for whoever
+  specifically wants a multi-tenant deployment, not the default state a
+  fresh install ends up in.
 - **Email verification is required before first login.**
   `users.email_verified_at` (present in the schema since the initial
   migration, unused until now) gates `AuthController::login()` —
