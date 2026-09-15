@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Controllers\AccountController;
 use App\Controllers\AttachmentController;
+use App\Controllers\AuditLogController;
 use App\Controllers\AuthController;
 use App\Controllers\BudgetController;
 use App\Controllers\BudgetReviewLinkController;
@@ -99,6 +100,9 @@ $router->get('/register/check-email', fn (): mixed => $registrationController->s
 $router->get('/verify-email', fn (Request $r): mixed => $registrationController->verifyEmail($r));
 $router->get('/verify-email/resend', fn (): mixed => $registrationController->showResendForm());
 $router->post('/verify-email/resend', fn (Request $r): mixed => $registrationController->resend($r));
+
+$auditLogController = new AuditLogController();
+$router->get('/settings/audit-log', fn (Request $r): mixed => $auditLogController->index($r));
 
 $householdController = new HouseholdController();
 $router->get('/settings/household', fn (): mixed => $householdController->showMembers());

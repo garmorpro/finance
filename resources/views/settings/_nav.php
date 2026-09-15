@@ -2,6 +2,7 @@
 
 /** @var string $active */
 
+use App\Middleware\AuthMiddleware;
 use App\Support\SettingsIcons;
 
 $active = $active ?? '';
@@ -26,5 +27,8 @@ $navLink = function (string $key, string $href, string $label) use ($active): st
         <?= $navLink('categories', '/settings/categories', 'Categories') ?>
         <?= $navLink('rules', '/settings/rules', 'Rules') ?>
         <?= $navLink('tags', '/settings/tags', 'Tags') ?>
+        <?php if (AuthMiddleware::role() === 'owner'): ?>
+            <?= $navLink('audit-log', '/settings/audit-log', 'Audit Log') ?>
+        <?php endif; ?>
     </nav>
 </div>

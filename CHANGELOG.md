@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+- Settings → Audit Log (Owner-only) — a household's own security/
+  activity trail in the app itself: sign-ins, failed sign-in/2FA/
+  passkey attempts, transaction and settings changes, Quick Add key
+  activity, and everything else already being logged this whole time
+  with nowhere to view it (previously only reachable via the CLI
+  `bin/audit-access.php`, and only from the server). Filterable by
+  date, paginated 50 at a time, timestamps shown in your own local time
+  zone (reuses `App\Support\LocalTime`). `AuditLogRepository::
+  listForHousehold()` includes a row if it's tagged with the household
+  directly or tied to a current member of it — several security
+  events (failed logins, failed 2FA) are logged with `household_id`
+  left `NULL` since that context doesn't exist yet at that point in the
+  request, and without the member fallback exactly the events most
+  worth seeing would never show up. New `App\Support\AuditActionLabels`
+  turns a raw `action` string into readable text, falling back to a
+  formatted version of the raw string for anything not explicitly
+  mapped. See `docs/security.md`'s new "Audit log" section.
+
 - Quick Add (both the standalone `/quick-add` page and the sidebar's
   popup) can now log income, not just expenses — an Expense/Income
   toggle above the amount, color-coded to match the rest of the app

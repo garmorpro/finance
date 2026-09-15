@@ -373,6 +373,36 @@ any of them out individually or all at once.
   use `AuthMiddleware::requireRole([...])`, checked against the role
   cached in session at login.
 
+## Audit log
+
+Settings → Audit Log (`AuditLogController`, Owner-only via
+`AuthMiddleware::requireRole(['owner'])`) is the in-app counterpart to
+`bin/audit-access.php`'s whole-server CLI report — a household's own
+security/activity trail, without needing server access to see it.
+
+`AuditLogRepository::listForHousehold()` includes a row if it's tagged
+with this household's `household_id` *or* if it's tied to a user who is
+currently a member here. That second clause matters: several
+security-relevant events (`login.failed`, `login.2fa_failed`,
+`login.webauthn_failed`) are logged with `household_id` left `NULL`,
+since session/household context genuinely doesn't exist yet at that
+point in the request — a failed login attempt precedes knowing which
+household it was even aimed at. Without the `user_id` fallback, exactly
+the events most worth showing a household (did someone try to guess my
+password) would silently never appear. A row with neither a matching
+household nor a recognizable current member — an anonymous failed
+Quick Add key guess, a failed login against an email with no account at
+all — isn't attributable to any specific household and is correctly
+excluded from this household-scoped view; it's still fully visible to
+`bin/audit-access.php`'s broader, whole-server report.
+
+`App\Support\AuditActionLabels` turns a raw `action` string into
+household-readable text for display only — it has no bearing on what's
+actually stored or queried, and a new `action` added anywhere in the
+app without a corresponding label just falls back to a readably
+formatted version of the raw string rather than needing this list kept
+in sync.
+
 ## Encryption at rest
 
 Household-scoping is the boundary against *another household's* data
