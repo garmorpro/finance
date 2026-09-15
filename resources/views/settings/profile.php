@@ -9,6 +9,7 @@
 /** @var string|null $error */
 /** @var string|null $notice */
 
+use App\Support\LocalTime;
 use App\Support\SettingsIcons;
 use App\Support\View;
 
@@ -115,7 +116,7 @@ $initials = $nameParts !== false && $nameParts !== []
 
                             <?php if ($user['quick_add_key_hash'] !== null): ?>
                                 <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">
-                                    Created <?= View::e((string) $user['quick_add_key_created_at']) ?><?= $user['quick_add_key_last_used_at'] !== null ? ' &middot; last used ' . View::e((string) $user['quick_add_key_last_used_at']) : ' &middot; never used yet' ?>
+                                    Created <?= LocalTime::html($user['quick_add_key_created_at']) ?><?= $user['quick_add_key_last_used_at'] !== null ? ' &middot; last used ' . LocalTime::html($user['quick_add_key_last_used_at']) : ' &middot; never used yet' ?>
                                 </p>
 
                                 <details>

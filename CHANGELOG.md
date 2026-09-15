@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+- Every full timestamp shown in the app (session "last active", passkey
+  "added"/"last used", Quick Add key "created"/"last used", account
+  balance-history entries, recent CSV imports) now displays in the
+  viewer's own current local time zone instead of raw UTC — automatic,
+  based on the browser's own clock, not a stored setting, so the same
+  login reads in CDT from Texas and MDT from Utah with nothing to
+  configure or update after traveling. New `App\Support\LocalTime::html()`
+  emits a `<time>` element carrying the real UTC instant, and
+  `public/assets/js/local-time.js` (loaded on every page via the
+  sidebar partial) rewrites the visible text client-side; without JS it
+  falls back to a legible UTC-labeled value rather than breaking.
+  Deliberately does NOT touch transaction dates or any other plain
+  calendar date (bill due dates, budget months, goal target dates) —
+  those represent a day, not an instant, and converting one through a
+  time zone can shift it onto the wrong calendar day, which would be a
+  bug, not the feature being asked for.
+
 - `docs/deployment.md`: added `sudo systemctl restart apache2` as the
   last step of every deploy. Root cause of a real "the code is deployed
   but the change isn't showing up" case: PHP's own

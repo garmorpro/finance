@@ -6,6 +6,7 @@
 /** @var string|null $error */
 /** @var string|null $notice */
 
+use App\Support\LocalTime;
 use App\Support\View;
 
 ?>
@@ -76,7 +77,7 @@ use App\Support\View;
                         <tbody>
                             <?php foreach ($recentImports as $import): ?>
                                 <tr>
-                                    <td class="text-stone-500 dark:text-stone-400"><?= View::e($import['created_at']) ?></td>
+                                    <td class="text-stone-500 dark:text-stone-400"><?= LocalTime::html($import['created_at']) ?></td>
                                     <td class="text-stone-900 dark:text-white"><?= View::e($import['filename']) ?></td>
                                     <td class="text-stone-500 dark:text-stone-400"><?= View::e($import['account_name']) ?></td>
                                     <td class="text-stone-500 dark:text-stone-400"><?= View::e($import['imported_by_name']) ?></td>

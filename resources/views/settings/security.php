@@ -7,6 +7,7 @@
 /** @var string|null $error */
 /** @var string|null $notice */
 
+use App\Support\LocalTime;
 use App\Support\SettingsIcons;
 use App\Support\View;
 
@@ -86,7 +87,7 @@ use App\Support\View;
                                                     <?php endif; ?>
                                                 </div>
                                                 <div class="text-xs text-stone-500 dark:text-stone-400">
-                                                    Added <?= View::e($passkey['created_at']) ?><?= $passkey['last_used_at'] !== null ? ' &middot; last used ' . View::e($passkey['last_used_at']) : '' ?>
+                                                    Added <?= LocalTime::html($passkey['created_at']) ?><?= $passkey['last_used_at'] !== null ? ' &middot; last used ' . LocalTime::html($passkey['last_used_at']) : '' ?>
                                                 </div>
                                             </div>
                                             <form method="POST" action="/settings/security/webauthn/<?= (int) $passkey['id'] ?>/delete" class="shrink-0" onsubmit="return confirm('Remove this passkey? You will need your password (and 2FA code, if this was your only passkey) to sign in from that device again.');">
@@ -149,7 +150,7 @@ use App\Support\View;
                                                 <?php endif; ?>
                                             </div>
                                             <div class="text-xs text-stone-500 dark:text-stone-400">
-                                                <?= View::e($session['ip_address'] ?? 'Unknown IP') ?> &middot; last active <?= View::e($session['last_active_at']) ?>
+                                                <?= View::e($session['ip_address'] ?? 'Unknown IP') ?> &middot; last active <?= LocalTime::html($session['last_active_at']) ?>
                                             </div>
                                         </div>
                                         <?php if (!$session['is_current']): ?>

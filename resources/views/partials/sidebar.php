@@ -211,3 +211,4 @@ require __DIR__ . '/_modal_shell.php';
 <script src="<?= View::asset('/assets/js/quick-add.js') ?>" defer></script>
 <script src="<?= View::asset('/assets/js/modals.js') ?>" defer></script>
 <script src="<?= View::asset('/assets/js/sidebar.js') ?>" defer></script>
+<script src="<?= View::asset('/assets/js/local-time.js') ?>" defer></script>

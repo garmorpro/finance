@@ -111,6 +111,17 @@ data blobs to drive Chart.js). Chart.js itself is vendored as a static
 file (`public/assets/js/vendor/chart.umd.min.js`) rather than loaded from
 a CDN, consistent with this app's no-third-party-requests stance.
 
+Every full timestamp (as opposed to a plain calendar date like
+`transaction_date`, which is never converted — see the doc comment on
+`App\Support\LocalTime`) is stored as UTC and displayed in whichever
+time zone the viewer's own browser currently reports: render it with
+`LocalTime::html()` rather than echoing the raw column, and
+`public/assets/js/local-time.js` (loaded on every page via
+`partials/sidebar.php`) rewrites it client-side on page load. This is
+why the same login shows CDT from Texas and MDT from Utah with nothing
+to configure — new features that display a real point-in-time value
+should use this instead of a raw `View::e($row['created_at'])`.
+
 ## Why plain PHP instead of a framework
 
 This was a deliberate early decision, not an oversight: a self-hosted

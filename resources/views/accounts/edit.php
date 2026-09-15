@@ -9,6 +9,7 @@
 
 use App\Support\AccountTypeIcons;
 use App\Support\AccountTypeLabels;
+use App\Support\LocalTime;
 use App\Support\Money;
 use App\Support\View;
 
@@ -104,7 +105,7 @@ $accountColor = $account['color'] ?: '#a8a29e';
                     <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
                         <div class="min-w-0">
                             <div class="text-sm text-stone-900 dark:text-white truncate"><?= View::e($entry['note'] ?? 'Balance update') ?></div>
-                            <div class="text-xs text-stone-500 dark:text-stone-400 truncate"><?= View::e($entry['created_at']) ?> &middot; <?= View::e($entry['changed_by_name']) ?></div>
+                            <div class="text-xs text-stone-500 dark:text-stone-400 truncate"><?= LocalTime::html($entry['created_at']) ?> &middot; <?= View::e($entry['changed_by_name']) ?></div>
                         </div>
                         <div class="text-sm flex-shrink-0">
                             <span class="text-stone-500 dark:text-stone-400"><?= Money::format($entry['previous_balance']) ?></span>
